@@ -30,7 +30,7 @@ export function WebsiteViewer({ path, title, fullscreen, onExit }: WebsiteViewer
               onClick={onExit}
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              Back to KB
+              Back
             </Button>
           )}
           <span className="text-[13px] font-medium">{title}</span>
