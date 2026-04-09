@@ -1,5 +1,9 @@
 # Progress
 
+[2026-04-09] Unified toolbar controls across all file types. Extracted Search, Terminal, AI Panel, and Theme Picker into a shared `HeaderActions` component. CSV, PDF, and Website/App viewers now include these global controls in their toolbars, matching the markdown editor experience.
+
+[2026-04-09] Added "Open in Finder" option to each sidebar tree item's right-click context menu. Reveals the item in Finder (macOS) or Explorer (Windows) instead of only supporting the top-level knowledge base directory.
+
 [2026-04-09] Added hash-based URL routing and localStorage persistence. Navigation state (current page, section, agent) is now synced to the URL hash (e.g. `#/page/folder/name`, `#/agents`, `#/settings`). Refreshing the browser restores the same view. Opening the app without a hash restores the last visited route from localStorage. Back/forward browser buttons work.
 
 [2026-04-09] Fixed sidebar collapse overlap bug. The toggle button now hovers over content (z-20), and each page's header bar slides right via a CSS variable (`--sidebar-toggle-offset`) with a 200ms transition. Applied to Header, WebsiteViewer, PdfViewer, CsvViewer, SettingsPage, AgentsWorkspace, and JobsManager top bars.

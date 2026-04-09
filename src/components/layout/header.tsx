@@ -1,7 +1,6 @@
 "use client";
 
-import { Sparkles, Copy, Download, Search, FileCode, Terminal, FileDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Copy, Download, FileCode, FileDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,16 +8,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useEditorStore } from "@/stores/editor-store";
-import { useAIPanelStore } from "@/stores/ai-panel-store";
-import { useAppStore } from "@/stores/app-store";
 import { VersionHistory } from "@/components/editor/version-history";
-import { ThemePicker } from "@/components/layout/theme-picker";
-import { cn } from "@/lib/utils";
+import { HeaderActions } from "@/components/layout/header-actions";
 
 export function Header() {
   const { frontmatter, content, currentPath } = useEditorStore();
-  const { isOpen, toggle } = useAIPanelStore();
-  const { terminalOpen, toggleTerminal } = useAppStore();
 
   const handleCopyMarkdown = async () => {
     if (!content) return;
@@ -60,23 +54,6 @@ export function Header() {
         </h1>
       </div>
       <div className="flex items-center gap-1">
-        {/* Search hint */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hidden sm:flex"
-          onClick={() => {
-            window.dispatchEvent(
-              new KeyboardEvent("keydown", { key: "k", metaKey: true })
-            );
-          }}
-        >
-          <Search className="h-3.5 w-3.5" />
-          <kbd className="pointer-events-none text-[10px] font-mono bg-muted px-1 py-0.5 rounded">
-            ⌘K
-          </kbd>
-        </Button>
-
         {/* Export dropdown */}
         {currentPath && (
           <DropdownMenu>
@@ -124,28 +101,8 @@ export function Header() {
         {/* Version history */}
         {currentPath && <VersionHistory />}
 
-        {/* Terminal toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("h-8 w-8", terminalOpen && "text-primary")}
-          onClick={toggleTerminal}
-        >
-          <Terminal className="h-4 w-4" />
-        </Button>
-
-        {/* AI toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("h-8 w-8", isOpen && "text-primary")}
-          onClick={toggle}
-        >
-          <Sparkles className="h-4 w-4" />
-        </Button>
-
-        {/* Theme picker — click to toggle, long-press for menu */}
-        <ThemePicker />
+        {/* Global actions: Search, Terminal, AI, Theme */}
+        <HeaderActions />
       </div>
     </header>
   );

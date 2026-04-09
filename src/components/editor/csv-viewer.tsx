@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Code2, Save, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HeaderActions } from "@/components/layout/header-actions";
 
 interface CsvViewerProps {
   path: string;
@@ -198,6 +199,7 @@ export function CsvViewer({ path, title }: CsvViewerProps) {
             <ExternalLink className="h-3.5 w-3.5" />
             Download
           </Button>
+          <HeaderActions />
         </div>
       </div>
 

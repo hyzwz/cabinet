@@ -215,6 +215,16 @@ export function TreeNode({ node, depth }: TreeNodeProps) {
             <Pencil className="h-4 w-4 mr-2" />
             Rename
           </ContextMenuItem>
+          <ContextMenuItem onClick={() => {
+            fetch("/api/system/open-data-dir", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ subpath: node.path }),
+            });
+          }}>
+            <FolderOpen className="h-4 w-4 mr-2" />
+            Open in Finder
+          </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={handleDelete} className="text-destructive">
             <Trash2 className="h-4 w-4 mr-2" />

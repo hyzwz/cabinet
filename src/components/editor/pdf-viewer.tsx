@@ -2,6 +2,7 @@
 
 import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HeaderActions } from "@/components/layout/header-actions";
 
 interface PdfViewerProps {
   path: string;
@@ -23,15 +24,18 @@ export function PdfViewer({ path, title }: PdfViewerProps) {
             PDF
           </span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1.5 text-xs"
-          onClick={() => window.open(pdfSrc, "_blank")}
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          Open in new tab
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 text-xs"
+            onClick={() => window.open(pdfSrc, "_blank")}
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Open in new tab
+          </Button>
+          <HeaderActions />
+        </div>
       </div>
       <iframe
         src={pdfSrc}
