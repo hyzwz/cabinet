@@ -446,6 +446,7 @@ export function AgentsWorkspace({
   const jobsPanel = useHorizontalResize(280, 220, 420);
   const treeNodes = useTreeStore((state) => state.nodes);
   const selectPage = useTreeStore((state) => state.selectPage);
+  const section = useAppStore((state) => state.section);
   const setSection = useAppStore((state) => state.setSection);
 
   const allPages = flattenTree(treeNodes);
@@ -666,14 +667,19 @@ export function AgentsWorkspace({
   }, [activeAgentSlug, triggerFilter, statusFilter, conversations]);
 
   useEffect(() => {
+    const pendingConvId = section.conversationId || null;
     setActiveAgentSlug(selectedScope === "agent" ? selectedAgentSlug || null : null);
-    setSelectedConversationId(null);
+    setSelectedConversationId(pendingConvId);
     setSelectedConversation(null);
     setSettingsTarget(selectedScope === "agent" ? selectedAgentSlug || null : null);
     setHasLoadedConversations(false);
     setConversationsLoading(true);
-    setMode(selectedScope === "agent" && selectedAgentSlug ? "settings" : "composer");
-  }, [selectedAgentSlug, selectedScope]);
+    if (pendingConvId) {
+      setMode("conversation");
+    } else {
+      setMode(selectedScope === "agent" && selectedAgentSlug ? "settings" : "composer");
+    }
+  }, [selectedAgentSlug, selectedScope, section.conversationId]);
 
   function openAgentWorkspace(agentSlug: string) {
     setActiveAgentSlug(agentSlug);

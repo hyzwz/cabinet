@@ -29,6 +29,7 @@ import {
   Pencil,
   FilePlus,
   FolderOpen,
+  Boxes,
   Crown,
   Megaphone,
   Search,
@@ -188,16 +189,17 @@ export function TreeView() {
             setCabinetExpanded(!cabinetExpanded);
             setSection({ type: "home" });
           }}
-          className={itemClass(section.type === "home")}
+          className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 pt-2 pb-1 w-full text-left flex items-center gap-1.5 hover:text-foreground/80 transition-colors"
           style={pad(0)}
         >
+          <Boxes className="h-3.5 w-3.5 shrink-0" />
+          Cabinet
           <ChevronRight
             className={cn(
-              "h-3.5 w-3.5 shrink-0 text-muted-foreground/70 transition-transform duration-150",
+              "h-3 w-3 shrink-0 text-muted-foreground/50 transition-transform duration-150 ml-auto",
               cabinetExpanded && "rotate-90"
             )}
           />
-          Cabinet
         </button>
 
         {cabinetExpanded && (

@@ -7,6 +7,7 @@ import { KBEditor } from "@/components/editor/editor";
 import { WebsiteViewer } from "@/components/editor/website-viewer";
 import { PdfViewer } from "@/components/editor/pdf-viewer";
 import { CsvViewer } from "@/components/editor/csv-viewer";
+import { HomeScreen } from "@/components/home/home-screen";
 import { AgentsWorkspace } from "@/components/agents/agents-workspace";
 import { JobsManager } from "@/components/jobs/jobs-manager";
 import { SettingsPage } from "@/components/settings/settings-page";
@@ -110,7 +111,7 @@ export function AppShell() {
 
   const handleWizardComplete = useCallback(() => {
     setShowWizard(false);
-    setSection({ type: "agents" });
+    setSection({ type: "home" });
     loadTree();
   }, [setSection, loadTree]);
 
@@ -170,6 +171,7 @@ export function AppShell() {
   // Determine what to render in the main area
   const renderContent = () => {
     // System sections (non-page views)
+    if (section.type === "home") return <HomeScreen />;
     if (section.type === "settings") return <SettingsPage />;
     if (section.type === "agents") {
       return <AgentsWorkspace selectedScope="all" selectedAgentSlug={null} />;

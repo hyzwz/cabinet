@@ -28,15 +28,16 @@ interface RouteState {
 function buildHash(section: { type: string; slug?: string }, pagePath: string | null): string {
   if (section.type === "page" && pagePath) return `#/page/${pagePath}`;
   if (section.type === "agent" && section.slug) return `#/agents/${section.slug}`;
+  if (section.type === "home") return "#/home";
   if (section.type === "agents") return "#/agents";
   if (section.type === "jobs") return "#/jobs";
   if (section.type === "settings") return section.slug ? `#/settings/${section.slug}` : "#/settings";
-  return "#/agents";
+  return "#/home";
 }
 
 function parseHash(hash: string): RouteState {
   const raw = hash.replace(/^#\/?/, "");
-  if (!raw) return { section: { type: "agents" }, pagePath: null };
+  if (!raw || raw === "home") return { section: { type: "home" }, pagePath: null };
 
   if (raw.startsWith("page/")) {
     const pagePath = raw.slice("page/".length);
@@ -54,7 +55,7 @@ function parseHash(hash: string): RouteState {
     return { section: { type: "settings", slug }, pagePath: null };
   }
 
-  return { section: { type: "agents" }, pagePath: null };
+  return { section: { type: "home" }, pagePath: null };
 }
 
 function saveToLocalStorage(hash: string) {
@@ -109,7 +110,7 @@ export function useHashRoute() {
         // Reflect restored route in the URL
         window.history.replaceState(null, "", saved);
       } else {
-        route = { section: { type: "agents" }, pagePath: null };
+        route = { section: { type: "home" }, pagePath: null };
       }
     }
 
