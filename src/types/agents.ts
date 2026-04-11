@@ -63,6 +63,8 @@ export interface AgentListItem {
   jobCount?: number;
   runningCount?: number;
   status?: "active" | "running" | "idle";
+  cabinetPath?: string;
+  cabinetName?: string;
 }
 export interface ProviderModel {
   id: string;

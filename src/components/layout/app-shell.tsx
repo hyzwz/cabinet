@@ -176,17 +176,24 @@ export function AppShell() {
     if (section.type === "home") return <HomeScreen />;
     if (section.type === "settings") return <SettingsPage />;
     if (section.type === "agents") {
-      return <AgentsWorkspace selectedScope="all" selectedAgentSlug={null} />;
+      return (
+        <AgentsWorkspace
+          selectedScope="all"
+          selectedAgentSlug={null}
+          cabinetPath={section.cabinetPath}
+        />
+      );
     }
     if (section.type === "agent") {
       return (
         <AgentsWorkspace
           selectedScope="agent"
           selectedAgentSlug={section.slug || null}
+          cabinetPath={section.cabinetPath}
         />
       );
     }
-    if (section.type === "jobs") return <JobsManager />;
+    if (section.type === "jobs") return <JobsManager cabinetPath={section.cabinetPath} />;
 
     // Page-based views (when a KB page is selected)
     if (selectedNode?.type === "cabinet" && selectedPath) {

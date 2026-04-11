@@ -1,7 +1,7 @@
 ---
 title: KPIs
 created: '2026-04-11T00:00:00Z'
-modified: '2026-04-11T00:00:00Z'
+modified: '2026-04-12T00:00:00Z'
 tags:
   - kpis
   - analytics
@@ -25,3 +25,13 @@ order: 4
 - Retention drops when reminders feel repetitive
 - Paid conversion is weak unless the user imports meaningful contacts quickly
 - Growth is healthy only when content feels funny, not preachy
+
+## Actions by Metric (April 12 Review)
+
+| Metric | Gap | Primary Lever | Owner |
+| --- | --- | --- | --- |
+| MAU | 31,600 short | Activate TikTok + Reddit marketing | Marketing leads |
+| Activation | 14pp short | Ship P1 Onboarding v2 | Product Manager |
+| Week-4 retention | 7pp short | P2 smarter timing (blocked by RT-4 bug) | CTO |
+| Conversion | 1.5pp short | P4 paywall clarity (depends on P1-P3) | Product Manager |
+| CAC | $1.80 over | Content-led growth to reduce paid spend | Growth Marketer |

@@ -6,6 +6,8 @@ import {
 } from "@/lib/agents/conversation-runner";
 import { listConversationMetas } from "@/lib/agents/conversation-store";
 import { readMemory, writeMemory } from "@/lib/agents/persona-manager";
+import { readCabinetOverview } from "@/lib/cabinets/overview";
+import type { CabinetVisibilityMode } from "@/types/cabinets";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -22,13 +24,43 @@ export async function GET(req: NextRequest) {
     | "failed"
     | "cancelled"
     | null;
+  const cabinetPath = searchParams.get("cabinetPath") || undefined;
+  const visibilityMode = (searchParams.get("visibilityMode") || "own") as CabinetVisibilityMode;
   const limit = parseInt(searchParams.get("limit") || "200", 10);
 
-  const conversations = await listConversationMetas({
+  const filters = {
     agentSlug: agentSlug && agentSlug !== "all" ? agentSlug : undefined,
     pagePath: pagePath || undefined,
     trigger: trigger || undefined,
     status: status || undefined,
+    limit: 1000,
+  };
+
+  // When viewing a cabinet with visibility that includes descendants, aggregate
+  // conversations from all visible cabinet directories.
+  if (cabinetPath && visibilityMode !== "own") {
+    try {
+      const overview = await readCabinetOverview(cabinetPath, { visibilityMode });
+      const visiblePaths = overview.visibleCabinets.map((c) => c.path);
+
+      const all = await Promise.all(
+        visiblePaths.map((cp) => listConversationMetas({ ...filters, cabinetPath: cp }))
+      );
+
+      const merged = all.flat();
+      merged.sort(
+        (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+      );
+
+      return NextResponse.json({ conversations: merged.slice(0, limit) });
+    } catch {
+      // Fall through to single-cabinet fetch on error
+    }
+  }
+
+  const conversations = await listConversationMetas({
+    ...filters,
+    cabinetPath,
     limit,
   });
 

@@ -357,6 +357,7 @@ export async function runHeartbeat(slug: string, cabinetPath?: string): Promise<
       trigger: "heartbeat",
       prompt,
       providerId: persona.provider,
+      cabinetPath,
       cwd,
       timeoutSeconds: 600,
       onComplete: async (completion) => {

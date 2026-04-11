@@ -5,12 +5,14 @@ import { reloadDaemonSchedules } from "@/lib/agents/daemon-client";
 import { normalizeJobConfig } from "@/lib/jobs/job-normalization";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: slug } = await params;
+  const { searchParams } = new URL(req.url);
+  const cabinetPath = searchParams.get("cabinetPath") || undefined;
   try {
-    const jobs = await loadAgentJobsBySlug(slug);
+    const jobs = await loadAgentJobsBySlug(slug, cabinetPath);
     return NextResponse.json({ jobs });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

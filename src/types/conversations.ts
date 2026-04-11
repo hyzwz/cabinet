@@ -14,6 +14,7 @@ export interface ConversationArtifact {
 export interface ConversationMeta {
   id: string;
   agentSlug: string;
+  cabinetPath?: string;
   title: string;
   trigger: ConversationTrigger;
   status: ConversationStatus;

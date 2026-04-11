@@ -40,21 +40,23 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     }
   }
 
-  const persona = await readPersona(slug);
+  const cabinetPath = searchParams.get("cabinetPath") || undefined;
+
+  const persona = await readPersona(slug, cabinetPath);
   if (!persona) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const memoryFiles = await listMemoryFiles(slug);
+  const memoryFiles = await listMemoryFiles(slug, cabinetPath);
   const memory: Record<string, string> = {};
   for (const file of memoryFiles) {
     if (file.endsWith(".md")) {
-      memory[file] = await readMemory(slug, file);
+      memory[file] = await readMemory(slug, file, cabinetPath);
     }
   }
 
-  const inbox = await readInbox(slug);
-  const history = await getHeartbeatHistory(slug);
+  const inbox = await readInbox(slug, cabinetPath);
+  const history = await getHeartbeatHistory(slug, undefined, cabinetPath);
   const goalHistory = await getGoalHistory(slug);
 
   return NextResponse.json({ persona, memory, inbox, history, goalHistory });
@@ -63,18 +65,18 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 export async function PUT(req: NextRequest, { params }: RouteParams) {
   const { slug } = await params;
   const body = await req.json();
+  const cabinetPath = typeof body.cabinetPath === "string" ? body.cabinetPath : undefined;
 
   // Handle different update types
   if (body.action === "toggle") {
-    const persona = await readPersona(slug);
+    const persona = await readPersona(slug, cabinetPath);
     if (!persona) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    await writePersona(slug, { active: !persona.active });
+    await writePersona(slug, { active: !persona.active }, cabinetPath);
     await reloadDaemonSchedules().catch(() => {});
     return NextResponse.json({ ok: true, active: !persona.active });
   }
 
   if (body.action === "run") {
-    const cabinetPath = typeof body.cabinetPath === "string" ? body.cabinetPath : undefined;
     const sessionId = await startManualHeartbeat(slug, cabinetPath);
     if (!sessionId) {
       return NextResponse.json({ ok: false, message: "Agent inactive or over budget" }, { status: 400 });
@@ -83,7 +85,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
   }
 
   if (body.action === "updateMemory") {
-    await writeMemory(slug, body.file, body.content);
+    await writeMemory(slug, body.file, body.content, cabinetPath);
     return NextResponse.json({ ok: true });
   }
 
@@ -98,7 +100,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
   }
 
   // Default: update persona
-  await writePersona(slug, body);
+  await writePersona(slug, body, cabinetPath);
   await reloadDaemonSchedules().catch(() => {});
   return NextResponse.json({ ok: true });
 }

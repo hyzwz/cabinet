@@ -19,6 +19,11 @@ import {
 
 export const CONVERSATIONS_DIR = path.join(DATA_DIR, ".agents", ".conversations");
 
+function resolveConversationsDir(cabinetPath?: string): string {
+  if (cabinetPath) return path.join(DATA_DIR, cabinetPath, ".agents", ".conversations");
+  return CONVERSATIONS_DIR;
+}
+
 // ── In-memory notification queue for completed/failed conversations ──
 export interface ConversationNotification {
   id: string;
@@ -37,6 +42,7 @@ export function drainConversationNotifications(): ConversationNotification[] {
 
 interface CreateConversationInput {
   agentSlug: string;
+  cabinetPath?: string;
   title: string;
   trigger: ConversationTrigger;
   prompt: string;
@@ -48,6 +54,7 @@ interface CreateConversationInput {
 
 interface ListConversationFilters {
   agentSlug?: string;
+  cabinetPath?: string;
   trigger?: ConversationTrigger;
   status?: ConversationStatus;
   pagePath?: string;
@@ -72,28 +79,28 @@ function sanitizeSegment(value: string, fallback: string): string {
   return sanitizeFilename(value) || fallback;
 }
 
-function conversationDir(id: string): string {
-  return path.join(CONVERSATIONS_DIR, id);
+function conversationDir(id: string, cabinetPath?: string): string {
+  return path.join(resolveConversationsDir(cabinetPath), id);
 }
 
-function metaPath(id: string): string {
-  return path.join(conversationDir(id), "meta.json");
+function metaPath(id: string, cabinetPath?: string): string {
+  return path.join(conversationDir(id, cabinetPath), "meta.json");
 }
 
-function transcriptPathFs(id: string): string {
-  return path.join(conversationDir(id), "transcript.txt");
+function transcriptPathFs(id: string, cabinetPath?: string): string {
+  return path.join(conversationDir(id, cabinetPath), "transcript.txt");
 }
 
-function promptPathFs(id: string): string {
-  return path.join(conversationDir(id), "prompt.md");
+function promptPathFs(id: string, cabinetPath?: string): string {
+  return path.join(conversationDir(id, cabinetPath), "prompt.md");
 }
 
-function mentionsPathFs(id: string): string {
-  return path.join(conversationDir(id), "mentions.json");
+function mentionsPathFs(id: string, cabinetPath?: string): string {
+  return path.join(conversationDir(id, cabinetPath), "mentions.json");
 }
 
-function artifactsPathFs(id: string): string {
-  return path.join(conversationDir(id), "artifacts.json");
+function artifactsPathFs(id: string, cabinetPath?: string): string {
+  return path.join(conversationDir(id, cabinetPath), "artifacts.json");
 }
 
 function makeSummaryFromOutput(output: string): string | undefined {
@@ -258,14 +265,14 @@ export function buildConversationId(input: {
   return parts.join("-");
 }
 
-export async function ensureConversationsDir(): Promise<void> {
-  await ensureDirectory(CONVERSATIONS_DIR);
+export async function ensureConversationsDir(cabinetPath?: string): Promise<void> {
+  await ensureDirectory(resolveConversationsDir(cabinetPath));
 }
 
 export async function createConversation(
   input: CreateConversationInput
 ): Promise<ConversationMeta> {
-  await ensureConversationsDir();
+  await ensureConversationsDir(input.cabinetPath);
 
   const startedAt = input.startedAt || new Date().toISOString();
   const id = buildConversationId({
@@ -274,43 +281,55 @@ export async function createConversation(
     jobName: input.jobName || input.jobId,
     now: new Date(startedAt),
   });
-  const dir = conversationDir(id);
+  const cp = input.cabinetPath;
+  const dir = conversationDir(id, cp);
   await ensureDirectory(dir);
 
   const meta: ConversationMeta = {
     id,
     agentSlug: input.agentSlug,
+    cabinetPath: cp,
     title: input.title,
     trigger: input.trigger,
     status: "running",
     startedAt,
     jobId: input.jobId,
     jobName: input.jobName,
-    promptPath: virtualPathFromFs(promptPathFs(id)),
-    transcriptPath: virtualPathFromFs(transcriptPathFs(id)),
+    promptPath: virtualPathFromFs(promptPathFs(id, cp)),
+    transcriptPath: virtualPathFromFs(transcriptPathFs(id, cp)),
     mentionedPaths: input.mentionedPaths || [],
     artifactPaths: [],
   };
 
   await Promise.all([
-    writeFileContent(promptPathFs(id), input.prompt),
-    writeFileContent(transcriptPathFs(id), ""),
+    writeFileContent(promptPathFs(id, cp), input.prompt),
+    writeFileContent(transcriptPathFs(id, cp), ""),
     writeFileContent(
-      mentionsPathFs(id),
+      mentionsPathFs(id, cp),
       JSON.stringify(input.mentionedPaths || [], null, 2)
     ),
-    writeFileContent(artifactsPathFs(id), JSON.stringify([], null, 2)),
-    writeFileContent(metaPath(id), JSON.stringify(meta, null, 2)),
+    writeFileContent(artifactsPathFs(id, cp), JSON.stringify([], null, 2)),
+    writeFileContent(metaPath(id, cp), JSON.stringify(meta, null, 2)),
   ]);
 
   return meta;
 }
 
 export async function readConversationMeta(
-  id: string
+  id: string,
+  cabinetPath?: string
 ): Promise<ConversationMeta | null> {
-  const filePath = metaPath(id);
-  if (!(await fileExists(filePath))) return null;
+  const filePath = metaPath(id, cabinetPath);
+  if (!(await fileExists(filePath))) {
+    // Fall back to global conversations dir if not found in cabinet
+    if (cabinetPath) {
+      const globalPath = metaPath(id);
+      if (await fileExists(globalPath)) {
+        try { return JSON.parse(await readFileContent(globalPath)) as ConversationMeta; } catch { return null; }
+      }
+    }
+    return null;
+  }
   try {
     const raw = await readFileContent(filePath);
     return JSON.parse(raw) as ConversationMeta;
@@ -539,24 +558,26 @@ async function maybeResolveCompletedConversation(
 }
 
 export async function writeConversationMeta(meta: ConversationMeta): Promise<void> {
-  await ensureDirectory(conversationDir(meta.id));
-  await writeFileContent(metaPath(meta.id), JSON.stringify(meta, null, 2));
+  await ensureDirectory(conversationDir(meta.id, meta.cabinetPath));
+  await writeFileContent(metaPath(meta.id, meta.cabinetPath), JSON.stringify(meta, null, 2));
 }
 
 export async function appendConversationTranscript(
   id: string,
-  chunk: string
+  chunk: string,
+  cabinetPath?: string
 ): Promise<void> {
-  await ensureDirectory(conversationDir(id));
-  await fs.appendFile(transcriptPathFs(id), chunk, "utf-8");
+  await ensureDirectory(conversationDir(id, cabinetPath));
+  await fs.appendFile(transcriptPathFs(id, cabinetPath), chunk, "utf-8");
 }
 
 export async function replaceConversationArtifacts(
   id: string,
-  artifacts: ConversationArtifact[]
+  artifacts: ConversationArtifact[],
+  cabinetPath?: string
 ): Promise<void> {
-  await ensureDirectory(conversationDir(id));
-  await writeFileContent(artifactsPathFs(id), JSON.stringify(artifacts, null, 2));
+  await ensureDirectory(conversationDir(id, cabinetPath));
+  await writeFileContent(artifactsPathFs(id, cabinetPath), JSON.stringify(artifacts, null, 2));
 }
 
 export async function finalizeConversation(
@@ -565,15 +586,17 @@ export async function finalizeConversation(
     status: ConversationStatus;
     exitCode?: number | null;
     output?: string;
-  }
+  },
+  cabinetPath?: string
 ): Promise<ConversationMeta | null> {
-  const meta = await readConversationMeta(id);
+  const meta = await readConversationMeta(id, cabinetPath);
   if (!meta) return null;
+  const cp = meta.cabinetPath || cabinetPath;
 
-  const hasPrompt = await fileExists(promptPathFs(id));
+  const hasPrompt = await fileExists(promptPathFs(id, cp));
   const [output, prompt] = await Promise.all([
-    input.output ? Promise.resolve(input.output) : readConversationTranscript(id),
-    hasPrompt ? readFileContent(promptPathFs(id)) : Promise.resolve(""),
+    input.output ? Promise.resolve(input.output) : readConversationTranscript(id, cp),
+    hasPrompt ? readFileContent(promptPathFs(id, cp)) : Promise.resolve(""),
   ]);
   const cleanedOutput = cleanConversationOutputForParsing(output, prompt);
   const parsed = parseCabinetBlock(cleanedOutput, prompt);
@@ -594,7 +617,7 @@ export async function finalizeConversation(
 
   await Promise.all([
     writeConversationMeta(meta),
-    replaceConversationArtifacts(id, artifacts),
+    replaceConversationArtifacts(id, artifacts, cp),
   ]);
 
   // Push notification for terminal statuses
@@ -612,29 +635,31 @@ export async function finalizeConversation(
   return meta;
 }
 
-export async function readConversationTranscript(id: string): Promise<string> {
-  const filePath = transcriptPathFs(id);
+export async function readConversationTranscript(id: string, cabinetPath?: string): Promise<string> {
+  const filePath = transcriptPathFs(id, cabinetPath);
   if (!(await fileExists(filePath))) return "";
   return readFileContent(filePath);
 }
 
 export async function readConversationDetail(
-  id: string
+  id: string,
+  cabinetPath?: string
 ): Promise<ConversationDetail | null> {
-  const meta = await maybeResolveCompletedConversation(await readConversationMeta(id));
+  const meta = await maybeResolveCompletedConversation(await readConversationMeta(id, cabinetPath));
   if (!meta) return null;
+  const cp = meta.cabinetPath || cabinetPath;
 
   const [hasPrompt, hasMentions, hasArtifacts] = await Promise.all([
-    fileExists(promptPathFs(id)),
-    fileExists(mentionsPathFs(id)),
-    fileExists(artifactsPathFs(id)),
+    fileExists(promptPathFs(id, cp)),
+    fileExists(mentionsPathFs(id, cp)),
+    fileExists(artifactsPathFs(id, cp)),
   ]);
 
   const [prompt, transcript, mentionsRaw, artifactsRaw] = await Promise.all([
-    hasPrompt ? readFileContent(promptPathFs(id)) : Promise.resolve(""),
-    readConversationTranscript(id),
-    hasMentions ? readFileContent(mentionsPathFs(id)) : Promise.resolve("[]"),
-    hasArtifacts ? readFileContent(artifactsPathFs(id)) : Promise.resolve("[]"),
+    hasPrompt ? readFileContent(promptPathFs(id, cp)) : Promise.resolve(""),
+    readConversationTranscript(id, cp),
+    hasMentions ? readFileContent(mentionsPathFs(id, cp)) : Promise.resolve("[]"),
+    hasArtifacts ? readFileContent(artifactsPathFs(id, cp)) : Promise.resolve("[]"),
   ]);
 
   let mentions: string[] = [];
@@ -665,15 +690,16 @@ export async function readConversationDetail(
 export async function listConversationMetas(
   filters: ListConversationFilters = {}
 ): Promise<ConversationMeta[]> {
-  await ensureConversationsDir();
-  const entries = await listDirectory(CONVERSATIONS_DIR);
+  const convsDir = resolveConversationsDir(filters.cabinetPath);
+  await ensureDirectory(convsDir);
+  const entries = await listDirectory(convsDir);
 
   const metas = (
     await Promise.all(
       entries
         .filter((entry) => entry.isDirectory)
         .map(async (entry) =>
-          maybeResolveCompletedConversation(await readConversationMeta(entry.name))
+          maybeResolveCompletedConversation(await readConversationMeta(entry.name, filters.cabinetPath))
         )
     )
   ).filter(Boolean) as ConversationMeta[];
@@ -702,9 +728,9 @@ export async function getRunningConversationCounts(): Promise<Record<string, num
   }, {});
 }
 
-export async function deleteConversation(id: string): Promise<boolean> {
-  const dir = conversationDir(id);
-  if (!(await fileExists(metaPath(id)))) return false;
+export async function deleteConversation(id: string, cabinetPath?: string): Promise<boolean> {
+  const dir = conversationDir(id, cabinetPath);
+  if (!(await fileExists(metaPath(id, cabinetPath)))) return false;
   await deleteFileOrDir(dir);
   return true;
 }

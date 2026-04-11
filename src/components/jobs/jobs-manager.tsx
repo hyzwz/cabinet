@@ -113,7 +113,7 @@ function FilterChip({
   );
 }
 
-export function JobsManager() {
+export function JobsManager({ cabinetPath }: { cabinetPath?: string } = {}) {
   const [agents, setAgents] = useState<AgentSummary[]>([]);
   const [selectedAgentSlug, setSelectedAgentSlug] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentSummary | null>(null);

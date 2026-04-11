@@ -84,9 +84,11 @@ function findChiefAgent(agents: CabinetAgentSummary[]): CabinetAgentSummary | nu
 function CompactOrgChart({
   cabinetName,
   agents,
+  onAgentClick,
 }: {
   cabinetName: string;
   agents: CabinetAgentSummary[];
+  onAgentClick?: (agent: CabinetAgentSummary) => void;
 }) {
   const chiefAgent = findChiefAgent(agents);
   const orgRoot = chiefAgent || {
@@ -147,7 +149,10 @@ function CompactOrgChart({
 
       <ScrollArea className="flex-1">
         <div className="flex flex-col gap-4 p-4">
-          <div className="rounded-[24px] bg-primary/[0.08] p-4">
+          <div
+            className={cn("rounded-[24px] bg-primary/[0.08] p-4", onAgentClick && "cursor-pointer hover:bg-primary/[0.12] transition-colors")}
+            onClick={() => onAgentClick?.(orgRoot)}
+          >
             <div className="flex items-start gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-background text-[26px]">
                 {orgRoot.emoji || "👑"}
@@ -200,7 +205,8 @@ function CompactOrgChart({
                   {group.agents.map((agent) => (
                     <div
                       key={agent.scopedId}
-                      className="rounded-2xl border border-border/60 bg-card px-3 py-3"
+                      className={cn("rounded-2xl border border-border/60 bg-card px-3 py-3", onAgentClick && "cursor-pointer hover:border-primary/30 transition-colors")}
+                      onClick={() => onAgentClick?.(agent)}
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-muted/60 text-[22px]">
@@ -609,7 +615,17 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                 </div>
               ) : overview ? (
                 <>
-                  <CompactOrgChart cabinetName={cabinetName} agents={overview.agents} />
+                  <CompactOrgChart
+                    cabinetName={cabinetName}
+                    agents={overview.agents}
+                    onAgentClick={(agent) =>
+                      setSection({
+                        type: "agent",
+                        slug: agent.slug,
+                        cabinetPath: agent.cabinetPath || cabinetPath,
+                      })
+                    }
+                  />
                   <SchedulesPanel
                     cabinetPath={cabinetPath}
                     agents={overview.agents}

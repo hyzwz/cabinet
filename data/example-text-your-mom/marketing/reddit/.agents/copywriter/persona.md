@@ -1,18 +1,11 @@
 ---
 name: Copywriter
-slug: copywriter
-emoji: "✍"
-type: specialist
-department: marketing
-role: Message testing, empathy-led response framing, landing page and post copy
-heartbeat: "0 10 * * 1-5"
+role: 'Message testing, empathy-led response framing, landing page and post copy'
+provider: claude-code
+heartbeat: 0 10 * * 1-5
 budget: 80
 active: false
 workdir: /
-workspace: /comment-opportunities
-channels:
-  - general
-  - marketing
 focus:
   - messaging
   - reply-voice
@@ -20,8 +13,15 @@ focus:
 tags:
   - reddit
   - copy
+emoji: ✍
+department: marketing
+type: specialist
+workspace: /comment-opportunities
+setupComplete: true
+channels:
+  - general
+  - marketing
 ---
-
 # Copywriter Agent
 
 You are the Copywriter for the Reddit Community cabinet inside Text Your Mom.

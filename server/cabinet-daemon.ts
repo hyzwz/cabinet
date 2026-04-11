@@ -241,7 +241,12 @@ function submitInitialPrompt(session: PtySession): void {
   }
 
   session.pty.write(session.initialPrompt);
-  session.pty.write("\r");
+  // Small delay so the terminal processes the pasted text before Enter
+  setTimeout(() => {
+    if (!session.exited) {
+      session.pty.write("\r");
+    }
+  }, 150);
 }
 
 async function syncConversationChunk(sessionId: string, chunk: string): Promise<void> {
@@ -249,7 +254,7 @@ async function syncConversationChunk(sessionId: string, chunk: string): Promise<
   if (!meta) return;
   const plainChunk = stripAnsi(chunk);
   if (!plainChunk) return;
-  await appendConversationTranscript(sessionId, plainChunk);
+  await appendConversationTranscript(sessionId, plainChunk, meta.cabinetPath);
 }
 
 function maybeAutoExitClaudeSession(session: PtySession): void {
@@ -304,7 +309,7 @@ async function finalizeSessionConversation(session: PtySession): Promise<void> {
     status: session.resolvedStatus || (session.exitCode === 0 ? "completed" : "failed"),
     exitCode: session.resolvedStatus === "completed" ? 0 : session.exitCode,
     output: plain,
-  });
+  }, meta.cabinetPath);
 }
 
 // Cleanup old completed output every 5 minutes

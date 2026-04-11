@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { LinkRepoDialog } from "./link-repo-dialog";
 import {
-  ArrowLeft,
+  CornerLeftUp,
   ChevronRight,
   Plus,
   BookOpen,
@@ -274,6 +274,19 @@ export function TreeView() {
     <>
     <ScrollArea className="flex-1 min-h-0">
       <div className="py-1">
+        {/* ── Back to parent cabinet ────────────────────── */}
+        {activeCabinet && parentCabinet ? (
+          <button
+            onClick={openParentCabinet}
+            className="flex w-full items-center gap-1.5 px-3 pt-2 pb-1 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground/80"
+            style={pad(0)}
+            title={`Back to ${parentCabinet.frontmatter?.title || parentCabinet.name}`}
+          >
+            <CornerLeftUp className="h-3.5 w-3.5 shrink-0" />
+            Back
+          </button>
+        ) : null}
+
         {/* ── Cabinet (depth 0) ───────────────────────────── */}
         <button
           onClick={() => {
@@ -303,19 +316,6 @@ export function TreeView() {
 
         {cabinetExpanded && (
           <>
-            {activeCabinet && parentCabinet ? (
-              <button
-                onClick={openParentCabinet}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
-                style={pad(1)}
-                title={`Back to ${parentCabinet.frontmatter?.title || parentCabinet.name}`}
-              >
-                <ArrowLeft className="h-4 w-4 shrink-0" />
-                <span className="truncate">
-                  {parentCabinet.frontmatter?.title || parentCabinet.name}
-                </span>
-              </button>
-            ) : null}
 
             {/* ── Agents (depth 1) ─────────────────────────── */}
             <div
@@ -325,11 +325,10 @@ export function TreeView() {
               <button
                 onClick={() => {
                   setAgentsExpanded(!agentsExpanded);
-                  if (activeCabinet) {
-                    openCabinetOverview();
-                  } else {
-                    setSection({ type: "agents" });
-                  }
+                  setSection({
+                    type: "agents",
+                    cabinetPath: activeCabinet?.path,
+                  });
                 }}
                 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 hover:text-foreground/80 transition-colors"
               >
@@ -382,9 +381,16 @@ export function TreeView() {
                     agents.map((agent) => (
                       <button
                         key={agent.scopedId || agent.slug}
-                        onClick={openCabinetOverview}
+                        onClick={() =>
+                          setSection({
+                            type: "agent",
+                            slug: agent.slug,
+                            cabinetPath: agent.cabinetPath || activeCabinet?.path,
+                          })
+                        }
                         className={cn(
-                          "flex w-full items-start gap-1.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent/50"
+                          "flex w-full items-start gap-1.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent/50",
+                          section.type === "agent" && section.slug === agent.slug && "bg-accent text-accent-foreground"
                         )}
                         style={pad(2)}
                       >

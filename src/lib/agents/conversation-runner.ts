@@ -28,6 +28,7 @@ interface StartConversationInput {
   mentionedPaths?: string[];
   jobId?: string;
   jobName?: string;
+  cabinetPath?: string;
   cwd?: string;
   timeoutSeconds?: number;
   onComplete?: (completion: ConversationCompletion) => Promise<void> | void;
@@ -166,6 +167,7 @@ export async function startConversationRun(
 ): Promise<ConversationMeta> {
   const meta = await createConversation({
     agentSlug: input.agentSlug,
+    cabinetPath: input.cabinetPath,
     title: input.title,
     trigger: input.trigger,
     prompt: input.prompt,
@@ -333,6 +335,7 @@ export async function startJobConversation(job: JobConfig): Promise<JobRun> {
     providerId: job.provider || persona?.provider || getDefaultProviderId(),
     jobId: job.id,
     jobName: job.name,
+    cabinetPath: job.cabinetPath,
     cwd,
     timeoutSeconds: job.timeout || 600,
     onComplete: async (completion) => {

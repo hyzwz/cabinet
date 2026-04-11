@@ -256,14 +256,15 @@ export async function readPersona(slug: string, cabinetPath?: string): Promise<A
   return persona;
 }
 
-export async function writePersona(slug: string, persona: Partial<AgentPersona> & { body?: string }): Promise<void> {
-  await initAgentsDir();
+export async function writePersona(slug: string, persona: Partial<AgentPersona> & { body?: string }, cabinetPath?: string): Promise<void> {
+  const agentsDir = resolveAgentsDir(cabinetPath);
+  await ensureDirectory(agentsDir);
   // Use directory-based structure: {slug}/persona.md
-  const agentDir = path.join(AGENTS_DIR, slug);
+  const agentDir = path.join(agentsDir, slug);
   await ensureDirectory(agentDir);
   const filePath = path.join(agentDir, "persona.md");
 
-  const existing = await readPersona(slug);
+  const existing = await readPersona(slug, cabinetPath);
   const merged = { ...existing, ...persona };
 
   const frontmatter: Record<string, unknown> = {

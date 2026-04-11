@@ -8,6 +8,7 @@ const CABINET_VISIBILITY_STORAGE_KEY = "cabinet.visibility.mode";
 export interface SelectedSection {
   type: SectionType;
   slug?: string; // agent slug when type === "agent"
+  cabinetPath?: string; // cabinet scope for agent/agents/jobs sections
   conversationId?: string; // auto-select this conversation on mount
 }
 
