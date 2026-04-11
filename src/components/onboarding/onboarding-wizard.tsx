@@ -1284,7 +1284,6 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
               {/* Floating emoji backdrop per community step */}
               {(() => {
                 const emojiMap: Record<string, string> = {
-                  "Discord": "💬",
                   "Cabinet Cloud": "☁️",
                 };
                 const emoji = emojiMap[communityStep.eyebrow];
