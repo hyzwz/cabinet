@@ -1298,7 +1298,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
             />
           )}
 
-          {/* Step 3: AI Provider Choice */}
+          {/* Step 3: AI Provider Check */}
           {step === 3 && (
             <div className="mx-auto flex max-w-xl flex-col gap-6 animate-in fade-in duration-300">
               <div className="text-center space-y-2">
@@ -1306,86 +1306,183 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
                   Agent Provider
                 </h1>
                 <p className="text-sm leading-relaxed" style={{ color: WEB.textSecondary }}>
-                  Choose which AI CLI will power your agents.
+                  Cabinet needs an AI CLI to power your agents.
                 </p>
               </div>
 
+              {/* Registered CLI providers */}
               {providersLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="size-6 animate-spin" style={{ color: WEB.textTertiary }} />
                 </div>
-              ) : readyProviders.length === 0 ? (
-                /* No providers available — show setup guides */
-                <div className="space-y-4">
-                  <div
-                    className="rounded-xl p-4 text-center space-y-2"
-                    style={{ background: WEB.bgWarm, border: `1px solid ${WEB.borderLight}` }}
-                  >
-                    <XCircle className="size-6 mx-auto" style={{ color: WEB.textTertiary }} />
-                    <p className="text-sm font-medium" style={{ color: WEB.text }}>
-                      No AI providers detected
-                    </p>
-                    <p className="text-[12px]" style={{ color: WEB.textSecondary }}>
-                      Install and log in to at least one CLI provider, then re-check.
-                    </p>
-                  </div>
+              ) : (
+                <div className="space-y-3">
                   {providers.map((p) => {
+                    const isReady = !!(p.available && p.authenticated);
+                    const isInstalled = !!p.available;
                     const isExpanded = expandedProvider === p.id;
+                    const isSelected = selectedProvider === p.id;
                     const ProviderIcon = p.icon === "sparkles" ? Sparkles : p.icon === "bot" ? Bot : Terminal;
+                    const statusColor = isReady ? "#16a34a" : isInstalled ? "#d97706" : WEB.textTertiary;
+                    const statusText = isReady
+                      ? `Ready ${p.version ? `\u2014 ${p.version}` : ""}`
+                      : isInstalled
+                        ? "Installed but not logged in"
+                        : "Not detected on this machine";
+                    const setupSteps: { title: string; detail: string; cmd?: string; openTerminal?: boolean; link?: { label: string; url: string } }[] = p.id === "claude-code"
+                      ? [
+                          { title: "Get a Claude subscription", detail: "Any Claude Code subscription will do (Pro, Max, or Team).", link: { label: "Open Claude billing", url: "https://claude.ai/settings/billing" } },
+                          { title: "Open a terminal", detail: "You'll need a terminal to run the next steps.", openTerminal: true },
+                          { title: "Install Claude Code", detail: "Run the following in your terminal:", cmd: "npm install -g @anthropic-ai/claude-code" },
+                          { title: "Log in to Claude", detail: "Authenticate with your subscription:", cmd: "claude auth login" },
+                          { title: "Verify login", detail: "Check that you're logged in:", cmd: "claude auth status" },
+                        ]
+                      : [
+                          { title: "Open a terminal", detail: "You'll need a terminal to run the next steps.", openTerminal: true },
+                          { title: "Install Codex CLI", detail: "Run the following in your terminal:", cmd: "npm i -g @openai/codex" },
+                          { title: "Log in to Codex", detail: "Authenticate with your ChatGPT or API account:", cmd: "codex login" },
+                          { title: "Verify login", detail: "Check that you're logged in:", cmd: "codex login status" },
+                        ];
                     return (
                       <div
                         key={p.id}
-                        className="rounded-xl p-4 space-y-3"
-                        style={{ background: WEB.bgCard, border: `1px solid ${WEB.borderLight}` }}
+                        className="group rounded-xl p-4 space-y-3 transition-all cursor-pointer"
+                        style={{
+                          background: isSelected && isReady ? WEB.accentBg : WEB.bgCard,
+                          border: `1.5px solid ${isSelected && isReady ? WEB.accent : WEB.borderLight}`,
+                        }}
+                        onClick={() => {
+                          if (!isReady) return;
+                          setSelectedProvider(p.id);
+                          if (p.models?.length) setSelectedModel(p.models[0].id);
+                          else setSelectedModel(null);
+                        }}
                       >
-                        <button
-                          onClick={() => setExpandedProvider(isExpanded ? null : p.id)}
-                          className="flex items-center gap-3 w-full text-left"
-                        >
+                        <div className="flex items-center gap-3">
+                          {/* Radio selector for ready providers */}
+                          {isReady && (
+                            <div
+                              className="flex size-4 shrink-0 items-center justify-center rounded-full"
+                              style={{
+                                border: `1.5px solid ${isSelected ? WEB.accent : WEB.borderDark}`,
+                                background: isSelected ? WEB.accent : "transparent",
+                              }}
+                            >
+                              {isSelected && <Check className="size-2.5 text-white" />}
+                            </div>
+                          )}
                           <div
                             className="flex size-9 items-center justify-center rounded-lg"
-                            style={{ background: WEB.bgWarm, color: WEB.textTertiary }}
+                            style={{ background: WEB.bgWarm, color: WEB.accent }}
                           >
                             <ProviderIcon className="size-4" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium" style={{ color: WEB.text }}>{p.name}</p>
-                            <p className="text-[11px]" style={{ color: WEB.textTertiary }}>
-                              {p.available ? "Installed but not logged in" : "Not installed"}
+                            <p className="text-sm font-medium" style={{ color: WEB.text }}>
+                              {p.name}
+                            </p>
+                            <p className="text-[11px]" style={{ color: statusColor }}>
+                              {statusText}
                             </p>
                           </div>
-                          <ChevronDown
-                            className="size-4 transition-transform duration-300"
-                            style={{ color: WEB.textTertiary, transform: isExpanded ? "rotate(0deg)" : "rotate(-90deg)" }}
-                          />
-                        </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setExpandedProvider(isExpanded ? null : p.id); }}
+                              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all"
+                              style={{
+                                background: isExpanded ? WEB.bgWarm : "transparent",
+                                color: WEB.textTertiary,
+                              }}
+                            >
+                              <Info className="size-3" />
+                              Guide
+                              <ChevronDown
+                                className="size-3 transition-transform duration-300"
+                                style={{ transform: isExpanded ? "rotate(0deg)" : "rotate(-90deg)" }}
+                              />
+                            </button>
+                            {isReady && (
+                              <CheckCircle2 className="size-5" style={{ color: "#16a34a" }} />
+                            )}
+                            {isInstalled && !isReady && (
+                              <XCircle className="size-5" style={{ color: "#d97706" }} />
+                            )}
+                            {!isInstalled && (
+                              <XCircle className="size-5" style={{ color: WEB.textTertiary }} />
+                            )}
+                          </div>
+                        </div>
+
                         <div
                           className="overflow-hidden transition-all duration-300 ease-in-out"
-                          style={{ maxHeight: isExpanded ? 400 : 0, opacity: isExpanded ? 1 : 0 }}
+                          style={{
+                            maxHeight: isExpanded ? 500 : 0,
+                            opacity: isExpanded ? 1 : 0,
+                          }}
                         >
-                          <div className="rounded-lg p-3 space-y-2.5" style={{ background: WEB.bgWarm }}>
-                            {(p.installSteps || []).map((s, i) => (
+                          <div
+                            className="rounded-lg p-3 space-y-3"
+                            style={{ background: WEB.bgWarm }}
+                          >
+                            {setupSteps.map((setupStep, i) => (
                               <div key={i} className="flex items-start gap-2.5">
                                 <span
                                   className="flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold mt-0.5"
                                   style={{ background: WEB.accent, color: "white" }}
-                                >{i + 1}</span>
+                                >
+                                  {i + 1}
+                                </span>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[13px] font-medium" style={{ color: WEB.text }}>{s.title}</p>
-                                  <p className="text-[11px] mt-0.5" style={{ color: WEB.textSecondary }}>{s.detail}</p>
-                                  {s.link && (
-                                    <a href={s.link.url} target="_blank" rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 text-[11px] font-medium mt-1" style={{ color: WEB.accent }}
-                                    >{s.link.label} <ExternalLink className="size-3" /></a>
+                                  <p className="text-[13px] font-medium" style={{ color: WEB.text }}>
+                                    {setupStep.title}
+                                  </p>
+                                  <p className="text-[11px] mt-0.5" style={{ color: WEB.textSecondary }}>
+                                    {setupStep.detail}
+                                  </p>
+                                  {setupStep.cmd && (
+                                    <TerminalCommand command={setupStep.cmd} />
+                                  )}
+                                  {setupStep.openTerminal && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        fetch("/api/terminal/open", { method: "POST" }).catch(() => {
+                                          alert("Could not open terminal automatically. Please open Terminal.app (Mac) or your system terminal manually.");
+                                        });
+                                      }}
+                                      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 mt-1.5 text-[11px] font-medium transition-all hover:-translate-y-0.5"
+                                      style={{ background: "#1e1e1e", color: "#d4d4d4" }}
+                                    >
+                                      <Terminal className="size-3" />
+                                      Open terminal
+                                    </button>
+                                  )}
+                                  {setupStep.link && (
+                                    <a
+                                      href={setupStep.link.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="inline-flex items-center gap-1 text-[11px] font-medium mt-1.5"
+                                      style={{ color: WEB.accent }}
+                                    >
+                                      {setupStep.link.label}
+                                      <ExternalLink className="size-3" />
+                                    </a>
                                   )}
                                 </div>
                               </div>
                             ))}
+
+                            <p className="text-[11px]" style={{ color: WEB.textTertiary }}>
+                              After setup, click Re-check below. You may need to restart Cabinet if it was already running.
+                            </p>
                           </div>
                         </div>
                       </div>
                     );
                   })}
+
                   <button
                     onClick={checkProvider}
                     className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium transition-all hover:-translate-y-0.5"
@@ -1395,96 +1492,91 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
                     Re-check providers
                   </button>
                 </div>
-              ) : (
-                /* Ready providers — selectable cards */
-                <div className="space-y-5">
-                  <div className="space-y-2">
-                    {readyProviders.map((p) => {
-                      const isSelected = selectedProvider === p.id;
-                      const ProviderIcon = p.icon === "sparkles" ? Sparkles : p.icon === "bot" ? Bot : Terminal;
+              )}
+
+              {/* Model selector — shown when a ready provider is selected */}
+              {activeModels.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: WEB.textTertiary }}>
+                    Default model
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {activeModels.map((m) => {
+                      const isMSelected = selectedModel === m.id;
                       return (
                         <button
-                          key={p.id}
-                          onClick={() => {
-                            setSelectedProvider(p.id);
-                            if (p.models?.length) setSelectedModel(p.models[0].id);
-                            else setSelectedModel(null);
-                          }}
-                          className="flex items-center gap-3 w-full rounded-xl p-4 text-left transition-all"
+                          key={m.id}
+                          onClick={() => setSelectedModel(m.id)}
+                          className="rounded-xl p-3 text-left transition-all"
                           style={{
-                            background: isSelected ? WEB.accentBg : WEB.bgCard,
-                            border: `1.5px solid ${isSelected ? WEB.accent : WEB.borderLight}`,
+                            background: isMSelected ? WEB.accentBg : WEB.bgCard,
+                            border: `1.5px solid ${isMSelected ? WEB.accent : WEB.borderLight}`,
                           }}
                         >
-                          <div
-                            className="flex size-3.5 shrink-0 items-center justify-center rounded-full"
-                            style={{
-                              border: `1.5px solid ${isSelected ? WEB.accent : WEB.borderDark}`,
-                              background: isSelected ? WEB.accent : "transparent",
-                            }}
-                          >
-                            {isSelected && <Check className="size-2 text-white" />}
+                          <div className="flex items-center gap-2 mb-1">
+                            <div
+                              className="flex size-3 shrink-0 items-center justify-center rounded-full"
+                              style={{
+                                border: `1.5px solid ${isMSelected ? WEB.accent : WEB.borderDark}`,
+                                background: isMSelected ? WEB.accent : "transparent",
+                              }}
+                            >
+                              {isMSelected && <Check className="size-1.5 text-white" />}
+                            </div>
+                            <p className="text-[13px] font-medium" style={{ color: WEB.text }}>{m.name}</p>
                           </div>
-                          <div
-                            className="flex size-9 items-center justify-center rounded-lg"
-                            style={{ background: isSelected ? WEB.bgCard : WEB.bgWarm, color: WEB.accent }}
-                          >
-                            <ProviderIcon className="size-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium" style={{ color: WEB.text }}>{p.name}</p>
-                            <p className="text-[11px]" style={{ color: "#16a34a" }}>
-                              {p.version || "Ready"}
-                            </p>
-                          </div>
-                          <CheckCircle2 className="size-4 shrink-0" style={{ color: "#16a34a" }} />
+                          {m.description && (
+                            <p className="text-[11px] ml-5" style={{ color: WEB.textSecondary }}>{m.description}</p>
+                          )}
                         </button>
                       );
                     })}
                   </div>
-
-                  {/* Model selector */}
-                  {activeModels.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: WEB.textTertiary }}>
-                        Default model
-                      </p>
-                      <div className="grid gap-2 sm:grid-cols-3">
-                        {activeModels.map((m) => {
-                          const isSelected = selectedModel === m.id;
-                          return (
-                            <button
-                              key={m.id}
-                              onClick={() => setSelectedModel(m.id)}
-                              className="rounded-xl p-3 text-left transition-all"
-                              style={{
-                                background: isSelected ? WEB.accentBg : WEB.bgCard,
-                                border: `1.5px solid ${isSelected ? WEB.accent : WEB.borderLight}`,
-                              }}
-                            >
-                              <div className="flex items-center gap-2 mb-1">
-                                <div
-                                  className="flex size-3 shrink-0 items-center justify-center rounded-full"
-                                  style={{
-                                    border: `1.5px solid ${isSelected ? WEB.accent : WEB.borderDark}`,
-                                    background: isSelected ? WEB.accent : "transparent",
-                                  }}
-                                >
-                                  {isSelected && <Check className="size-1.5 text-white" />}
-                                </div>
-                                <p className="text-[13px] font-medium" style={{ color: WEB.text }}>{m.name}</p>
-                              </div>
-                              {m.description && (
-                                <p className="text-[11px] ml-5" style={{ color: WEB.textSecondary }}>{m.description}</p>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
+
+              {/* Coming soon providers */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: WEB.textTertiary }}>
+                  Coming soon
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[
+                    { name: "Gemini CLI", type: "CLI", icon: "terminal" },
+                    { name: "Anthropic API", type: "API", icon: "api" },
+                    { name: "OpenAI API", type: "API", icon: "api" },
+                    { name: "Google AI API", type: "API", icon: "api" },
+                  ].map((p) => (
+                    <div
+                      key={p.name}
+                      className="flex items-center gap-3 rounded-xl px-4 py-3 opacity-40"
+                      style={{
+                        background: WEB.bgCard,
+                        border: `1px solid ${WEB.borderLight}`,
+                      }}
+                    >
+                      <div
+                        className="flex size-8 items-center justify-center rounded-lg"
+                        style={{ background: WEB.bgWarm, color: WEB.textTertiary }}
+                      >
+                        {p.icon === "terminal" ? (
+                          <Terminal className="size-4" />
+                        ) : (
+                          <Zap className="size-4" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-medium" style={{ color: WEB.textSecondary }}>
+                          {p.name}
+                        </p>
+                        <p className="text-[10px]" style={{ color: WEB.textTertiary }}>
+                          {p.type} agent
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               <div className="flex items-center justify-between pt-2">
                 <button
