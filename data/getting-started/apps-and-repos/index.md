@@ -22,15 +22,13 @@ There are two modes:
 ### Standard Embedded Apps
 The app renders in the main content area with the sidebar and AI panel still visible. Good for reference tools and dashboards you want to glance at while working on other pages.
 
-**Example:** [[Shop Floor Map]] is a standard embedded app — you can see the shop layout while the sidebar stays open for navigation.
-
 ### Full-Screen Apps (.app marker)
 Add a `.app` marker file to the directory, and the app goes full-screen: the sidebar and AI panel auto-collapse to give the app maximum space. Perfect for complex tools that need the whole viewport.
 
-**Examples in this workspace:**
-- [[candy-counter]] — Inventory tracking dashboard (full-screen)
-- [[owl-post-crm]] — Customer relationship management tool (full-screen)
-- [[prank-lab]] — Product testing and experimentation tracker (full-screen)
+**Examples in the Carousel Factory:**
+- **Content Calendar** — Visual calendar for scheduling posts (full-screen)
+- **Posts Editor** — Carousel slide builder and preview (full-screen)
+- **Brand Kit** — Brand guidelines and asset reference
 
 ## Sidebar Icons
 
@@ -55,17 +53,17 @@ remote: https://github.com/org/repo.git
 
 When a directory has a `.repo.yaml`, Cabinet knows it's connected to a codebase. Agents can use this to read and search source code in context when working on related documentation. It's like giving the AI a map to the actual code, not just the docs about the code.
 
-**Example:** [[Storefront]] demonstrates the linked repo pattern — connecting shop documentation to its codebase.
+The [[Example: Cabinet Carousel Factory]] has a `.repo.yaml` linking it to the Cabinet source repo — demonstrating how documentation and code live side by side.
 
 ## Symlinks
 
 Cabinet supports symbolic links for cases where you want the same content to appear in multiple places:
 
-- **Right-click** a folder in the sidebar
-- Select **"Add Symlink"** from the context menu
-- Choose the target directory
+- **Right-click** any item in the sidebar
+- Select **"Load Knowledge"** from the context menu
+- Choose the folder on your machine
 
-Symlinks are standard filesystem symlinks, so they work with all of Cabinet's features — editing, search, version history, the lot.
+Cabinet creates a symlink to your directory. If it's a Git repo, a `.repo.yaml` is also generated so agents can read the source code in context.
 
 ## Creating Your Own App
 
@@ -76,11 +74,11 @@ To add an embedded app to your workspace:
 3. (Optional) Add a `.app` marker file for full-screen mode
 4. The app appears in the sidebar automatically
 
-No build step, no deployment pipeline. Just HTML in a folder. It's the simplest hosting platform you'll ever use — even Mundungus Fletcher could set it up.
+No build step, no deployment pipeline. Just HTML in a folder.
 
 ## Try It
 
-Click on [[candy-counter]], [[owl-post-crm]], or [[prank-lab]] in the sidebar to see full-screen apps in action. Notice how the sidebar collapses to give them room. Then visit [[Shop Floor Map]] to see a standard embedded app that keeps the sidebar visible.
+Open the [[Example: Cabinet Carousel Factory]] in the sidebar and click on the Content Calendar or Posts Editor — they're full-screen embedded apps. Notice how the sidebar collapses to give them room.
 
 ---
 

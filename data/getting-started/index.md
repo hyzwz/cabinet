@@ -1,10 +1,12 @@
 ---
 title: Getting Started
 created: '2026-03-21T00:00:00.000Z'
-modified: '2026-04-10T05:27:27.906Z'
+modified: '2026-04-10T14:47:17Z'
 tags:
   - guide
   - onboarding
+  - files
+  - visualizations
 order: 0
 ---
 # Welcome to Cabinet
@@ -70,6 +72,22 @@ Cabinet will:
 
 If the linked folder has an `index.html`, Cabinet will show it as an embedded website inside the Knowledge Base.
 
+## Supported Files and Views
+
+Cabinet treats a small set of formats as first-class views in the sidebar. Everything else can still live in the KB as a local asset, but it should usually be linked from a markdown page so the file has context.
+
+| What you store | Typical files | How Cabinet shows it | Sidebar icon | If Cabinet cannot show it cleanly |
+| --- | --- | --- | --- | --- |
+| Markdown pages | `index.md`, `*.md` | WYSIWYG editor with markdown source toggle | `FileText` | Keep the page as the landing page and link the asset from it. |
+| KB sections | Directories with `index.md` | Expandable folder tree with a page at the top | `Folder` or `GitBranch` if the directory is repo-linked | Add an `index.md` so the folder has a readable landing page. |
+| CSV data | `.csv` | Interactive table editor with source view | `Table` | Open or download the raw file, or convert complex data into an HTML app. |
+| PDF docs | `.pdf` | Inline PDF viewer | `FileType` | Open in a new tab or keep a markdown summary next to it. |
+| Embedded websites | Directories with `index.html` and no `index.md` | Iframe in the main panel | `Globe` | Open in a new tab, or simplify it into a static page. |
+| Full-screen tools | `index.html` + `.app` and no `index.md` | Full-screen iframe with the sidebar collapsed | `AppWindow` | Open in a new tab if the app needs more browser capability. |
+| Linked codebases | `.repo.yaml` in a directory | Normal page or folder, with repo context for agents | `GitBranch` | Keep a markdown overview page and let agents use the linked repo behind it. |
+
+Images, video, and other binary files can still live beside a page and be linked with relative paths. For the full support matrix and fallback rules, see [[Visualizations]].
+
 ## Sidebar Icons
 
 <table class="border-collapse w-full" style="min-width: 75px;"><colgroup><col style="min-width: 25px;"><col style="min-width: 25px;"><col style="min-width: 25px;"></colgroup><tbody><tr><th colspan="1" rowspan="1"><p>Icon</p></th><th colspan="1" rowspan="1"><p>Color</p></th><th colspan="1" rowspan="1"><p>Meaning</p></th></tr><tr><td colspan="1" rowspan="1"><p>AppWindow</p></td><td colspan="1" rowspan="1"><p>Green</p></td><td colspan="1" rowspan="1"><p>Full-screen embedded app (<code>.app</code> marker)</p></td></tr><tr><td colspan="1" rowspan="1"><p>Globe</p></td><td colspan="1" rowspan="1"><p>Blue</p></td><td colspan="1" rowspan="1"><p>Embedded website (<code>index.html</code>)</p></td></tr><tr><td colspan="1" rowspan="1"><p>GitBranch</p></td><td colspan="1" rowspan="1"><p>Orange</p></td><td colspan="1" rowspan="1"><p>Directory linked to a Git repo (<code>.repo.yaml</code>)</p></td></tr><tr><td colspan="1" rowspan="1"><p>FileType</p></td><td colspan="1" rowspan="1"><p>Red</p></td><td colspan="1" rowspan="1"><p>PDF file</p></td></tr><tr><td colspan="1" rowspan="1"><p>Table</p></td><td colspan="1" rowspan="1"><p>Green</p></td><td colspan="1" rowspan="1"><p>CSV file</p></td></tr><tr><td colspan="1" rowspan="1"><p>Folder</p></td><td colspan="1" rowspan="1"><p>Gray</p></td><td colspan="1" rowspan="1"><p>Regular directory</p></td></tr><tr><td colspan="1" rowspan="1"><p>FileText</p></td><td colspan="1" rowspan="1"><p>Gray</p></td><td colspan="1" rowspan="1"><p>Markdown page</p></td></tr></tbody></table>
@@ -126,12 +144,10 @@ Each sub-page covers a specific feature area in detail:
 6.  [Tasks and Jobs](#page:tasks-and-jobs) — Kanban boards, agent sessions, the web terminal, and scheduled jobs
     
 
-## A Note on This Example Workspace
+## The Example Workspace
 
-This knowledge base is themed around Fred and George Weasley's joke shop. The pages, data, and apps are all built to feel like a real internal workspace for a (magical) retail business. The examples in these guides reference actual pages in this workspace, so you can follow along and try things out.
-
-As George would say: "The best way to learn a tool is to use it on something that might explode."
+Cabinet ships with an example workspace — the **Carousel Factory** — a real content marketing pipeline that uses agents, embedded apps, CSVs, PDFs, and linked repos. The guides reference it throughout, so feel free to explore it as you learn.
 
 ---
 
-Last Updated: 2026-04-06
+Last Updated: 2026-04-10

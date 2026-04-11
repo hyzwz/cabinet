@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronRight, FolderOpen, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronRight, FolderOpen, Loader2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { useTreeStore } from "@/stores/tree-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { cn } from "@/lib/utils";
+import type { TreeNode } from "@/types";
 
 interface LinkRepoDialogProps {
   open: boolean;
@@ -27,9 +28,21 @@ function basenameForPath(value: string): string {
   return parts[parts.length - 1] || "";
 }
 
+function findNode(nodes: TreeNode[], targetPath: string): TreeNode | null {
+  for (const node of nodes) {
+    if (node.path === targetPath) return node;
+    if (node.children) {
+      const found = findNode(node.children, targetPath);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialogProps) {
   const loadTree = useTreeStore((s) => s.loadTree);
   const selectPage = useTreeStore((s) => s.selectPage);
+  const nodes = useTreeStore((s) => s.nodes);
   const loadPage = useEditorStore((s) => s.loadPage);
 
   const [localPath, setLocalPath] = useState("");
@@ -40,6 +53,13 @@ export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialo
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [devExpanded, setDevExpanded] = useState(false);
+
+  // Warn if the parent directory already has children beyond index.md
+  const parentHasContent = useMemo(() => {
+    if (!parentPath) return false;
+    const parentNode = findNode(nodes, parentPath);
+    return !!(parentNode?.children && parentNode.children.length > 0);
+  }, [parentPath, nodes]);
 
   useEffect(() => {
     if (!open) {
@@ -139,6 +159,16 @@ export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialo
             Point Cabinet to any folder on your machine. Its contents will appear
             in the Knowledge Base and be available to AI agents as context.
           </p>
+
+          {parentHasContent && (
+            <div className="flex items-start gap-2 rounded-md border border-yellow-600/40 bg-yellow-500/10 px-3 py-2">
+              <TriangleAlert className="h-4 w-4 shrink-0 text-yellow-500 mt-0.5" />
+              <p className="text-xs text-yellow-200">
+                This page already has sub-pages. The loaded folder will be
+                added as a new child alongside the existing content.
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted-foreground">

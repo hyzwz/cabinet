@@ -1,7 +1,7 @@
 ---
 title: 'Example: Cabinet Carousel Factory'
 created: '2026-04-10T00:00:00.000Z'
-modified: '2026-04-10T05:20:02.808Z'
+modified: '2026-04-10T14:50:29.000Z'
 tags:
   - marketing
   - content
@@ -32,7 +32,7 @@ The content engine that markets Cabinet through image carousels on TikTok, Insta
 
 -   Colors: Warm parchment (#FAF6F1), dark brown text (#3B2F2F), brown accent (#8B5E3C)
     
--   Fonts: Serif display headers (editorial feel), monospace for technical labels
+-   Fonts: Instrument Serif wordmark, Source Serif 4 editorial headlines, Inter body copy, JetBrains Mono labels and data
     
 -   Style: Terminal chrome accents, dot grid backgrounds, gradient text on key claims
     

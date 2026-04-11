@@ -1,7 +1,7 @@
 ---
 title: Script Library
 created: '2026-04-10T00:00:00.000Z'
-modified: '2026-04-10T00:00:00.000Z'
+modified: '2026-04-10T06:00:00.000Z'
 tags:
   - scripts
   - hooks
@@ -99,6 +99,33 @@ Ready-to-use carousel scripts and hook formulas for promoting Cabinet.
 | 6 | AI agents edit your pages, run your jobs, monitor your competitors. | Show agent dashboard |
 | 7 | Everything is files. Everything is git-tracked. Everything is yours. | Terminal slide — `ls data/` output |
 | 8 | Stop paying for 5 tools. Start with Cabinet. Link in bio. | CTA with accent bg |
+
+### Script: "Vibe coding breaks when your agent can't read the rest of your company."
+
+**Platform:** TikTok  
+**Format:** Educational  
+**Hook Formula:** The Contrarian
+
+| Slide | Text | Notes |
+|-------|------|-------|
+| 1 | **Vibe coding breaks** when your agent can't read the rest of your company. | Dark terminal bg, "breaks" in accent gold |
+| 2 | The repo is not the company. | Big centered text, minimal layout |
+| 3 | Your real spec lives in docs, tasks, and customer notes. | Stack three file cards: docs, tasks, notes |
+| 4 | But here's the thing: most AI tools only see the prompt and code. | Prompt window on one side, hidden files on the other |
+| 5 | That means faster output, with worse decisions. | Warning-style slide with red accent |
+| 6 | Cabinet makes your whole startup folder agent-readable. Link in bio. | CTA slide with Cabinet logo and file tree screenshot |
+
+**Caption**
+
+Vibe coding looks magical until the agent needs context outside the repo.
+
+Docs, tasks, notes, and past decisions are part of the spec too.
+
+Cabinet turns that messy startup folder into shared memory your agents can actually use.
+
+Follow for more builder systems. Link in bio.
+
+`#devtools #buildinpublic #aitools #knowledgebase #codinglife`
 
 ---
 

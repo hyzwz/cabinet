@@ -38,6 +38,13 @@ async function buildTreeRecursive(
   const entries = await listDirectory(dirPath);
   const nodes: TreeNode[] = [];
 
+  // Collect directory names so we can skip standalone .md files that collide.
+  const dirNames = new Set(
+    entries
+      .filter((e) => e.isDirectory && !isHiddenEntry(e.name))
+      .map((e) => e.name)
+  );
+
   for (const entry of entries) {
     if (isHiddenEntry(entry.name)) continue;
     if (entry.name === "CLAUDE.md") continue;
@@ -104,6 +111,10 @@ async function buildTreeRecursive(
         },
       });
     } else if (entry.name.endsWith(".md") && entry.name !== "index.md") {
+      // Skip standalone .md if a same-named directory exists (avoids duplicate keys).
+      const baseName = entry.name.replace(/\.md$/, "");
+      if (dirNames.has(baseName)) continue;
+
       const fm = await readFrontmatter(fullPath);
       nodes.push({
         name: entry.name,

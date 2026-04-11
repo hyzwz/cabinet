@@ -1,7 +1,7 @@
 ---
 title: Brand Guide
 created: '2026-04-10T00:00:00.000Z'
-modified: '2026-04-10T00:00:00.000Z'
+modified: '2026-04-10T14:50:29.000Z'
 tags:
   - brand
   - voice
@@ -63,13 +63,16 @@ How Cabinet should look, sound, and feel across every carousel we publish.
 | Accent BG | #F5E6D3 | Tag backgrounds, subtle highlights |
 
 ### Typography Rules
-- **Headlines:** Serif italic (editorial, sophisticated) — large, bold claims
-- **Body text:** Sans-serif (Inter or system) — clean, readable
-- **Labels/tags:** Monospace (JetBrains Mono) — technical credibility
-- **Numbers/data:** Monospace — precision feel
+- **Wordmark / hero display:** Instrument Serif italic — reserved for the Cabinet wordmark and occasional high-emphasis hook lines
+- **Headlines:** Source Serif 4 — the default editorial heading face in the `Paper` (`Cabinet`) theme
+- **Body text:** Inter — default UI and paragraph copy
+- **Labels/tags:** JetBrains Mono — technical credibility and system metadata
+- **Numbers/data:** JetBrains Mono — precision feel for stats, dates, and terminal-style callouts
+
+Keep most carousels to three text systems: Source Serif 4 for headlines, Inter for body copy, and JetBrains Mono for labels/data. Use Instrument Serif sparingly for the wordmark or a single hero phrase.
 
 ### Slide Design Patterns
-- **Hook slides:** Dark background (#2C2520), large serif italic text, one accent-colored keyword
+- **Hook slides:** Dark background (#2C2520), large Source Serif 4 headline or Instrument Serif hero lockup, one accent-colored keyword
 - **Body slides:** Light parchment background, centered text, generous whitespace
 - **Data slides:** Terminal chrome style — dark bg, monospace, green or gold accent numbers
 - **CTA slides:** Accent background (#F5E6D3), clear action text, Cabinet logo
@@ -80,7 +83,7 @@ How Cabinet should look, sound, and feel across every carousel we publish.
 - Do use dot grid patterns as subtle backgrounds
 - Don't use stock photos
 - Don't use gradients that aren't in the palette
-- Don't use more than 2 fonts per carousel
+- Don't use more than 3 text systems in a carousel; reserve Instrument Serif for the wordmark or a single hero moment
 
 ---
 

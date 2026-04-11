@@ -138,6 +138,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // If parentPath points to a standalone .md file (e.g. "poems/harry-potter"
+    // backed by "poems/harry-potter.md"), promote it to a directory with index.md
+    // so the new child can be created inside it.
+    if (parentPath) {
+      const parentDir = resolveContentPath(parentPath);
+      const parentMdFile = `${parentDir}.md`;
+      const parentDirExists = await fileExists(parentDir);
+      const parentMdExists = !parentDirExists && await fileExists(parentMdFile);
+      if (parentMdExists) {
+        await fs.mkdir(parentDir, { recursive: true });
+        await fs.rename(parentMdFile, path.join(parentDir, "index.md"));
+      }
+    }
+
     const detected = await detectGitMetadata(localPath);
     const isRepo = detected.isRepo || !!body.remote?.trim();
     const branch = detected.branch || "main";
