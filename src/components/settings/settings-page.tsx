@@ -25,8 +25,12 @@ import {
   ChevronDown,
   Copy,
   ClipboardCheck,
+  HardDrive,
+  FolderOpen,
+  RotateCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { UpdateSummary } from "@/components/system/update-summary";
 import { useCabinetUpdate } from "@/hooks/use-cabinet-update";
@@ -65,7 +69,7 @@ interface IntegrationConfig {
   };
 }
 
-type Tab = "providers" | "integrations" | "notifications" | "appearance" | "updates" | "about";
+type Tab = "providers" | "storage" | "integrations" | "notifications" | "appearance" | "updates" | "about";
 
 function TerminalCommand({ command }: { command: string }) {
   const [copied, setCopied] = useState(false);
@@ -122,7 +126,12 @@ export function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [savingProviders, setSavingProviders] = useState(false);
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
-  const VALID_TABS: Tab[] = ["providers", "integrations", "notifications", "appearance", "updates", "about"];
+  const [dataDir, setDataDir] = useState("");
+  const [dataDirPending, setDataDirPending] = useState<string | null>(null);
+  const [dataDirBrowsing, setDataDirBrowsing] = useState(false);
+  const [dataDirSaving, setDataDirSaving] = useState(false);
+  const [dataDirRestartNeeded, setDataDirRestartNeeded] = useState(false);
+  const VALID_TABS: Tab[] = ["providers", "storage", "integrations", "notifications", "appearance", "updates", "about"];
   const initialTab = (() => {
     const slug = useAppStore.getState().section.slug as Tab | undefined;
     return slug && VALID_TABS.includes(slug) ? slug : "providers";
@@ -294,10 +303,23 @@ export function SettingsPage() {
     }
   };
 
+  const loadDataDir = useCallback(async () => {
+    try {
+      const res = await fetch("/api/system/data-dir");
+      if (res.ok) {
+        const data = await res.json();
+        setDataDir(data.dataDir || "");
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     refresh();
     loadConfig();
-  }, [refresh, loadConfig]);
+    loadDataDir();
+  }, [refresh, loadConfig, loadDataDir]);
 
   const toggleReveal = (key: string) => {
     setRevealedKeys((prev) => {
@@ -355,6 +377,7 @@ export function SettingsPage() {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "providers", label: "Providers", icon: <Cpu className="h-3.5 w-3.5" /> },
+    { id: "storage", label: "Storage", icon: <HardDrive className="h-3.5 w-3.5" /> },
     { id: "integrations", label: "Integrations", icon: <Plug className="h-3.5 w-3.5" /> },
     { id: "notifications", label: "Notifications", icon: <Bell className="h-3.5 w-3.5" /> },
     { id: "appearance", label: "Appearance", icon: <Palette className="h-3.5 w-3.5" /> },
@@ -489,6 +512,151 @@ export function SettingsPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Storage Tab */}
+          {tab === "storage" && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-[14px] font-semibold mb-1">Data Directory</h3>
+                <p className="text-[12px] text-muted-foreground">
+                  All Knowledge Base content is stored in this directory.
+                  Changing the path requires a restart.
+                </p>
+              </div>
+
+              {dataDirRestartNeeded && (
+                <div className="flex items-center gap-3 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
+                  <RotateCw className="h-4 w-4 shrink-0 text-yellow-500" />
+                  <div className="flex-1">
+                    <p className="text-[13px] font-medium text-yellow-500">Restart required</p>
+                    <p className="text-[12px] text-muted-foreground">
+                      The data directory will change after you restart Cabinet.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-[12px] font-medium text-muted-foreground">
+                  Current path
+                </label>
+                <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 bg-muted/30">
+                  <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="flex-1 font-mono text-[12px] truncate select-all">
+                    {dataDir || "Loading..."}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[11px]"
+                    onClick={() => {
+                      navigator.clipboard.writeText(dataDir);
+                    }}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[12px] font-medium text-muted-foreground">
+                  Change directory
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="/path/to/data"
+                    value={dataDirPending ?? ""}
+                    onChange={(e) => setDataDirPending(e.target.value)}
+                    className="font-mono text-[12px]"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 shrink-0"
+                    disabled={dataDirBrowsing || dataDirSaving}
+                    onClick={async () => {
+                      setDataDirBrowsing(true);
+                      try {
+                        const res = await fetch("/api/system/pick-directory", { method: "POST" });
+                        const data = await res.json().catch(() => null);
+                        if (data?.path) setDataDirPending(data.path);
+                      } catch {
+                        // ignore
+                      } finally {
+                        setDataDirBrowsing(false);
+                      }
+                    }}
+                  >
+                    {dataDirBrowsing ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <FolderOpen className="h-3.5 w-3.5" />
+                    )}
+                    Browse
+                  </Button>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    disabled={!dataDirPending?.trim() || dataDirSaving || dataDirPending.trim() === dataDir}
+                    onClick={async () => {
+                      if (!dataDirPending?.trim()) return;
+                      setDataDirSaving(true);
+                      try {
+                        const res = await fetch("/api/system/data-dir", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ dataDir: dataDirPending.trim() }),
+                        });
+                        const data = await res.json().catch(() => null);
+                        if (!res.ok) {
+                          alert(data?.error || "Failed to save.");
+                          return;
+                        }
+                        setDataDirRestartNeeded(true);
+                        setDataDirPending(null);
+                      } catch {
+                        alert("Failed to save data directory.");
+                      } finally {
+                        setDataDirSaving(false);
+                      }
+                    }}
+                  >
+                    {dataDirSaving ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                    ) : (
+                      <Save className="h-3.5 w-3.5 mr-1.5" />
+                    )}
+                    Save
+                  </Button>
+                  {dataDir && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                      onClick={() => {
+                        fetch("/api/system/open-data-dir", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({}),
+                        });
+                      }}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                      Open in Finder
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <p className="text-[12px] text-muted-foreground">
+                  You can also set the <code className="px-1 py-0.5 rounded bg-muted text-[11px]">CABINET_DATA_DIR</code> environment
+                  variable, which takes priority over this setting.
+                </p>
               </div>
             </div>
           )}
@@ -966,7 +1134,7 @@ export function SettingsPage() {
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-border">
                   <span className="text-muted-foreground">Storage</span>
-                  <span>Local filesystem</span>
+                  <span className="font-mono text-[12px] truncate max-w-[300px]" title={dataDir}>{dataDir || "Local filesystem"}</span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-border">
                   <span className="text-muted-foreground">AI</span>

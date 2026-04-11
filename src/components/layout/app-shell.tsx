@@ -11,6 +11,7 @@ import { SourceViewer } from "@/components/editor/source-viewer";
 import { ImageViewer } from "@/components/editor/image-viewer";
 import { MediaViewer } from "@/components/editor/media-viewer";
 import { MermaidViewer } from "@/components/editor/mermaid-viewer";
+import { FileFallbackViewer } from "@/components/editor/file-fallback-viewer";
 import { HomeScreen } from "@/components/home/home-screen";
 import { AgentsWorkspace } from "@/components/agents/agents-workspace";
 import { JobsManager } from "@/components/jobs/jobs-manager";
@@ -149,6 +150,7 @@ export function AppShell() {
   const isVideo = nodeType === "video";
   const isAudio = nodeType === "audio";
   const isMermaid = nodeType === "mermaid";
+  const isUnknown = nodeType === "unknown";
   const hasPersistentUpdateState =
     update?.updateStatus.state === "restart-required" ||
     update?.updateStatus.state === "failed" ||
@@ -255,6 +257,12 @@ export function AppShell() {
       const mmdPath = selectedNode?.path || selectedPath!;
       const mmdTitle = selectedNode?.frontmatter?.title || selectedNode?.name || mmdPath.split("/").pop() || "Diagram";
       return <MermaidViewer path={mmdPath} title={mmdTitle} />;
+    }
+
+    if (isUnknown && (selectedNode || selectedPath)) {
+      const unkPath = selectedNode?.path || selectedPath!;
+      const unkTitle = selectedNode?.frontmatter?.title || selectedNode?.name || unkPath.split("/").pop() || "File";
+      return <FileFallbackViewer path={unkPath} title={unkTitle} />;
     }
 
     // Default: editor

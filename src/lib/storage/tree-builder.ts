@@ -186,6 +186,17 @@ async function buildTreeRecursive(
         });
         continue;
       }
+
+      // Unrecognized file — show with generic fallback
+      if (!entry.name.endsWith(".md")) {
+        nodes.push({
+          name: entry.name,
+          path: vPath,
+          type: "unknown",
+          frontmatter: { title: entry.name },
+        });
+        continue;
+      }
     }
 
     if (entry.name.endsWith(".md") && entry.name !== "index.md") {

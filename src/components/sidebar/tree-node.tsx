@@ -23,6 +23,7 @@ import {
   Video,
   Music,
   Workflow,
+  File,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TreeNode as TreeNodeType } from "@/types";
@@ -217,6 +218,8 @@ export function TreeNode({ node, depth }: TreeNodeProps) {
               <Music className="h-4 w-4 shrink-0 text-amber-400" />
             ) : node.type === "mermaid" ? (
               <Workflow className="h-4 w-4 shrink-0 text-teal-400" />
+            ) : node.type === "unknown" ? (
+              <File className="h-4 w-4 shrink-0 text-muted-foreground/50" />
             ) : node.hasRepo ? (
               <GitBranch className="h-4 w-4 shrink-0 text-orange-400" />
             ) : node.isLinked ? (
