@@ -53,13 +53,18 @@ export async function GET() {
  */
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { action, slugs, exclude = [] } = body;
+  const { action, slugs, exclude = [], cabinetPath } = body;
 
-  const personas = await listAllPersonas();
+  const allPersonas = await listAllPersonas();
+
+  // When cabinetPath is provided, scope operations to that cabinet only (no sub-cabinets)
+  const personas = cabinetPath
+    ? allPersonas.filter((p) => (p.cabinetPath || ".") === cabinetPath)
+    : allPersonas;
 
   switch (action) {
     case "start-all": {
-      // Activate and register all agents (except excluded ones)
+      // Activate and register agents (except excluded ones)
       const toActivate = personas.filter(
         (p) => !p.active && !exclude.includes(p.slug)
       );
@@ -78,14 +83,13 @@ export async function POST(req: NextRequest) {
     }
 
     case "stop-all": {
-      // Pause and unregister all agents
-      for (const p of personas) {
-        if (p.active) {
-          await writePersona(p.slug, { active: false }, p.cabinetPath);
-        }
+      // Pause and unregister agents
+      const toPause = personas.filter((p) => p.active);
+      for (const p of toPause) {
+        await writePersona(p.slug, { active: false }, p.cabinetPath);
       }
       await reloadDaemonSchedules().catch(() => {});
-      return NextResponse.json({ ok: true, paused: personas.filter((p) => p.active).length });
+      return NextResponse.json({ ok: true, paused: toPause.length });
     }
 
     case "activate": {

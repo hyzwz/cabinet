@@ -5,13 +5,17 @@ import {
   ArrowLeft,
   Bot,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   FolderOpen,
   FolderTree,
   HeartPulse,
   Loader2,
   MessageSquare,
+  Play,
+  RefreshCw,
   Send,
+  Square,
   Users,
   XCircle,
 } from "lucide-react";
@@ -907,6 +911,176 @@ function RecentConversations({
   );
 }
 
+/* ─── Cabinet Scheduler Controls ─── */
+function CabinetSchedulerControls({
+  cabinetPath,
+  ownAgents,
+  onRefresh,
+}: {
+  cabinetPath: string;
+  ownAgents: CabinetAgentSummary[];
+  onRefresh: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const activeOwn = ownAgents.filter((a) => a.active);
+  const anyActive = activeOwn.length > 0;
+  const allActive = activeOwn.length === ownAgents.length && ownAgents.length > 0;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [menuOpen]);
+
+  async function schedulerAction(action: "start-all" | "stop-all") {
+    setBusy(true);
+    try {
+      await fetch("/api/agents/scheduler", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, cabinetPath }),
+      });
+      onRefresh();
+    } catch {
+      // ignore
+    } finally {
+      setBusy(false);
+      setMenuOpen(false);
+    }
+  }
+
+  async function restart() {
+    setBusy(true);
+    try {
+      await fetch("/api/agents/scheduler", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "stop-all", cabinetPath }),
+      });
+      await fetch("/api/agents/scheduler", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start-all", cabinetPath }),
+      });
+      onRefresh();
+    } catch {
+      // ignore
+    } finally {
+      setBusy(false);
+      setMenuOpen(false);
+    }
+  }
+
+  if (ownAgents.length === 0) return null;
+
+  return (
+    <div className="relative flex items-center" ref={menuRef}>
+      {/* Main toggle button */}
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => void schedulerAction(anyActive ? "stop-all" : "start-all")}
+        title={
+          anyActive
+            ? `Stop all ${activeOwn.length} active agent(s) — pauses their heartbeats and cron jobs. Only this cabinet, not sub-cabinets.`
+            : `Activate all ${ownAgents.length} agent(s) — starts their heartbeats and cron jobs on schedule. Only this cabinet, not sub-cabinets.`
+        }
+        className={cn(
+          "inline-flex items-center gap-2 rounded-l-lg border px-4 py-2 text-sm font-semibold transition-colors",
+          busy && "opacity-60",
+          anyActive
+            ? "border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20"
+            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+        )}
+      >
+        {busy ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : anyActive ? (
+          <Square className="h-4 w-4" />
+        ) : (
+          <Play className="h-4 w-4" />
+        )}
+        {anyActive ? "Stop All" : "Start All"}
+      </button>
+
+      {/* Dropdown toggle */}
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => setMenuOpen((o) => !o)}
+        className={cn(
+          "inline-flex items-center rounded-r-lg border border-l-0 px-2 py-2 transition-colors",
+          anyActive
+            ? "border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20"
+            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+        )}
+      >
+        <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+
+      {/* Dropdown menu */}
+      {menuOpen ? (
+        <div className="absolute right-0 top-[calc(100%+4px)] z-30 w-64 rounded-xl border border-border bg-popover shadow-lg">
+          <div className="py-1.5">
+            {!allActive ? (
+              <button
+                type="button"
+                onClick={() => void schedulerAction("start-all")}
+                disabled={busy}
+                className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-muted/40"
+              >
+                <Play className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Start all agents</p>
+                  <p className="text-[11px] text-muted-foreground">Activate heartbeats and cron jobs</p>
+                </div>
+              </button>
+            ) : null}
+            {anyActive ? (
+              <button
+                type="button"
+                onClick={() => void schedulerAction("stop-all")}
+                disabled={busy}
+                className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-muted/40"
+              >
+                <Square className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Stop all agents</p>
+                  <p className="text-[11px] text-muted-foreground">Pause heartbeats and cron jobs</p>
+                </div>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void restart()}
+              disabled={busy}
+              className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-muted/40"
+            >
+              <RefreshCw className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Restart all agents</p>
+                <p className="text-[11px] text-muted-foreground">Stop then re-activate all schedules</p>
+              </div>
+            </button>
+          </div>
+          <div className="border-t border-border/60 px-3 py-2.5">
+            <p className="text-[10px] leading-relaxed text-muted-foreground">
+              {activeOwn.length}/{ownAgents.length} own agents active.
+              Only this cabinet — sub-cabinet agents are not affected.
+            </p>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /* ─── Main View ─── */
 export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
   const [overview, setOverview] = useState<CabinetOverview | null>(null);
@@ -1041,6 +1215,10 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
   const heartbeatCount = overview?.agents.filter((a) => Boolean(a.heartbeat)).length ?? 0;
   const childCabinetCount = overview?.children.length ?? 0;
   const visibleCabinetCount = overview?.visibleCabinets.length ?? 0;
+  const ownAgents = useMemo(
+    () => (overview?.agents || []).filter((a) => a.cabinetDepth === 0),
+    [overview?.agents]
+  );
   const cabinetPathLabel = cabinetPath === "." ? "/" : `/${cabinetPath}`;
   const boardName = displayName || "there";
   const scopeLabel =
@@ -1114,9 +1292,16 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
             ) : null}
           </div>
 
-          <div className="flex items-center gap-1">
-            <VersionHistory />
-            <HeaderActions />
+          <div className="flex items-center gap-3">
+            <CabinetSchedulerControls
+              cabinetPath={cabinetPath}
+              ownAgents={ownAgents}
+              onRefresh={() => void loadOverview()}
+            />
+            <div className="flex items-center gap-1">
+              <VersionHistory />
+              <HeaderActions />
+            </div>
           </div>
         </div>
       </div>
@@ -1135,50 +1320,46 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
               style={{ backgroundColor: sectionSurfaces.overview }}
             >
               <div className="space-y-10">
-                <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_280px] xl:items-end xl:gap-12">
-                  <div className="space-y-8">
-                    <div ref={titleSectionRef}>
-                      <h2 className="font-body-serif text-[2.2rem] leading-none tracking-tight text-foreground">
-                        {cabinetName}
-                      </h2>
-                      <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-                        {cabinetDescription}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-x-8 gap-y-4">
-                      <StatPill value={visibleAgentCount} label="visible agents" />
-                      <StatPill value={activeAgents} label="active" highlight />
-                      <StatPill value={totalTaskCount} label="tasks" />
-                      <StatPill value={totalJobCount} label="jobs" />
-                      <StatPill value={heartbeatCount} label="heartbeats" />
-                      <StatPill value={visibleCabinetCount} label="cabinets in view" />
-                    </div>
+                <div className="space-y-8">
+                  <div ref={titleSectionRef}>
+                    <h2 className="font-body-serif text-[2.2rem] leading-none tracking-tight text-foreground">
+                      {cabinetName}
+                    </h2>
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+                      {cabinetDescription}
+                    </p>
                   </div>
 
-                  <div className="space-y-3 xl:justify-self-end xl:pb-1">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/65">
-                      Visibility depth
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {CABINET_VISIBILITY_OPTIONS.map((option) => (
-                        <button
-                          key={option.value}
-                          onClick={() => setCabinetVisibilityMode(cabinetPath, option.value)}
-                          className={cn(
-                            "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                            cabinetVisibilityMode === option.value
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border bg-background text-muted-foreground hover:text-foreground"
-                          )}
-                        >
-                          {option.shortLabel}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="max-w-[280px] text-sm text-muted-foreground">
-                      {scopeLabel}. {childCabinetCount} child cabinet{childCabinetCount === 1 ? "" : "s"} beneath this one.
-                    </p>
+                  <div className="flex flex-wrap gap-x-8 gap-y-4">
+                    <StatPill value={visibleAgentCount} label="visible agents" />
+                    <StatPill value={activeAgents} label="active" highlight />
+                    <StatPill value={totalTaskCount} label="tasks" />
+                    <StatPill value={totalJobCount} label="jobs" />
+                    <StatPill value={heartbeatCount} label="heartbeats" />
+                    <StatPill value={visibleCabinetCount} label="cabinets in view" />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/65">
+                      Depth
+                    </span>
+                    {CABINET_VISIBILITY_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setCabinetVisibilityMode(cabinetPath, option.value)}
+                        className={cn(
+                          "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                          cabinetVisibilityMode === option.value
+                            ? "border-primary/60 bg-primary/10 text-primary"
+                            : "border-border/60 bg-transparent text-muted-foreground/70 hover:text-foreground"
+                        )}
+                      >
+                        {option.shortLabel}
+                      </button>
+                    ))}
+                    <span className="text-[11px] text-muted-foreground/50">
+                      {scopeLabel}
+                    </span>
                   </div>
                 </div>
 

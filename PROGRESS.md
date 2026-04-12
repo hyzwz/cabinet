@@ -1,5 +1,7 @@
 # Progress
 
+[2026-04-12] Cabinet view: moved visibility depth selector from a separate column to a subtle inline pill bar beneath stats (more grounded). Added Start All / Stop All / Restart All controls to the cabinet header bar, scoped to own-cabinet agents only (no sub-cabinets). Scheduler API now accepts optional cabinetPath to scope start-all/stop-all operations.
+
 [2026-04-12] Task board header: moved selectors and refresh button to same row as filter chips (chips left, selectors right). Active chip color now matches its type (sky for Manual, emerald for Jobs, pink for Heartbeat) instead of generic primary.
 
 [2026-04-12] Made BACK button icon smaller (2.5) and nudged it up to align with the center of the letter height.
