@@ -79,6 +79,7 @@ export function StatusBar() {
   const selectedPath = useTreeStore((s) => s.selectedPath);
   const section = useAppStore((s) => s.section);
   const setSection = useAppStore((s) => s.setSection);
+  const setAiPanelCollapsed = useAppStore((s) => s.setAiPanelCollapsed);
   const { open, addEditorSession } = useAIPanelStore();
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiSubmitting, setAiSubmitting] = useState(false);
@@ -90,6 +91,7 @@ export function StatusBar() {
     const message = aiPrompt.trim();
     setAiPrompt("");
     setAiSubmitting(true);
+    setAiPanelCollapsed(false);
     open();
     try {
       const response = await fetch("/api/agents/conversations", {
