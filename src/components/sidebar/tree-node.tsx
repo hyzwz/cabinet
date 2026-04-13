@@ -25,6 +25,7 @@ import {
   Music,
   Workflow,
   File,
+  TriangleAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TreeNode as TreeNodeType } from "@/types";
@@ -43,6 +44,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -80,6 +83,7 @@ export function TreeNode({
   const [creating, setCreating] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameTitle, setRenameTitle] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [linkRepoOpen, setLinkRepoOpen] = useState(false);
   const [createCabinetOpen, setCreateCabinetOpen] = useState(false);
 
@@ -117,12 +121,7 @@ export function TreeNode({
   };
 
   const handleDelete = () => {
-    const message = node.isLinked
-      ? `Unlink "${title}"? This removes the link but does not delete the original folder.`
-      : `Delete "${title}"?`;
-    if (confirm(message)) {
-      deletePage(node.path);
-    }
+    setDeleteOpen(true);
   };
 
   const handleCreateSubPage = async () => {
@@ -408,6 +407,53 @@ export function TreeNode({
         onOpenChange={setCreateCabinetOpen}
         parentPath={node.path}
       />
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+                {node.isLinked
+                  ? <Link2Off className="h-4 w-4 text-destructive" />
+                  : <TriangleAlert className="h-4 w-4 text-destructive" />
+                }
+              </div>
+              <div className="flex flex-col gap-1">
+                <DialogTitle>
+                  {node.isLinked
+                    ? `Unlink "${title}"`
+                    : node.type === "cabinet"
+                      ? `Delete Cabinet "${title}"`
+                      : `Delete "${title}"`
+                  }
+                </DialogTitle>
+                <DialogDescription>
+                  {node.isLinked
+                    ? `This will remove the link from your knowledge base. The original folder on disk will not be affected.`
+                    : node.type === "cabinet"
+                      ? `This will permanently delete the cabinet and everything inside it — all pages, agents, jobs, and tasks. This cannot be undone.`
+                      : `This will permanently delete this ${node.type === "directory" ? "page and all its sub-pages" : "file"}. This cannot be undone.`
+                  }
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <DialogFooter className="mt-2">
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                deletePage(node.path);
+                setDeleteOpen(false);
+              }}
+            >
+              {node.isLinked ? "Unlink" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

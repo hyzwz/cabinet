@@ -56,6 +56,7 @@ import {
   PenTool,
   UserCheck,
   Scale,
+  TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -780,12 +781,21 @@ export function TreeView() {
     <Dialog open={cabinetDeleteOpen} onOpenChange={setCabinetDeleteOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Delete Cabinet</DialogTitle>
-          <DialogDescription>
-            This will permanently delete &ldquo;{activeCabinet?.frontmatter?.title || activeCabinet?.name || cabinetPath}&rdquo; and all its contents, including pages, agents, jobs, and tasks.
-          </DialogDescription>
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+              <TriangleAlert className="h-4 w-4 text-destructive" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <DialogTitle>
+                Delete Cabinet &ldquo;{activeCabinet?.frontmatter?.title || activeCabinet?.name || cabinetPath}&rdquo;
+              </DialogTitle>
+              <DialogDescription>
+                This will permanently delete the cabinet and everything inside it — all pages, agents, jobs, and tasks. This cannot be undone.
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
-        <DialogFooter>
+        <DialogFooter className="mt-2">
           <Button variant="outline" onClick={() => setCabinetDeleteOpen(false)}>
             Cancel
           </Button>
