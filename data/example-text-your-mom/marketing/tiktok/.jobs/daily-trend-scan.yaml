@@ -1,6 +1,6 @@
 id: daily-trend-scan
 name: Daily Trend Scan
-enabled: false
+enabled: true
 schedule: 0 8 * * 1-5
 provider: claude-code
 ownerAgent: image-creator

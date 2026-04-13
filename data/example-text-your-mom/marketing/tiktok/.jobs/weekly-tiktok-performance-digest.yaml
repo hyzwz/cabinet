@@ -1,6 +1,6 @@
 id: weekly-tiktok-performance-digest
 name: Weekly TikTok Performance Digest
-enabled: false
+enabled: true
 schedule: 0 9 * * 1
 provider: claude-code
 ownerAgent: image-creator

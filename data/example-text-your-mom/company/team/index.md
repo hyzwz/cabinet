@@ -40,10 +40,10 @@ Full roster for Text Your Mom as of April 13, 2026. Sixteen people across four d
 
 | # | Role | Focus | Status |
 |---|------|-------|--------|
-| 9 | **Trend Scout** | Trend analysis, creator research, hook mining | Paused |
-| 10 | **Script Writer** | Scripts, hooks, humor | Paused |
-| 11 | **Post Optimizer** | Optimization, posting times, caption tuning | Paused |
-| 12 | **Image Creator** | Creative direction, visual humor, branded assets | Paused |
+| 9 | **Trend Scout** | Trend analysis, creator research, hook mining | Active |
+| 10 | **Script Writer** | Scripts, hooks, humor | Active |
+| 11 | **Post Optimizer** | Optimization, posting times, caption tuning | Active |
+| 12 | **Image Creator** | Creative direction, visual humor, branded assets | Active |
 
 ---
 
@@ -51,10 +51,10 @@ Full roster for Text Your Mom as of April 13, 2026. Sixteen people across four d
 
 | # | Role | Focus | Status |
 |---|------|-------|--------|
-| 13 | **Researcher** | User language, community patterns, pain analysis | Paused |
-| 14 | **Growth Marketer** | Experiments, positioning, community fit | Paused |
-| 15 | **Copywriter** | Messaging, reply voice, landing copy | Paused |
-| 16 | **Data Analyst** | Synthesis, experiment analysis, signal quality | Paused |
+| 13 | **Researcher** | User language, community patterns, pain analysis | Active |
+| 14 | **Growth Marketer** | Experiments, positioning, community fit | Active |
+| 15 | **Copywriter** | Messaging, reply voice, landing copy | Active |
+| 16 | **Data Analyst** | Synthesis, experiment analysis, signal quality | Active |
 
 ---
 
@@ -64,14 +64,14 @@ Full roster for Text Your Mom as of April 13, 2026. Sixteen people across four d
 |------------|--------|--------|-------|
 | Executive Leadership | 4 | 0 | 4 |
 | App Development | 4 | 0 | 4 |
-| Marketing — TikTok | 0 | 4 | 4 |
-| Marketing — Reddit | 0 | 4 | 4 |
-| **Company Total** | **8** | **8** | **16** |
+| Marketing — TikTok | 4 | 0 | 4 |
+| Marketing — Reddit | 4 | 0 | 4 |
+| **Company Total** | **16** | **0** | **16** |
 
 ---
 
 ## Notes
 
-- All marketing roles are paused pending activation. CEO ordered both cabinets to activate the week of April 14 — see [[company/operations]] for the decision and activation checklists.
+- All marketing roles activated April 13 by CEO. Jobs enabled; first outputs expected Monday April 14. See [[company/operations]] for activation details.
 - The CTO role exists at two levels: root (strategic direction) and app-development (hands-on engineering leadership).
 - Burn rate references "two contractors" in addition to the agent roster — see [[company/finance]] for details.

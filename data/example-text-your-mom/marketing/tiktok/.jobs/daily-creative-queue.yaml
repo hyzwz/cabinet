@@ -1,6 +1,6 @@
 id: daily-creative-queue
 name: Daily Creative Queue
-enabled: false
+enabled: true
 schedule: 0 10 * * 1-5
 provider: claude-code
 ownerAgent: image-creator

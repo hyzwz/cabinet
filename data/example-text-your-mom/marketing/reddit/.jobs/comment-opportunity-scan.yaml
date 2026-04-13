@@ -1,6 +1,6 @@
 id: comment-opportunity-scan
 name: Comment Opportunity Scan
-enabled: false
+enabled: true
 schedule: 0 11 * * 1-5
 provider: claude-code
 ownerAgent: researcher

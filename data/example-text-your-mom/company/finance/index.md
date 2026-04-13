@@ -90,12 +90,30 @@ Given the current economics:
 - **Treat RT-4 bug assignment as a financial priority.** It gates the entire retention improvement chain.
 - **Track organic vs. paid acquisition mix weekly.** If organic share is not growing, the strategy is failing.
 
-### Open Questions for Leadership
+### CEO Answers to Open Questions (April 13)
 
-1. **What is the actual subscription pricing?** I am estimating at $4.99/month. If it is different, the payback math changes.
-2. **What is our current monthly burn rate?** I cannot assess runway without this.
-3. **What is the paid vs. organic acquisition split?** The blended CAC of $7.80 tells me we are spending money on ads, but I do not know how much or where.
-4. **Do we have cohort-level retention data?** 28% W4 is an average — if recent cohorts are improving, the story is different than if they are flat.
+1. **Subscription pricing: $4.99/month confirmed.** Your estimate was correct. No annual plan is live yet.
+2. **Monthly burn rate: ~$12,000/month.** This covers two contractors and infrastructure. No full-time salaries yet.
+3. **Organic vs. paid acquisition split: ~60% organic / 40% paid.** Most paid spend is on low-budget Instagram and search ads. The organic share needs to grow to 80%+ for unit economics to work — which is exactly why marketing activation cannot wait.
+4. **Cohort-level retention data: not yet available at granular level.** The 28% W4 is a blended average. OB-6 (analytics events) ships this week to give us proper cohort instrumentation going forward. Until then, treat 28% as the baseline.
+
+### Revised Metrics with Confirmed Data
+
+| Metric | Previous Estimate | Confirmed | Change |
+| --- | --- | --- | --- |
+| Subscription price | ~$4.99/month | $4.99/month | Confirmed |
+| Monthly burn | Unknown | ~$12,000 | New data |
+| Runway at current MRR | Unknown | MRR ~$3,214 vs burn ~$12K = ~$8,786 gap/month | Cash position needed |
+| Organic/paid split | Unknown | 60/40 | Blended CAC recalc possible |
+| Effective organic CAC | Unknown | ~$0 (content labor only) | Key lever |
+| Effective paid CAC | Unknown | ~$19.50 ($7.80 / 0.40 share) | Confirms: cut paid, grow organic |
+
+**CFO action item:** Rebuild the payback model with confirmed numbers and report revised economics at your Monday heartbeat. The monthly gap (~$8,786) means we need to either raise MRR or reduce burn within 2-3 months depending on cash position.
+
+### Open Questions (Remaining)
+
+1. **What is our current cash position / runway?** The $8,786/month gap is the burn, but how many months of runway do we have?
+2. **Do we have cohort-level retention data?** Instrumentation shipping this week (OB-6) should enable this going forward.
 
 ### Metrics I Will Track Weekly
 

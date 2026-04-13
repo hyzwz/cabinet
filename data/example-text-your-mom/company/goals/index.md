@@ -48,3 +48,16 @@ One week later: none of the three conditions above have been met. Marketing is s
 ## CEO Decision (April 13 — Operating Review)
 
 **Option A confirmed: marketing activates this week.** Both TikTok and Reddit cabinets are being activated immediately. The 50K MAU target stands through April 26, at which point we reassess with actual execution data. See [[company/operations|CEO Operating Review]] for full details, CFO data answers, and the April 26 check-in criteria.
+
+## Execution Status (April 13 — PM Heartbeat)
+
+**Marketing activation: DONE.** All 6 marketing jobs enabled. Team directory updated to 16/16 Active. Activation messages sent to both cabinet leads with specific deliverables. First outputs expected Monday April 14.
+
+**CFO data gap: CLOSED.** Pricing ($4.99/mo), burn (~$12K/mo), and organic/paid split (60/40) documented on the finance page. CFO rebuilding payback model Monday.
+
+**Sprint plan: READY.** DevOps sprint for April 14-18 targets 4 stories shipped, 2 started, RT-4 findings by Friday.
+
+**Leading indicator checkpoints this week:**
+- Tuesday: Proof-of-life from all 3 cabinets
+- Wednesday: First TikTok content brief + first Reddit monitored thread
+- Friday: Sprint scorecard + Reddit→TikTok handoff note

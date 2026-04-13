@@ -1,6 +1,6 @@
 id: subreddit-signal-scan
 name: Subreddit Signal Scan
-enabled: false
+enabled: true
 schedule: 0 8 * * 1-5
 provider: claude-code
 ownerAgent: researcher
