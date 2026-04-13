@@ -11,6 +11,8 @@ import {
   Loader2,
   Search,
   ChevronRight,
+  Star,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -845,10 +847,63 @@ export function RegistryBrowser() {
     <div className="flex flex-col h-full" style={{ backgroundColor: P.bg }}>
       {/* Header */}
       <div className="border-b px-6 py-5 shrink-0" style={{ borderColor: P.border, backgroundColor: P.bgWarm }}>
-        <h1 className="text-xl font-bold" style={{ color: P.textPrimary }}>Cabinet Registry</h1>
-        <p className="text-sm mt-0.5" style={{ color: P.textSecondary }}>
-          Browse and import pre-made zero-human teams
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold" style={{ color: P.textPrimary }}>Cabinet Registry</h1>
+            <p className="text-sm mt-0.5" style={{ color: P.textSecondary }}>
+              Browse and import pre-made zero-human teams
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* cabinets.sh */}
+            <a
+              href="https://cabinets.sh"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+              style={{
+                borderColor: P.border,
+                backgroundColor: P.bgCard,
+                color: P.textSecondary,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = P.bgWarm;
+                e.currentTarget.style.color = P.textPrimary;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = P.bgCard;
+                e.currentTarget.style.color = P.textSecondary;
+              }}
+            >
+              <Globe className="h-3.5 w-3.5" />
+              cabinets.sh
+            </a>
+
+            {/* GitHub star */}
+            <a
+              href="https://github.com/hilash/cabinets"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+              style={{
+                borderColor: P.border,
+                backgroundColor: P.bgCard,
+                color: P.textSecondary,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = P.bgWarm;
+                e.currentTarget.style.color = P.textPrimary;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = P.bgCard;
+                e.currentTarget.style.color = P.textSecondary;
+              }}
+            >
+              <Star className="h-3.5 w-3.5" />
+              Star us
+            </a>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">

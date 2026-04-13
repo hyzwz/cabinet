@@ -857,6 +857,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
 
               {/* Content */}
               {scheduleView === "calendar" ? (
+                <div className={cn(!calendarFullscreen && "h-[600px] overflow-hidden")}>
                 <ScheduleCalendar
                   mode={calendarMode}
                   anchor={calendarAnchor}
@@ -869,6 +870,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                     setCalendarAnchor(date);
                   }}
                 />
+                </div>
               ) : (
                 <ScheduleList
                   agents={overview?.agents || []}

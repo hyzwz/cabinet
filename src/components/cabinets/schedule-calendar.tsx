@@ -376,6 +376,7 @@ function MonthView({
       </div>
 
       {/* Calendar grid */}
+      <div className="flex-1 overflow-y-auto">
       <div className="grid grid-cols-7">
         {cells.map((day, i) => {
           const isCurrentMonth = day.getMonth() === month;
@@ -441,6 +442,7 @@ function MonthView({
             </button>
           );
         })}
+      </div>
       </div>
     </div>
   );

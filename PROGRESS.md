@@ -230,3 +230,5 @@
 [2026-04-13] New Cabinet dialog: replace tiny "import a pre-made team →" text link with a full-width card button featuring icon, title, description, and arrow — separated from the create form by an "or" divider.
 
 [2026-04-13] New Cabinet dialog: move "Import from Registry" to header top-right as a compact button next to close; remove bottom card + or-divider that made dialog too tall.
+
+[2026-04-13] Registry browser header: add "cabinets.sh" and "Star us" (→ github.com/hilash/cabinets) link buttons in top-right. Also committed calendar overflow fix from cabinet-view/schedule-calendar.
