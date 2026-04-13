@@ -3396,6 +3396,7 @@ export function AgentsWorkspace({
                         prev ? { ...prev, active: e.target.checked } : prev
                       )
                     }
+                    className="h-3.5 w-3.5 cursor-pointer appearance-none rounded-sm border border-border bg-background transition-colors checked:border-primary checked:bg-primary focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1"
                   />
                   Active
                 </label>
