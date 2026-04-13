@@ -72,8 +72,22 @@ export function CabinetSchedulerControls({
 
   if (ownAgents.length === 0) return null;
 
+  const splitBase =
+    "inline-flex items-center border border-border bg-muted/40 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50";
+
   return (
-    <div className="relative flex items-center" ref={menuRef}>
+    <div className="relative flex items-center gap-2.5" ref={menuRef}>
+      {/* Live status indicator */}
+      {anyActive && (
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+          </span>
+          Live
+        </span>
+      )}
+
       {/* Main toggle button */}
       <button
         type="button"
@@ -84,20 +98,14 @@ export function CabinetSchedulerControls({
             ? `Stop all ${activeOwn.length} active agent(s) — pauses their heartbeats and cron jobs. Only this cabinet, not sub-cabinets.`
             : `Activate all ${ownAgents.length} agent(s) — starts their heartbeats and cron jobs on schedule. Only this cabinet, not sub-cabinets.`
         }
-        className={cn(
-          "inline-flex items-center gap-2 rounded-l-lg border px-4 py-2 text-sm font-semibold transition-colors",
-          busy && "opacity-60",
-          anyActive
-            ? "border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20"
-            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
-        )}
+        className={cn(splitBase, "gap-2 rounded-l-md border-r-0 px-3 py-1.5 text-sm font-medium")}
       >
         {busy ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : anyActive ? (
-          <Square className="h-4 w-4" />
+          <Square className="h-3.5 w-3.5" />
         ) : (
-          <Play className="h-4 w-4" />
+          <Play className="h-3.5 w-3.5" />
         )}
         {anyActive ? "Stop All" : "Start All"}
       </button>
@@ -107,19 +115,14 @@ export function CabinetSchedulerControls({
         type="button"
         disabled={busy}
         onClick={() => setMenuOpen((o) => !o)}
-        className={cn(
-          "inline-flex items-center rounded-r-lg border border-l-0 px-2 py-2 transition-colors",
-          anyActive
-            ? "border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20"
-            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
-        )}
+        className={cn(splitBase, "rounded-r-md px-2 py-1.5")}
       >
         <ChevronDown className="h-3.5 w-3.5" />
       </button>
 
       {/* Dropdown menu */}
       {menuOpen ? (
-        <div className="absolute right-0 top-[calc(100%+4px)] z-30 w-64 rounded-xl border border-border bg-popover shadow-lg">
+        <div className="absolute right-0 top-[calc(100%+6px)] z-30 w-64 rounded-xl border border-border bg-popover shadow-lg">
           <div className="py-1.5">
             {!allActive ? (
               <button
@@ -142,7 +145,7 @@ export function CabinetSchedulerControls({
                 disabled={busy}
                 className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-muted/40"
               >
-                <Square className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />
+                <Square className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-foreground">Stop all agents</p>
                   <p className="text-[11px] text-muted-foreground">Pause heartbeats and cron jobs</p>
@@ -155,7 +158,7 @@ export function CabinetSchedulerControls({
               disabled={busy}
               className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-muted/40"
             >
-              <RefreshCw className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+              <RefreshCw className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium text-foreground">Restart all agents</p>
                 <p className="text-[11px] text-muted-foreground">Stop then re-activate all schedules</p>
