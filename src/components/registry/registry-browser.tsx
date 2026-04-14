@@ -806,7 +806,7 @@ export function RegistryBrowser() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/registry")
+    fetch("/api/registry?limit=100")
       .then((r) => r.json())
       .then((data: { templates?: RegistryTemplate[] }) => { if (data.templates) setTemplates(data.templates); })
       .catch(() => {})

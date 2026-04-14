@@ -309,9 +309,7 @@ export function TreeView() {
             className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 text-left hover:text-foreground/80 transition-colors"
           >
             <Archive className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-            {activeCabinet
-              ? activeCabinet.frontmatter?.title || activeCabinet.name
-              : cabinetAgentScopeName || "Cabinet"}
+            {cabinetAgentScopeName || activeCabinet?.frontmatter?.title || activeCabinet?.name || "Cabinet"}
           </button>
           </ContextMenuTrigger>
           <ContextMenuContent>
