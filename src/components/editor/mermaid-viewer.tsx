@@ -37,12 +37,18 @@ export function MermaidViewer({ path, title }: MermaidViewerProps) {
         startOnLoad: false,
         theme: document.documentElement.classList.contains("dark") ? "dark" : "default",
         securityLevel: "loose",
+        suppressErrorRendering: true,
       });
+
+      // Validate syntax first to avoid mermaid injecting error SVGs into the DOM
+      await mermaid.parse(text.trim());
 
       const id = `mermaid-${++renderIdRef.current}`;
       const { svg: rendered } = await mermaid.render(id, text.trim());
       setSvg(rendered);
     } catch (err) {
+      // Clean up any error elements mermaid may have injected into the DOM
+      document.querySelectorAll('[id^="dmermaid-"], [id^="d"]:has(> .error-icon)').forEach(el => el.remove());
       setError(err instanceof Error ? err.message : "Failed to render diagram");
     } finally {
       setLoading(false);
@@ -134,11 +140,16 @@ export function MermaidViewer({ path, title }: MermaidViewerProps) {
             </code>
           </pre>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-sm">
-            <p className="text-red-500">Failed to render diagram</p>
-            <p className="text-muted-foreground text-xs max-w-md text-center">{error}</p>
+          <div className="flex flex-col items-center justify-center h-full gap-4 text-sm p-8">
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                <Code2 className="h-5 w-5 text-red-500" />
+              </div>
+              <p className="text-red-500 font-medium">Diagram syntax error</p>
+            </div>
+            <pre className="text-muted-foreground text-xs max-w-lg text-left bg-muted/50 rounded-md p-3 overflow-auto whitespace-pre-wrap">{error}</pre>
             <Button variant="outline" size="sm" onClick={() => setShowSource(true)}>
-              View source
+              View source to fix
             </Button>
           </div>
         ) : (
