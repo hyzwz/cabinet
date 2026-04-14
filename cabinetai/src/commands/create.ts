@@ -11,7 +11,7 @@ export function registerCreate(program: Command): void {
     .description("Create a new cabinet directory")
     .action((name?: string) => {
       if (!name) {
-        error("Please provide a cabinet name. Usage: cabinetai create <name>");
+        error("Please provide a cabinet name. Usage: npx cabinetai create <name>");
       }
       createCabinet(name);
     });
@@ -91,6 +91,6 @@ function createCabinet(name: string): void {
   Next steps:
 
     cd ${slug}
-    cabinetai run
+    npx cabinetai run
 `);
 }

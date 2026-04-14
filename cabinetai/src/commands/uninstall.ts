@@ -68,5 +68,5 @@ function uninstall(opts: { all?: boolean }): void {
   fs.mkdirSync(appDir, { recursive: true });
 
   success(`Removed ${versions.length} cached app version${versions.length !== 1 ? "s" : ""}: ${versions.join(", ")}`);
-  log("Next 'cabinetai run' will re-download the app.");
+  log("Next 'npx cabinetai run' will re-download the app.");
 }

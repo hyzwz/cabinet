@@ -10,7 +10,7 @@ cd my-startup
 npx cabinetai run
 ```
 
-That's it. The app auto-downloads on first run, installs dependencies, and opens in your browser.
+That's it — no global install needed. The app auto-downloads on first run, installs dependencies, and opens in your browser.
 
 ## What You Get
 
@@ -42,24 +42,26 @@ The app lives in `~/.cabinet/` and is shared across all your cabinets. Each cabi
 
 ## Commands
 
-### `cabinetai create [name]`
+All commands work via `npx` — no global install needed.
+
+### `npx cabinetai create [name]`
 
 Create a new cabinet directory.
 
 ```bash
-cabinetai create my-startup          # root cabinet
+npx cabinetai create my-startup          # root cabinet
 cd my-startup
-cabinetai create engineering         # child cabinet inside an existing one
+npx cabinetai create engineering         # child cabinet inside an existing one
 ```
 
-### `cabinetai run`
+### `npx cabinetai run`
 
 Start Cabinet serving the current directory.
 
 ```bash
-cabinetai run
-cabinetai run --no-open              # don't open browser
-cabinetai run --app-version 0.2.12   # use a specific app version
+npx cabinetai run
+npx cabinetai run --no-open              # don't open browser
+npx cabinetai run --app-version 0.2.12   # use a specific app version
 ```
 
 On first run, downloads the app to `~/.cabinet/app/` and installs dependencies. Subsequent runs start instantly.
@@ -71,22 +73,22 @@ On first run, downloads the app to `~/.cabinet/app/` and installs dependencies. 
 | `CABINET_APP_PORT` | `4000` | App server port |
 | `CABINET_DAEMON_PORT` | `4100` | Daemon server port |
 
-### `cabinetai import <template>`
+### `npx cabinetai import <template>`
 
 Import a pre-made cabinet from the [template registry](https://github.com/hilash/cabinets).
 
 ```bash
-cabinetai import saas-startup
-cabinetai import career-ops
-cabinetai import text-your-mom
+npx cabinetai import saas-startup
+npx cabinetai import career-ops
+npx cabinetai import text-your-mom
 ```
 
-### `cabinetai list`
+### `npx cabinetai list`
 
 List all cabinets in the current directory.
 
 ```bash
-cabinetai list
+npx cabinetai list
 ```
 
 ```
@@ -95,32 +97,32 @@ cabinetai list
   Engineering       child   engineering       2       1
 ```
 
-### `cabinetai doctor`
+### `npx cabinetai doctor`
 
 Run health checks on the environment.
 
 ```bash
-cabinetai doctor
-cabinetai doctor --fix       # attempt auto-repair
+npx cabinetai doctor
+npx cabinetai doctor --fix       # attempt auto-repair
 ```
 
 Checks Node.js version, cabinet structure, app installation, dependencies, and port availability.
 
-### `cabinetai update`
+### `npx cabinetai update`
 
 Download a newer app version.
 
 ```bash
-cabinetai update
+npx cabinetai update
 ```
 
-### `cabinetai uninstall`
+### `npx cabinetai uninstall`
 
 Remove cached app versions from `~/.cabinet/`.
 
 ```bash
-cabinetai uninstall          # remove cached app versions
-cabinetai uninstall --all    # remove entire ~/.cabinet directory
+npx cabinetai uninstall          # remove cached app versions
+npx cabinetai uninstall --all    # remove entire ~/.cabinet directory
 ```
 
 Your cabinet directories and data are never touched.

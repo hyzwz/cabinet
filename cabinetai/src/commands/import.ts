@@ -99,7 +99,7 @@ async function importTemplate(template: string): Promise<void> {
   Next steps:
 
     cd ${slug}
-    cabinetai run
+    npx cabinetai run
 `);
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });

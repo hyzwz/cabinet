@@ -51,7 +51,7 @@ async function runUpdate(): Promise<void> {
 
   console.log("");
   success(`Cabinet v${latestVersion} installed.`);
-  console.log(`  Restart "cabinetai run" to use the new version.`);
+  console.log(`  Restart "npx cabinetai run" to use the new version.`);
   console.log(`  Release notes: ${manifest.releaseNotesUrl}`);
   console.log("");
 
