@@ -174,7 +174,7 @@ export function TreeView() {
   const cabinetVisibilityMode =
     cabinetVisibilityModes[effectiveCabinetPath] || (activeCabinet ? "own" : "all");
   const visibleTreeNodes = activeCabinet?.children || rootCabinet?.children || nodes;
-  const kbSectionLabel = cabinetAgentScopeName || "Cabinet";
+  const kbSectionLabel = "Data";
 
   /* ── agent polling ─────────────────────────────────────────── */
 
@@ -311,7 +311,7 @@ export function TreeView() {
             <Archive className="h-3.5 w-3.5 shrink-0 text-amber-400" />
             {activeCabinet
               ? activeCabinet.frontmatter?.title || activeCabinet.name
-              : "Cabinet"}
+              : cabinetAgentScopeName || "Cabinet"}
           </button>
           </ContextMenuTrigger>
           <ContextMenuContent>

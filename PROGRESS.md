@@ -1,6 +1,6 @@
 # Progress
 
-[2026-04-14] Sidebar: the data section label now shows the actual cabinet name from the .cabinet manifest instead of hardcoded "Knowledge Base" (root) or "Data" (child cabinets).
+[2026-04-14] Sidebar: the top cabinet header now shows the actual cabinet name from the .cabinet manifest (e.g. "APPLE") instead of generic "CABINET". The data section below agents/tasks is always labeled "DATA".
 
 [2026-04-14] Onboarding wizard: removed directory picker from Step 7 (CLI already owns dir selection via CABINET_DATA_DIR), added .cabinet manifest detection at wizard start with a WelcomeBackStep for existing cabinets that pre-fills company name, and added "team of teams" framing subtitle to Step 2's TeamBuildStep title.
 
