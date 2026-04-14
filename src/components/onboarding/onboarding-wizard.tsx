@@ -11,7 +11,6 @@ import {
   ClipboardCheck,
   Copy,
   ExternalLink,
-  FolderOpen,
   Info,
   Loader2,
   Rocket,
@@ -613,6 +612,53 @@ function CabinetCreatedScreen({
   );
 }
 
+/* ─── Welcome Back — shown when .cabinet already exists ─── */
+
+function WelcomeBackStep({
+  cabinetName,
+  onNext,
+}: {
+  cabinetName?: string;
+  onNext: () => void;
+}) {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShow(true), 200);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center gap-8 animate-in fade-in duration-500">
+      <div
+        className="text-center space-y-3 transition-all duration-700"
+        style={{ opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(12px)" }}
+      >
+        <CheckCircle2 className="size-10 mx-auto" style={{ color: WEB.accent }} />
+        <h1 className="font-logo text-2xl tracking-tight italic" style={{ color: WEB.text }}>
+          Welcome back{cabinetName ? ` to ${cabinetName}` : ""}
+        </h1>
+        <p className="text-sm leading-relaxed" style={{ color: WEB.textSecondary }}>
+          We found an existing cabinet here. Let&apos;s finish setting it up.
+        </p>
+      </div>
+
+      <button
+        onClick={onNext}
+        className="inline-flex items-center gap-2 rounded-full px-8 py-3 text-sm font-medium text-white transition-all hover:-translate-y-0.5 duration-300"
+        style={{
+          background: WEB.accent,
+          opacity: show ? 1 : 0,
+          transform: show ? "translateY(0)" : "translateY(8px)",
+        }}
+      >
+        Continue
+        <ArrowRight className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
 function TeamBuildStep({
   agentsLoading,
   suggestedAgents,
@@ -714,12 +760,15 @@ function TeamBuildStep({
     <div className="flex flex-col gap-5">
       {/* Title */}
       <div
-        className="text-center space-y-1 transition-all duration-500"
+        className="text-center space-y-2 transition-all duration-500"
         style={{ opacity: 1 }}
       >
         <h1 className="font-logo text-2xl tracking-tight italic">
           Build <span style={{ color: WEB.accent }}>your</span> team
         </h1>
+        <p className="text-sm" style={{ color: WEB.textSecondary }}>
+          Each cabinet is an AI team — agents, tasks, and a shared knowledge base, working together as one.
+        </p>
       </div>
 
       {/* Carousel section */}
@@ -1192,9 +1241,8 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [selectedEffort, setSelectedEffort] = useState<string | null>(null);
-  const [dataDir, setDataDir] = useState<string>("");
-  const [dataDirPending, setDataDirPending] = useState<string | null>(null);
-  const [dataDirBrowsing, setDataDirBrowsing] = useState(false);
+  const [cabinetManifest, setCabinetManifest] = useState<{ name?: string; description?: string } | null>(null);
+  const [isExistingCabinet, setIsExistingCabinet] = useState(false);
   const readyProviders = providers.filter((p) => p.available && p.authenticated);
   const anyProviderReady = readyProviders.length > 0;
   const activeProvider = providers.find((p) => p.id === selectedProvider);
@@ -1226,9 +1274,20 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
   }, []);
 
   useEffect(() => {
-    fetch("/api/system/data-dir")
+    fetch("/api/system/cabinet-manifest")
       .then((r) => r.json())
-      .then((d) => { if (d.dataDir) setDataDir(d.dataDir); })
+      .then((data) => {
+        if (data.exists && data.manifest) {
+          setIsExistingCabinet(true);
+          setCabinetManifest(data.manifest);
+          if (data.manifest.name) {
+            setAnswers((prev) => ({
+              ...prev,
+              companyName: prev.companyName || data.manifest.name,
+            }));
+          }
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -1464,7 +1523,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
             ))}
           </div>
 
-          {/* Step 0: Welcome — Dictionary card + tagline side-by-side */}
+          {/* Step 0: Welcome — Dictionary card */}
           {step === 0 && (
             <IntroStep onNext={() => setStep(1)} />
           )}
@@ -2215,112 +2274,6 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
                 </div>
               </div>
 
-              {/* Data directory */}
-              <div className="space-y-3">
-                  <p
-                    className="text-[11px] font-semibold uppercase tracking-wider"
-                    style={{ color: WEB.textTertiary }}
-                  >
-                    Data directory
-                  </p>
-
-                  <div className="flex flex-col gap-2">
-                    {/* Start fresh */}
-                    <button
-                      onClick={() => setDataDirPending(null)}
-                      className="rounded-xl p-4 text-left transition-all"
-                      style={{
-                        border: `1.5px solid ${!dataDirPending ? WEB.accent : WEB.border}`,
-                        background: !dataDirPending ? WEB.accentBg : WEB.bgWarm,
-                      }}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div
-                          className="flex size-3.5 shrink-0 items-center justify-center rounded-full"
-                          style={{
-                            border: `1.5px solid ${!dataDirPending ? WEB.accent : WEB.borderDark}`,
-                            background: !dataDirPending ? WEB.accent : "transparent",
-                          }}
-                        >
-                          {!dataDirPending && <Check className="size-2 text-white" />}
-                        </div>
-                        <p className="text-sm font-medium" style={{ color: WEB.text }}>
-                          Start fresh here
-                        </p>
-                      </div>
-                      <p className="text-[11px] leading-relaxed" style={{ color: WEB.textSecondary }}>
-                        Use the current directory. Your data lives right next to Cabinet.
-                      </p>
-                      <p
-                        className="text-[10px] font-mono mt-2 truncate"
-                        style={{ color: WEB.textTertiary }}
-                        title={dataDir}
-                      >
-                        {dataDir}
-                      </p>
-                    </button>
-
-                    {/* Open existing */}
-                    <button
-                      onClick={async () => {
-                        setDataDirBrowsing(true);
-                        try {
-                          const res = await fetch("/api/system/pick-directory", { method: "POST" });
-                          const data = await res.json().catch(() => null);
-                          if (data?.path) {
-                            setDataDirPending(data.path);
-                          }
-                        } catch {
-                          // ignore
-                        } finally {
-                          setDataDirBrowsing(false);
-                        }
-                      }}
-                      disabled={dataDirBrowsing}
-                      className="rounded-xl p-4 text-left transition-all"
-                      style={{
-                        border: `1.5px solid ${dataDirPending ? WEB.accent : WEB.border}`,
-                        background: dataDirPending ? WEB.accentBg : WEB.bgWarm,
-                      }}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div
-                          className="flex size-3.5 shrink-0 items-center justify-center rounded-full"
-                          style={{
-                            border: `1.5px solid ${dataDirPending ? WEB.accent : WEB.borderDark}`,
-                            background: dataDirPending ? WEB.accent : "transparent",
-                          }}
-                        >
-                          {dataDirPending && <Check className="size-2 text-white" />}
-                        </div>
-                        <p className="text-sm font-medium" style={{ color: WEB.text }}>
-                          Open existing cabinet
-                        </p>
-                        {dataDirBrowsing && (
-                          <Loader2 className="size-3.5 animate-spin ml-auto" style={{ color: WEB.textTertiary }} />
-                        )}
-                      </div>
-                      <p className="text-[11px] leading-relaxed" style={{ color: WEB.textSecondary }}>
-                        Pick a folder with an existing Cabinet data directory.
-                      </p>
-                      {dataDirPending && (
-                        <p
-                          className="text-[10px] font-mono mt-2 truncate"
-                          style={{ color: WEB.accent }}
-                          title={dataDirPending}
-                        >
-                          {dataDirPending}
-                        </p>
-                      )}
-                      {!dataDirPending && (
-                        <p className="text-[10px] mt-2 flex items-center gap-1" style={{ color: WEB.textTertiary }}>
-                          <FolderOpen className="size-3" />
-                          Browse...
-                        </p>
-                      )}
-                    </button>
-                  </div>
-                </div>
 
               <div className="flex items-center justify-between pt-2">
                 <button
@@ -2332,16 +2285,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
                   Back
                 </button>
                 <button
-                  onClick={async () => {
-                    if (dataDirPending) {
-                      await fetch("/api/system/data-dir", {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ dataDir: dataDirPending }),
-                      });
-                    }
-                    launch();
-                  }}
+                  onClick={launch}
                   disabled={launchDisabled}
                   className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-white transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
                   style={{ background: WEB.accent }}

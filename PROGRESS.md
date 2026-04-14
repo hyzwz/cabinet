@@ -1,5 +1,7 @@
 # Progress
 
+[2026-04-14] Onboarding wizard: removed directory picker from Step 7 (CLI already owns dir selection via CABINET_DATA_DIR), added .cabinet manifest detection at wizard start with a WelcomeBackStep for existing cabinets that pre-fills company name, and added "team of teams" framing subtitle to Step 2's TeamBuildStep title.
+
 [2026-04-14] Added zoom/pan controls to Mermaid viewer: toolbar buttons for zoom in/out/reset with percentage display, Ctrl+scroll wheel zoom, and click-drag panning with grab cursor.
 
 [2026-04-14] Fixed Mermaid viewer error handling: added `suppressErrorRendering` and `mermaid.parse()` pre-validation so syntax errors show a clean inline error message instead of mermaid injecting broken error SVGs into the DOM.
