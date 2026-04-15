@@ -821,7 +821,7 @@ export function TasksBoard({
   cabinetPath?: string;
   workspaceMode?: "ops" | "cabinet";
 } = {}) {
-  const { locale, t, format } = useLocale();
+  const { t, format } = useLocale();
   const setSection = useAppStore((state) => state.setSection);
   const setTaskPanelConversation = useAppStore((state) => state.setTaskPanelConversation);
   const cabinetVisibilityModes = useAppStore((state) => state.cabinetVisibilityModes);
@@ -1368,10 +1368,8 @@ export function TasksBoard({
       ? "Cabinet"
       : startCase(effectiveCabinetPath.split("/").pop()));
   const scopeLabel =
-    effectiveVisibilityMode === "own"
-      ? t("tasks.filters.ownAgentsOnly")
-      : CABINET_VISIBILITY_OPTIONS.find((option) => option.value === effectiveVisibilityMode)?.label ||
-        t("tasks.filters.ownAgentsOnly");
+    CABINET_VISIBILITY_OPTIONS.find((option) => option.value === effectiveVisibilityMode)?.label ||
+    t("tasks.filters.ownAgentsOnly");
   const boardTitle =
     resolvedWorkspaceMode === "cabinet"
       ? format("tasks.board.title.cabinet", { name: cabinetName })

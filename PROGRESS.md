@@ -1,3 +1,5 @@
+[2026-04-15] Fixed the Tasks workspace typecheck regression by restoring the board scope label to use the existing visibility option label lookup instead of passing unsupported arguments through the locale helper. This keeps the change narrowly scoped to the Tasks board locale wiring and unblocks workspace-tasks-core-copy validation.
+
 # Progress
 
 [2026-04-15] Added the demo i18n foundation: a lightweight client-side locale provider with persisted `zh`/`en` state, English fallback message lookup, and automatic `html lang` synchronization. Added a visible language switcher next to the theme control across shared header chrome, and wired the login surface to use localized copy before authentication without affecting theme persistence.
