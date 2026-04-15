@@ -218,6 +218,74 @@ test("covered agents workspace component uses locale message keys instead of har
   assert.doesNotMatch(file, />New job</);
 });
 
+test("getMessage returns localized tasks workspace copy for covered demo surfaces", () => {
+  assert.equal(getMessage("tasks.board.title.allCabinets", "zh"), "全部 Cabinets 任务看板");
+  assert.equal(getMessage("tasks.board.title.cabinet", "zh"), "{name} 任务看板");
+  assert.equal(getMessage("tasks.board.openSchedule", "zh"), "Jobs 与 Heartbeats");
+  assert.equal(getMessage("tasks.common.refresh", "zh"), "刷新");
+  assert.equal(getMessage("tasks.filters.all", "zh"), "全部");
+  assert.equal(getMessage("tasks.filters.manual", "zh"), "手动");
+  assert.equal(getMessage("tasks.filters.jobs", "zh"), "任务");
+  assert.equal(getMessage("tasks.filters.heartbeat", "zh"), "心跳");
+  assert.equal(getMessage("tasks.filters.allVisibleAgents", "zh"), "所有可见 agents");
+  assert.equal(getMessage("tasks.filters.ownAgentsOnly", "zh"), "仅本 Cabinet agents");
+  assert.equal(getMessage("tasks.lane.inbox.title", "zh"), "收件箱");
+  assert.equal(getMessage("tasks.lane.running.empty", "zh"), "当前没有正在运行的任务。");
+  assert.equal(getMessage("tasks.dialog.create.title", "zh"), "需要完成什么？");
+  assert.equal(getMessage("tasks.dialog.create.addToInbox", "zh"), "加入收件箱");
+  assert.equal(getMessage("tasks.dialog.assign.title", "zh"), "分配草稿");
+  assert.equal(getMessage("tasks.dialog.assign.noVisibleAgents", "zh"), "没有可见的 agents");
+  assert.equal(getMessage("tasks.rowActions.stop", "zh"), "停止");
+  assert.equal(getMessage("tasks.bulk.killAll", "zh"), "全部停止");
+  assert.equal(getMessage("tasks.schedule.header", "zh"), "Jobs 与 heartbeats");
+  assert.equal(getMessage("tasks.schedule.backToBoard", "zh"), "返回看板");
+  assert.equal(getMessage("tasks.schedule.calendar", "zh"), "日历");
+  assert.equal(getMessage("tasks.schedule.list", "zh"), "列表");
+  assert.equal(getMessage("tasks.schedule.today", "zh"), "今天");
+  assert.equal(getMessage("tasks.schedule.fullScreen", "zh"), "全屏");
+  assert.equal(getMessage("tasks.schedule.exitFullScreen", "zh"), "退出全屏");
+  assert.equal(getMessage("tasks.schedule.runNow", "zh"), "立即运行");
+  assert.equal(getMessage("tasks.schedule.cancel", "zh"), "取消");
+  assert.equal(getMessage("tasks.schedule.save", "zh"), "保存");
+  assert.equal(getMessage("tasks.schedule.saving", "zh"), "保存中...");
+  assert.equal(getMessage("tasks.schedule.field.schedule", "zh"), "调度");
+  assert.equal(getMessage("tasks.schedule.field.prompt", "zh"), "提示词");
+  assert.equal(getMessage("tasks.schedule.field.enabled", "zh"), "已启用");
+  assert.equal(getMessage("tasks.schedule.field.active", "zh"), "活跃");
+});
+
+test("covered tasks workspace component uses locale message keys instead of hard-coded core UI copy", async () => {
+  const file = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../src/components/tasks/tasks-board.tsx", import.meta.url), "utf8")
+  );
+
+  assert.match(file, /useLocale\(\)/);
+  assert.match(file, /format\("tasks\.board\.title\.cabinet", \{ name: cabinetName \}\)/);
+  assert.match(file, /localizedTriggerLabels/);
+  assert.match(file, /localizedLaneCopy/);
+  assert.match(file, /t\("tasks\.board\.openSchedule"\)/);
+  assert.match(file, /t\("tasks\.common\.refresh"\)/);
+  assert.match(file, /t\("tasks\.filters\.allVisibleAgents"\)/);
+  assert.match(file, /t\("tasks\.lane\.inbox\.title"\)/);
+  assert.match(file, /t\("tasks\.dialog\.create\.title"\)/);
+  assert.match(file, /t\("tasks\.dialog\.assign\.title"\)/);
+  assert.match(file, /t\("tasks\.rowActions\.stop"\)/);
+  assert.match(file, /t\("tasks\.bulk\.killAll"\)/);
+  assert.match(file, /t\("tasks\.schedule\.header"\)/);
+  assert.match(file, /t\("tasks\.schedule\.field\.schedule"\)/);
+  assert.doesNotMatch(file, />Jobs & Heartbeats</);
+  assert.doesNotMatch(file, />Refresh</);
+  assert.doesNotMatch(file, />What needs to get done\\?</);
+  assert.doesNotMatch(file, />Assign Draft</);
+  assert.doesNotMatch(file, />Kill All</);
+  assert.doesNotMatch(file, />Restart All</);
+  assert.doesNotMatch(file, />Back to Board</);
+  assert.doesNotMatch(file, />Calendar</);
+  assert.doesNotMatch(file, />List</);
+  assert.doesNotMatch(file, />Today</);
+  assert.doesNotMatch(file, />Run now</);
+});
+
 test("getMessage returns key when missing from all locales", () => {
   assert.equal(getMessage("missing.key" as never, "zh" satisfies Locale), "missing.key");
 });

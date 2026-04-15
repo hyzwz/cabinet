@@ -45,6 +45,7 @@ import { useComposer, type MentionableItem } from "@/hooks/use-composer";
 import { ScheduleCalendar, type CalendarMode } from "@/components/cabinets/schedule-calendar";
 import { ScheduleList } from "@/components/cabinets/schedule-list";
 import { SchedulePicker } from "@/components/mission-control/schedule-picker";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type { ScheduleEvent } from "@/lib/agents/cron-compute";
 import type { HumanInboxDraft, AgentListItem } from "@/types/agents";
 import type { CabinetOverview, CabinetVisibilityMode } from "@/types/cabinets";
@@ -118,12 +119,6 @@ const TRIGGER_STYLES: Record<ConversationTrigger, string> = {
   manual: "bg-sky-500/12 text-sky-400 ring-1 ring-sky-500/20",
   job: "bg-emerald-500/12 text-emerald-400 ring-1 ring-emerald-500/20",
   heartbeat: "bg-pink-500/12 text-pink-400 ring-1 ring-pink-500/20",
-};
-
-const TRIGGER_LABELS: Record<ConversationTrigger, string> = {
-  manual: "Manual",
-  job: "Job",
-  heartbeat: "Heartbeat",
 };
 
 function startCase(value: string | undefined, fallback = "General"): string {
@@ -275,6 +270,7 @@ function CreateDraftDialog({
   onCreated: () => void;
   onStarted: () => void;
 }) {
+  const { t } = useLocale();
   const treeNodes = useTreeStore((s) => s.nodes);
   const [startingNow, setStartingNow] = useState(false);
 
@@ -379,11 +375,11 @@ function CreateDraftDialog({
     <div className="flex items-center justify-end gap-5 px-4 py-2.5 text-[11px] text-muted-foreground/50">
       <span className="flex items-center gap-1.5">
         <kbd className="rounded border border-border/50 bg-muted/50 px-1 py-0.5 font-mono text-[10px]">↵</kbd>
-        Add to inbox
+        {t("tasks.dialog.create.addToInbox")}
       </span>
       <span className="flex items-center gap-1.5">
         <kbd className="rounded border border-border/50 bg-muted/50 px-1 py-0.5 font-mono text-[10px]">⌘↵</kbd>
-        Start now
+        {t("tasks.dialog.create.startNow")}
       </span>
     </div>
   );
@@ -392,12 +388,12 @@ function CreateDraftDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl p-0 gap-0 overflow-visible">
         <DialogHeader className="px-5 pt-5 pb-3">
-          <DialogTitle className="text-xl font-semibold">What needs to get done?</DialogTitle>
+          <DialogTitle className="text-xl font-semibold">{t("tasks.dialog.create.title")}</DialogTitle>
         </DialogHeader>
         <ComposerInput
           composer={composer}
           placeholder={placeholder}
-          submitLabel="Add to inbox"
+          submitLabel={t("tasks.dialog.create.addToInbox")}
           variant="inline"
           items={mentionItems}
           autoFocus
@@ -406,7 +402,7 @@ function CreateDraftDialog({
           showKeyHint={false}
           onKeyDown={handleKeyDown}
           secondaryAction={{
-            label: "Start now",
+            label: t("tasks.dialog.create.startNow"),
             onClick: () => void handleStartNow(),
             loading: startingNow,
             disabled: !ceoAgent && composer.mentions.agents.length === 0,
@@ -439,6 +435,7 @@ function AssignDraftDialog({
   onSaveForLater: () => void;
   onStartNow: () => void;
 }) {
+  const { t } = useLocale();
   const agentItems = visibleAgents.map((agent) => ({
     label: `${agent.name}${agent.cabinetName ? ` · ${agent.cabinetName}` : ""}`,
     value: agent.scopedId,
@@ -448,9 +445,9 @@ function AssignDraftDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Assign Draft</DialogTitle>
+          <DialogTitle>{t("tasks.dialog.assign.title")}</DialogTitle>
           <DialogDescription>
-            Pick the agent who should handle this task now or later.
+            {t("tasks.dialog.assign.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -468,7 +465,7 @@ function AssignDraftDialog({
 
           <div className="flex flex-col gap-2">
             <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
-              Agent
+              {t("tasks.dialog.assign.agent")}
             </label>
             <Select
               items={agentItems}
@@ -479,7 +476,7 @@ function AssignDraftDialog({
               disabled={visibleAgents.length === 0}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="No visible agents" />
+                <SelectValue placeholder={t("tasks.dialog.assign.noVisibleAgents")} />
               </SelectTrigger>
               <SelectContent align="start">
                 <SelectGroup>
@@ -500,7 +497,7 @@ function AssignDraftDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("tasks.dialog.assign.cancel")}
           </Button>
           <Button
             variant="outline"
@@ -512,7 +509,7 @@ function AssignDraftDialog({
             ) : (
               <Send data-icon="inline-start" />
             )}
-            Save for later
+            {t("tasks.dialog.assign.saveForLater")}
           </Button>
           <Button onClick={onStartNow} disabled={!selectedAgentId || busyAction !== null}>
             {busyAction === "start" ? (
@@ -520,7 +517,7 @@ function AssignDraftDialog({
             ) : (
               <Play data-icon="inline-start" />
             )}
-            Start now
+            {t("tasks.dialog.create.startNow")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -547,9 +544,13 @@ function DraftRow({
   onChangeAssignment: () => void;
   onStartNow: () => void;
 }) {
+  const { t, format } = useLocale();
   const assignmentText = assignedAgentLabel
-    ? `Assigned to ${assignedAgentLabel}${assignedCabinetLabel ? ` · ${assignedCabinetLabel}` : ""}`
-    : "Not assigned yet";
+    ? format("tasks.row.assignedTo", {
+        agent: assignedAgentLabel,
+        cabinet: assignedCabinetLabel ? ` · ${assignedCabinetLabel}` : "",
+      })
+    : t("tasks.row.notAssigned");
 
   return (
     <article className="border-b border-border/70 transition-colors hover:bg-accent/35 last:border-b-0">
@@ -579,13 +580,13 @@ function DraftRow({
 
           {!assignedAgentLabel && (
             <p className="mt-1 text-[10px] text-muted-foreground">
-              Choose an agent when you are ready to execute it.
+              {t("tasks.row.chooseAgentHint")}
             </p>
           )}
 
           {assignedAgentLabel && !canStartNow ? (
             <p className="mt-1 text-[10px] text-muted-foreground">
-              Assigned agent is not visible in this scope right now.
+              {t("tasks.row.agentOutOfScopeHint")}
             </p>
           ) : null}
 
@@ -599,7 +600,7 @@ function DraftRow({
                 disabled={busy}
               >
                 <Send data-icon="inline-start" />
-                Assign
+                {t("tasks.row.assign")}
               </Button>
             ) : null}
 
@@ -615,7 +616,7 @@ function DraftRow({
                 ) : (
                   <Play data-icon="inline-start" />
                 )}
-                Start now
+                {t("tasks.dialog.create.startNow")}
               </Button>
             ) : null}
 
@@ -627,7 +628,7 @@ function DraftRow({
                 onClick={onChangeAssignment}
                 disabled={busy}
               >
-                Change
+                {t("tasks.row.change")}
               </Button>
             ) : null}
           </div>
@@ -656,6 +657,7 @@ function ConversationRow({
   onDelete?: () => void;
   busy?: boolean;
 }) {
+  const { t } = useLocale();
   const hasActions = onStop || onRestart || onDelete;
   return (
     <div className="group relative flex w-full items-stretch border-b border-border/70 last:border-b-0 hover:bg-accent/35 transition-colors">
@@ -684,8 +686,20 @@ function ConversationRow({
       {/* Trigger icon — always at far right, in flow, no layout shift */}
       <div className="flex shrink-0 items-center pr-3 pl-1">
         <span
-          aria-label={TRIGGER_LABELS[conversation.trigger]}
-          title={TRIGGER_LABELS[conversation.trigger]}
+          aria-label={
+            conversation.trigger === "manual"
+              ? t("tasks.filters.manual")
+              : conversation.trigger === "job"
+                ? t("agents.filters.job")
+                : t("tasks.filters.heartbeat")
+          }
+          title={
+            conversation.trigger === "manual"
+              ? t("tasks.filters.manual")
+              : conversation.trigger === "job"
+                ? t("agents.filters.job")
+                : t("tasks.filters.heartbeat")
+          }
           className={cn(
             "inline-flex h-5.5 w-5.5 items-center justify-center rounded-full",
             TRIGGER_STYLES[conversation.trigger]
@@ -702,7 +716,7 @@ function ConversationRow({
             <button
               onClick={(e) => { e.stopPropagation(); onStop(); }}
               disabled={busy}
-              title="Stop"
+              title={t("tasks.rowActions.stop")}
               className="rounded-md p-1.5 text-muted-foreground bg-muted hover:bg-destructive/20 hover:text-destructive disabled:opacity-50 transition-colors"
             >
               {busy ? (
@@ -716,7 +730,7 @@ function ConversationRow({
             <button
               onClick={(e) => { e.stopPropagation(); onRestart(); }}
               disabled={busy}
-              title="Restart"
+              title={t("tasks.rowActions.restart")}
               className="rounded-md p-1.5 text-muted-foreground bg-muted hover:bg-primary/20 hover:text-primary disabled:opacity-50 transition-colors"
             >
               <RotateCcw className="h-4 w-4" />
@@ -726,7 +740,7 @@ function ConversationRow({
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
               disabled={busy}
-              title="Delete"
+              title={t("tasks.rowActions.delete")}
               className="rounded-md p-1.5 text-muted-foreground bg-muted hover:bg-destructive/20 hover:text-destructive disabled:opacity-50 transition-colors"
             >
               <Trash2 className="h-4 w-4" />
@@ -739,19 +753,23 @@ function ConversationRow({
 }
 
 function BoardLane({
-  lane,
+  copy,
   count,
   headerAction,
   emptyState,
   children,
 }: {
-  lane: BoardLane;
+  copy: {
+    title: string;
+    description: string;
+    icon: typeof Inbox;
+    badge: string;
+  };
   count: number;
   headerAction?: ReactNode;
   emptyState: ReactNode;
   children: ReactNode;
 }) {
-  const copy = LANE_COPY[lane];
   const Icon = copy.icon;
 
   return (
@@ -762,7 +780,7 @@ function BoardLane({
             <Icon
               className={cn(
                 "size-4 shrink-0 text-muted-foreground",
-                lane === "running" && count > 0 && "animate-spin"
+                copy.icon === Loader2 && count > 0 && "animate-spin"
               )}
             />
             <h3 className="text-[14px] font-semibold text-foreground">{copy.title}</h3>
@@ -803,6 +821,7 @@ export function TasksBoard({
   cabinetPath?: string;
   workspaceMode?: "ops" | "cabinet";
 } = {}) {
+  const { locale, t, format } = useLocale();
   const setSection = useAppStore((state) => state.setSection);
   const setTaskPanelConversation = useAppStore((state) => state.setTaskPanelConversation);
   const cabinetVisibilityModes = useAppStore((state) => state.cabinetVisibilityModes);
@@ -929,6 +948,54 @@ export function TasksBoard({
   }, [refreshBoard]);
 
   const visibleAgents = useMemo(() => overview?.agents || [], [overview]);
+
+  const localizedTriggerLabels = useMemo(
+    () => ({
+      all: t("tasks.filters.all"),
+      manual: t("tasks.filters.manual"),
+      job: t("tasks.filters.jobs"),
+      heartbeat: t("tasks.filters.heartbeat"),
+    }),
+    [t]
+  );
+
+  const localizedRowActionLabels = useMemo(
+    () => ({
+      stop: t("tasks.rowActions.stop"),
+      restart: t("tasks.rowActions.restart"),
+      delete: t("tasks.rowActions.delete"),
+      stopAllTitle: t("tasks.bulk.stopAllTitle"),
+      restartAllTitle: t("tasks.bulk.restartAllTitle"),
+      restartFailedTitle: t("tasks.bulk.restartFailedTitle"),
+    }),
+    [t]
+  );
+
+  const localizedLaneCopy = useMemo(
+    () => ({
+      inbox: {
+        ...LANE_COPY.inbox,
+        title: t("tasks.lane.inbox.title"),
+        description: t("tasks.lane.inbox.description"),
+      },
+      running: {
+        ...LANE_COPY.running,
+        title: t("tasks.lane.running.title"),
+        description: t("tasks.lane.running.description"),
+      },
+      completed: {
+        ...LANE_COPY.completed,
+        title: t("tasks.lane.completed.title"),
+        description: t("tasks.lane.completed.description"),
+      },
+      failed: {
+        ...LANE_COPY.failed,
+        title: t("tasks.lane.failed.title"),
+        description: t("tasks.lane.failed.description"),
+      },
+    }),
+    [t]
+  );
 
   useEffect(() => {
     if (
@@ -1301,10 +1368,14 @@ export function TasksBoard({
       ? "Cabinet"
       : startCase(effectiveCabinetPath.split("/").pop()));
   const scopeLabel =
-    CABINET_VISIBILITY_OPTIONS.find((option) => option.value === effectiveVisibilityMode)?.label ||
-    "Own agents only";
+    effectiveVisibilityMode === "own"
+      ? t("tasks.filters.ownAgentsOnly")
+      : CABINET_VISIBILITY_OPTIONS.find((option) => option.value === effectiveVisibilityMode)?.label ||
+        t("tasks.filters.ownAgentsOnly");
   const boardTitle =
-    resolvedWorkspaceMode === "cabinet" ? `${cabinetName} Task Board` : "All Cabinets Task Board";
+    resolvedWorkspaceMode === "cabinet"
+      ? format("tasks.board.title.cabinet", { name: cabinetName })
+      : t("tasks.board.title.allCabinets");
   const runsLabel =
     triggerFilter === "all"
       ? `${filteredConversations.length} run${filteredConversations.length === 1 ? "" : "s"}`
@@ -1332,7 +1403,7 @@ export function TasksBoard({
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h1 className="font-body-serif text-[1.9rem] leading-none tracking-tight text-foreground sm:text-[2.2rem]">
-                Jobs & heartbeats
+                {t("tasks.schedule.header")}
               </h1>
               <p className="pt-2 text-sm leading-6 text-muted-foreground">
                 {jobCount} scheduled job{jobCount === 1 ? "" : "s"} and {heartbeatCount} heartbeat{heartbeatCount === 1 ? "" : "s"}{resolvedWorkspaceMode === "cabinet" ? ` in ${cabinetName}` : " across all cabinets"}.
@@ -1341,7 +1412,7 @@ export function TasksBoard({
             <div className="flex shrink-0 items-center gap-3">
               <Button variant="outline" size="sm" className="h-7" onClick={() => setBoardView("board")}>
                 <KanbanSquare data-icon="inline-start" className="h-3.5 w-3.5" />
-                Back to Board
+                {t("tasks.schedule.backToBoard")}
               </Button>
             </div>
           </div>
@@ -1351,11 +1422,11 @@ export function TasksBoard({
             <div className="flex items-center rounded-lg border border-border/60 p-0.5">
               <button onClick={() => setScheduleView("calendar")} className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors", scheduleView === "calendar" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
                 <Calendar className="h-3.5 w-3.5" />
-                Calendar
+                {t("tasks.schedule.calendar")}
               </button>
               <button onClick={() => setScheduleView("list")} className={cn("flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors", scheduleView === "list" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
                 <LayoutList className="h-3.5 w-3.5" />
-                List
+                {t("tasks.schedule.list")}
               </button>
             </div>
 
@@ -1372,13 +1443,13 @@ export function TasksBoard({
 
                 <div className="flex items-center gap-1">
                   <button onClick={() => navigateCalendar(-1)} className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"><ChevronLeft className="h-4 w-4" /></button>
-                  <button onClick={() => navigateCalendar(0)} className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground">Today</button>
+                  <button onClick={() => navigateCalendar(0)} className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground">{t("tasks.schedule.today")}</button>
                   <button onClick={() => navigateCalendar(1)} className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"><ChevronRight className="h-4 w-4" /></button>
                 </div>
 
                 <span className="text-sm font-medium text-foreground">{calendarLabel}</span>
 
-                <button onClick={() => setCalendarFullscreen((v) => !v)} className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground" title={calendarFullscreen ? "Exit full screen" : "Full screen"}>
+                <button onClick={() => setCalendarFullscreen((v) => !v)} className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground" title={calendarFullscreen ? t("tasks.schedule.exitFullScreen") : t("tasks.schedule.fullScreen")}>
                   {calendarFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
                 </button>
               </>
@@ -1439,7 +1510,7 @@ export function TasksBoard({
 
               <Button variant="outline" size="sm" className="h-7" onClick={() => void refreshBoard()} disabled={refreshing}>
                 <RefreshCw data-icon="inline-start" className={cn(refreshing && "animate-spin")} />
-                Refresh
+                {t("tasks.common.refresh")}
               </Button>
             </div>
           </div>
@@ -1492,29 +1563,29 @@ export function TasksBoard({
                   </DialogTitle>
                   <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => void runScheduleJob()} disabled={scheduleDialogBusy}>
                     {scheduleDialogBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-                    Run now
+                    {t("tasks.schedule.runNow")}
                   </Button>
                 </div>
               </DialogHeader>
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Schedule</span>
+                  <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{t("tasks.schedule.field.schedule")}</span>
                   <SchedulePicker value={scheduleJobDialog.draft.schedule || "0 9 * * 1-5"} onChange={(cron) => setScheduleJobDialog((p) => p ? { ...p, draft: { ...p.draft, schedule: cron } } : p)} />
                 </div>
                 <div className="space-y-1.5">
-                  <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Prompt</span>
-                  <textarea value={scheduleJobDialog.draft.prompt} onChange={(e) => setScheduleJobDialog((p) => p ? { ...p, draft: { ...p.draft, prompt: e.target.value } } : p)} className="h-48 w-full resize-none rounded-lg bg-muted/60 px-3 py-2 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:bg-muted" placeholder="What should this job do?" />
+                  <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{t("tasks.schedule.field.prompt")}</span>
+                  <textarea value={scheduleJobDialog.draft.prompt} onChange={(e) => setScheduleJobDialog((p) => p ? { ...p, draft: { ...p.draft, prompt: e.target.value } } : p)} className="h-48 w-full resize-none rounded-lg bg-muted/60 px-3 py-2 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:bg-muted" placeholder={t("tasks.schedule.jobPlaceholder")} />
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3">
                   <label className="flex cursor-pointer items-center gap-2 text-[12px] text-muted-foreground">
                     <input type="checkbox" checked={scheduleJobDialog.draft.enabled} onChange={(e) => setScheduleJobDialog((p) => p ? { ...p, draft: { ...p.draft, enabled: e.target.checked } } : p)} />
-                    Enabled
+                    {t("tasks.schedule.field.enabled")}
                   </label>
                   <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setScheduleJobDialog(null)}>Cancel</Button>
+                    <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setScheduleJobDialog(null)}>{t("tasks.schedule.cancel")}</Button>
                     <Button size="sm" className="h-8 gap-1 text-xs" onClick={() => void saveScheduleJob()} disabled={scheduleDialogSaving}>
                       <Save className="h-3.5 w-3.5" />
-                      {scheduleDialogSaving ? "Saving..." : "Save"}
+                      {scheduleDialogSaving ? t("tasks.schedule.saving") : t("tasks.schedule.save")}
                     </Button>
                   </div>
                 </div>
@@ -1536,25 +1607,25 @@ export function TasksBoard({
                   </DialogTitle>
                   <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => void runScheduleHeartbeat()} disabled={scheduleDialogBusy}>
                     {scheduleDialogBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-                    Run now
+                    {t("tasks.schedule.runNow")}
                   </Button>
                 </div>
               </DialogHeader>
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Schedule</span>
+                  <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{t("tasks.schedule.field.schedule")}</span>
                   <SchedulePicker value={scheduleHeartbeatDialog.heartbeat} onChange={(cron) => setScheduleHeartbeatDialog((p) => p ? { ...p, heartbeat: cron } : p)} />
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3">
                   <label className="flex cursor-pointer items-center gap-2 text-[12px] text-muted-foreground">
                     <input type="checkbox" checked={scheduleHeartbeatDialog.active} onChange={(e) => setScheduleHeartbeatDialog((p) => p ? { ...p, active: e.target.checked } : p)} className="h-3.5 w-3.5 cursor-pointer appearance-none rounded-sm border border-border bg-background transition-colors checked:border-primary checked:bg-primary focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1" />
-                    Active
+                    {t("tasks.schedule.field.active")}
                   </label>
                   <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setScheduleHeartbeatDialog(null)}>Cancel</Button>
+                    <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setScheduleHeartbeatDialog(null)}>{t("tasks.schedule.cancel")}</Button>
                     <Button size="sm" className="h-8 gap-1 text-xs" onClick={() => void saveScheduleHeartbeat()} disabled={scheduleDialogSaving}>
                       <Save className="h-3.5 w-3.5" />
-                      {scheduleDialogSaving ? "Saving..." : "Save"}
+                      {scheduleDialogSaving ? t("tasks.schedule.saving") : t("tasks.schedule.save")}
                     </Button>
                   </div>
                 </div>
@@ -1587,7 +1658,7 @@ export function TasksBoard({
               onClick={() => setBoardView("schedule")}
             >
               <Calendar className="h-3.5 w-3.5" />
-              Jobs & Heartbeats
+              {t("tasks.board.openSchedule")}
             </Button>
           </div>
         </div>
@@ -1601,21 +1672,21 @@ export function TasksBoard({
               onClick={() => setTriggerFilter(filter)}
             >
               {filter === "all" ? (
-                "All"
+                localizedTriggerLabels.all
               ) : filter === "manual" ? (
                 <>
                   <TriggerIcon trigger="manual" className={cn("size-3", triggerFilter !== "manual" && "text-sky-400")} />
-                  Manual
+                  {localizedTriggerLabels.manual}
                 </>
               ) : filter === "job" ? (
                 <>
                   <TriggerIcon trigger="job" className={cn("size-3", triggerFilter !== "job" && "text-emerald-400")} />
-                  Jobs
+                  {localizedTriggerLabels.job}
                 </>
               ) : (
                 <>
                   <TriggerIcon trigger="heartbeat" className={cn("size-3", triggerFilter !== "heartbeat" && "text-pink-400")} />
-                  Heartbeat
+                  {localizedTriggerLabels.heartbeat}
                 </>
               )}
             </TriggerChip>
@@ -1630,11 +1701,11 @@ export function TasksBoard({
               }
             >
               <SelectTrigger size="sm" className="bg-background">
-                <SelectValue placeholder="All visible agents" />
+                <SelectValue placeholder={t("tasks.filters.allVisibleAgents")} />
               </SelectTrigger>
               <SelectContent align="end" className="min-w-[280px]">
                 <SelectGroup>
-                  <SelectItem value="all">All visible agents</SelectItem>
+                  <SelectItem value="all">{t("tasks.filters.allVisibleAgents")}</SelectItem>
                   {visibleAgents.map((agent) => (
                     <SelectItem key={agent.scopedId} value={agent.scopedId}>
                       <span className="text-sm leading-none">{agent.emoji || "🤖"}</span>
@@ -1685,7 +1756,7 @@ export function TasksBoard({
                 data-icon="inline-start"
                 className={cn(refreshing && "animate-spin")}
               />
-              Refresh
+              {t("tasks.common.refresh")}
             </Button>
           </div>
         </div>
@@ -1725,11 +1796,11 @@ export function TasksBoard({
           ) : (
             <div className="flex h-full min-w-max">
               <BoardLane
-                lane="inbox"
+                copy={localizedLaneCopy.inbox}
                 count={drafts.length}
                 emptyState={
                   <div className="flex flex-col items-center gap-4 py-4 w-full text-center">
-                    <p className="text-[12px] text-muted-foreground">No inbox tasks yet.</p>
+                    <p className="text-[12px] text-muted-foreground">{t("tasks.lane.inbox.empty")}</p>
                     <Button
                       variant="outline"
                       size="default"
@@ -1737,7 +1808,7 @@ export function TasksBoard({
                       onClick={() => setCreateDialogOpen(true)}
                     >
                       <Plus className="h-4 w-4" />
-                      Add task
+                      {t("tasks.lane.inbox.addTask")}
                     </Button>
                   </div>
                 }
@@ -1749,7 +1820,7 @@ export function TasksBoard({
                     onClick={() => setCreateDialogOpen(true)}
                   >
                     <Plus data-icon="inline-start" />
-                    Add
+                    {t("tasks.lane.inbox.add")}
                   </Button>
                 }
               >
@@ -1780,27 +1851,27 @@ export function TasksBoard({
               </BoardLane>
 
               <BoardLane
-                lane="running"
+                copy={localizedLaneCopy.running}
                 count={groupedConversations.running.length}
-                emptyState="Nothing is running right now."
+                emptyState={t("tasks.lane.running.empty")}
                 headerAction={
                   groupedConversations.running.length > 0 ? (
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => void killAllRunning()}
-                        title="Stop all running tasks"
+                        title={localizedRowActionLabels.stopAllTitle}
                         className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors"
                       >
                         <Square className="h-3 w-3" />
-                        Kill All
+                        {t("tasks.bulk.killAll")}
                       </button>
                       <button
                         onClick={() => void restartAllRunning()}
-                        title="Restart all running tasks"
+                        title={localizedRowActionLabels.restartAllTitle}
                         className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-muted-foreground hover:bg-primary/15 hover:text-primary transition-colors"
                       >
                         <RotateCcw className="h-3 w-3" />
-                        Restart All
+                        {t("tasks.bulk.restartAll")}
                       </button>
                     </div>
                   ) : null
@@ -1828,9 +1899,9 @@ export function TasksBoard({
               </BoardLane>
 
               <BoardLane
-                lane="completed"
+                copy={localizedLaneCopy.completed}
                 count={groupedConversations.completed.length}
-                emptyState="Completed runs will collect here as they finish."
+                emptyState={t("tasks.lane.completed.empty")}
               >
                 {groupedConversations.completed.map((conversation) => {
                   const agent =
@@ -1853,18 +1924,18 @@ export function TasksBoard({
               </BoardLane>
 
               <BoardLane
-                lane="failed"
+                copy={localizedLaneCopy.failed}
                 count={groupedConversations.failed.length}
-                emptyState="Failed runs will surface here so they are easy to retry."
+                emptyState={t("tasks.lane.failed.empty")}
                 headerAction={
                   groupedConversations.failed.length > 0 ? (
                     <button
                       onClick={() => void Promise.all(groupedConversations.failed.map((c) => restartConversation(c)))}
-                      title="Restart all failed tasks"
+                      title={localizedRowActionLabels.restartFailedTitle}
                       className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-muted-foreground hover:bg-primary/15 hover:text-primary transition-colors"
                     >
                       <RotateCcw className="h-3 w-3" />
-                      Restart All
+                      {t("tasks.bulk.restartAll")}
                     </button>
                   ) : null
                 }
