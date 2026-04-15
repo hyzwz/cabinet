@@ -80,6 +80,7 @@ data/**/.DS_Store
 
 # claude code
 .claude/
+.worktrees/
 
 # stray build artifacts
 data/.agents/.library/.next/
