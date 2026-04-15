@@ -2,6 +2,32 @@ import { execSync } from "child_process";
 import type { AgentProvider, ProviderStatus } from "../provider-interface";
 import { checkCliProviderAvailable, resolveCliCommand, RUNTIME_PATH } from "../provider-cli";
 
+const CODEX_REASONING_LEVELS = [
+  { id: "low", name: "Low", description: "Faster, lighter reasoning" },
+  { id: "medium", name: "Medium", description: "Balanced depth" },
+  { id: "high", name: "High", description: "More deliberate reasoning" },
+] as const;
+
+const CODEX_EXTENDED_REASONING_LEVELS = [
+  ...CODEX_REASONING_LEVELS,
+  {
+    id: "xhigh",
+    name: "Extra High",
+    description: "Maximum depth for the hardest tasks",
+  },
+] as const;
+
+const CODEX_MAX_REASONING_LEVELS = [
+  { id: "none", name: "None", description: "Skip extra reasoning tokens" },
+  { id: "medium", name: "Medium", description: "Balanced depth" },
+  { id: "high", name: "High", description: "More deliberate reasoning" },
+  {
+    id: "xhigh",
+    name: "Extra High",
+    description: "Maximum depth for the hardest tasks",
+  },
+] as const;
+
 export const codexCliProvider: AgentProvider = {
   id: "codex-cli",
   name: "Codex CLI",
@@ -14,11 +40,59 @@ export const codexCliProvider: AgentProvider = {
   ],
   detachedPromptLaunchMode: "one-shot",
   models: [
-    { id: "o3", name: "o3", description: "Most capable reasoning" },
-    { id: "o4-mini", name: "o4-mini", description: "Fast reasoning" },
-    { id: "gpt-4.1", name: "GPT-4.1", description: "Flagship GPT model" },
-    { id: "gpt-4.1-mini", name: "GPT-4.1 Mini", description: "Fast and affordable" },
-    { id: "gpt-4.1-nano", name: "GPT-4.1 Nano", description: "Fastest, lowest cost" },
+    {
+      id: "gpt-5.2-codex",
+      name: "GPT-5.2 Codex",
+      description: "Current flagship Codex model for agentic coding",
+      effortLevels: [...CODEX_EXTENDED_REASONING_LEVELS],
+    },
+    {
+      id: "gpt-5.1-codex-max",
+      name: "GPT-5.1 Codex Max",
+      description: "High-depth Codex model with extended reasoning",
+      effortLevels: [...CODEX_MAX_REASONING_LEVELS],
+    },
+    {
+      id: "o3",
+      name: "o3",
+      description: "Most capable legacy reasoning model",
+      effortLevels: [...CODEX_REASONING_LEVELS],
+    },
+    {
+      id: "o4-mini",
+      name: "o4-mini",
+      description: "Fast legacy reasoning model",
+      effortLevels: [...CODEX_REASONING_LEVELS],
+    },
+    {
+      id: "gpt-4.1",
+      name: "GPT-4.1",
+      description: "Flagship GPT model",
+      effortLevels: [],
+    },
+    {
+      id: "gpt-4.1-mini",
+      name: "GPT-4.1 Mini",
+      description: "Fast and affordable",
+      effortLevels: [],
+    },
+    {
+      id: "gpt-4.1-nano",
+      name: "GPT-4.1 Nano",
+      description: "Fastest, lowest cost",
+      effortLevels: [],
+    },
+  ],
+  effortLevels: [
+    { id: "none", name: "None", description: "Skip extra reasoning tokens" },
+    { id: "low", name: "Low", description: "Faster, lighter reasoning" },
+    { id: "medium", name: "Medium", description: "Balanced depth" },
+    { id: "high", name: "High", description: "More deliberate reasoning" },
+    {
+      id: "xhigh",
+      name: "Extra High",
+      description: "Maximum depth for the hardest tasks",
+    },
   ],
   command: "codex",
   commandCandidates: [

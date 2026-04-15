@@ -34,6 +34,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  getModelEffortLevels,
+  getSuggestedProviderEffort,
+  resolveProviderEffort,
+  resolveProviderModel,
+} from "@/lib/agents/runtime-options";
 
 interface OnboardingAnswers {
   name: string;
@@ -1246,8 +1252,13 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
   const readyProviders = providers.filter((p) => p.available && p.authenticated);
   const anyProviderReady = readyProviders.length > 0;
   const activeProvider = providers.find((p) => p.id === selectedProvider);
+  const activeModel = resolveProviderModel(
+    activeProvider,
+    selectedModel || undefined,
+    undefined
+  );
   const activeModels = activeProvider?.models || [];
-  const activeEffortLevels = activeProvider?.effortLevels || [];
+  const activeEffortLevels = getModelEffortLevels(activeProvider, activeModel?.id);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1305,12 +1316,12 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
       const ready = cliProviders.filter((p) => p.available && p.authenticated);
       if (ready.length > 0 && !selectedProvider) {
         const first = ready[0];
+        const firstModelId = first.models?.[0]?.id ?? null;
         setSelectedProvider(first.id);
-        if (first.models?.length) setSelectedModel(first.models[0].id);
-        if (first.effortLevels?.length) {
-          const defaultEffort = first.effortLevels.find((e) => e.id === "high") || first.effortLevels[0];
-          setSelectedEffort(defaultEffort.id);
-        }
+        setSelectedModel(firstModelId);
+        setSelectedEffort(
+          getSuggestedProviderEffort(first, firstModelId || undefined)?.id || null
+        );
       }
     } catch {
       setProviders([]);
@@ -1716,13 +1727,15 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
                         }}
                         onClick={() => {
                           if (!isReady) return;
+                          const nextModelId = p.models?.[0]?.id ?? null;
                           setSelectedProvider(p.id);
-                          if (p.models?.length) setSelectedModel(p.models[0].id);
-                          else setSelectedModel(null);
-                          if (p.effortLevels?.length) {
-                            const def = p.effortLevels.find((e) => e.id === "high") || p.effortLevels[0];
-                            setSelectedEffort(def.id);
-                          } else setSelectedEffort(null);
+                          setSelectedModel(nextModelId);
+                          setSelectedEffort(
+                            getSuggestedProviderEffort(
+                              p,
+                              nextModelId || undefined
+                            )?.id || null
+                          );
                         }}
                       >
                         <div className="flex items-center gap-3">
@@ -1873,7 +1886,19 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
                       return (
                         <button
                           key={m.id}
-                          onClick={() => setSelectedModel(m.id)}
+                          onClick={() => {
+                            const nextEffortId =
+                              resolveProviderEffort(
+                                activeProvider,
+                                m.id,
+                                selectedEffort || undefined,
+                                undefined
+                              )?.id ||
+                              getSuggestedProviderEffort(activeProvider, m.id)?.id ||
+                              null;
+                            setSelectedModel(m.id);
+                            setSelectedEffort(nextEffortId);
+                          }}
                           className="rounded-xl p-3 text-left transition-all"
                           style={{
                             background: isMSelected ? WEB.accentBg : WEB.bgCard,
@@ -1906,7 +1931,9 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
               {activeEffortLevels.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: WEB.textTertiary }}>
-                    Reasoning effort
+                    {activeModel?.name
+                      ? `Reasoning effort · ${activeModel.name}`
+                      : "Reasoning effort"}
                   </p>
                   <div className="grid gap-2 sm:grid-cols-4">
                     {activeEffortLevels.map((e) => {

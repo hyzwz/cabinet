@@ -16,6 +16,7 @@ export interface ProviderModel {
   id: string;
   name: string;
   description?: string;
+  effortLevels?: ProviderEffortLevel[];
 }
 
 export interface ProviderEffortLevel {

@@ -5,6 +5,7 @@ import { BrainCircuit, X } from "lucide-react";
 import { useAppStore } from "@/stores/app-store";
 import { ConversationSessionView } from "@/components/agents/conversation-session-view";
 import { Button } from "@/components/ui/button";
+import { formatEffortName } from "@/lib/agents/runtime-options";
 import type {
   ConversationDetail,
   ConversationMeta,
@@ -60,7 +61,7 @@ function readConversationEffort(meta: Pick<ConversationMeta, "adapterConfig">): 
         ? config.reasoningEffort
         : null;
 
-  return effort ? startCase(effort) : null;
+  return effort ? formatEffortName(effort) : null;
 }
 
 function formatProviderLabel(providerId?: string): string | null {

@@ -48,6 +48,13 @@ function buildCodexArgs(config: Record<string, unknown>): string[] {
     args.push("--profile", profile);
   }
 
+  const effort =
+    readStringConfig(config, "effort") ||
+    readStringConfig(config, "reasoningEffort");
+  if (effort) {
+    args.push("-c", `model_reasoning_effort="${effort}"`);
+  }
+
   return args;
 }
 

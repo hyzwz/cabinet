@@ -3,6 +3,13 @@ import type { AgentProvider, ProviderStatus } from "../provider-interface";
 import { checkCliProviderAvailable, resolveCliCommand, RUNTIME_PATH } from "../provider-cli";
 import { getNvmNodeBin } from "../nvm-path";
 
+const CLAUDE_THINKING_LEVELS = [
+  { id: "low", name: "Low", description: "Quick, minimal reasoning" },
+  { id: "medium", name: "Medium", description: "Balanced depth" },
+  { id: "high", name: "High", description: "Thorough reasoning" },
+  { id: "max", name: "Max", description: "Maximum depth" },
+] as const;
+
 const nvmClaudePath = (() => {
   const bin = getNvmNodeBin();
   return bin ? `${bin}/claude` : null;
@@ -20,17 +27,27 @@ export const claudeCodeProvider: AgentProvider = {
     { title: "Log in", detail: "Run claude in your terminal and follow the login prompts." },
   ],
   models: [
-    { id: "sonnet", name: "Claude Sonnet", description: "Fast and capable" },
-    { id: "opus", name: "Claude Opus", description: "Most intelligent" },
-    { id: "haiku", name: "Claude Haiku", description: "Fastest responses" },
+    {
+      id: "sonnet",
+      name: "Claude Sonnet",
+      description: "Fast and capable with configurable effort",
+      effortLevels: [...CLAUDE_THINKING_LEVELS],
+    },
+    {
+      id: "opus",
+      name: "Claude Opus",
+      description: "Most intelligent with configurable effort",
+      effortLevels: [...CLAUDE_THINKING_LEVELS],
+    },
+    {
+      id: "haiku",
+      name: "Claude Haiku",
+      description: "Fastest responses",
+      effortLevels: [],
+    },
   ],
   detachedPromptLaunchMode: "session",
-  effortLevels: [
-    { id: "low", name: "Low", description: "Quick, minimal reasoning" },
-    { id: "medium", name: "Medium", description: "Balanced" },
-    { id: "high", name: "High", description: "Thorough reasoning" },
-    { id: "max", name: "Max", description: "Maximum depth" },
-  ],
+  effortLevels: [...CLAUDE_THINKING_LEVELS],
   command: "claude",
   commandCandidates: [
     `${process.env.HOME || ""}/.local/bin/claude`,
