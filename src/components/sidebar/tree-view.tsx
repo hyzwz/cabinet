@@ -81,6 +81,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 interface AgentSummary {
   scopedId?: string;
@@ -159,6 +160,7 @@ export function TreeView() {
   const [cabinetDeleteOpen, setCabinetDeleteOpen] = useState(false);
   const [kbCreating, setKbCreating] = useState(false);
   const [linkRepoOpen, setLinkRepoOpen] = useState(false);
+  const { t, format } = useLocale();
 
   const rootCabinet = useMemo(() => findRootCabinetNode(nodes), [nodes]);
   const routeCabinetPath = section.mode === "cabinet" ? section.cabinetPath : undefined;
@@ -174,7 +176,7 @@ export function TreeView() {
   const cabinetVisibilityMode =
     cabinetVisibilityModes[effectiveCabinetPath] || (activeCabinet ? "own" : "all");
   const visibleTreeNodes = activeCabinet?.children || rootCabinet?.children || nodes;
-  const kbSectionLabel = "Data";
+  const kbSectionLabel = t("sidebar.data");
 
   /* ── agent polling ─────────────────────────────────────────── */
 
@@ -239,7 +241,7 @@ export function TreeView() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-        Loading...
+        {t("sidebar.loading")}
       </div>
     );
   }
@@ -296,7 +298,7 @@ export function TreeView() {
             title={`Back to ${parentCabinet.frontmatter?.title || parentCabinet.name}`}
           >
             <CornerLeftUp className="h-2.5 w-2.5 shrink-0 relative -top-px" />
-            Back
+            {t("sidebar.back")}
           </button>
         ) : null}
 
@@ -309,23 +311,23 @@ export function TreeView() {
             className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 text-left hover:text-foreground/80 transition-colors"
           >
             <Archive className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-            {cabinetAgentScopeName || activeCabinet?.frontmatter?.title || activeCabinet?.name || "Cabinet"}
+            {cabinetAgentScopeName || activeCabinet?.frontmatter?.title || activeCabinet?.name || t("header.productName")}
           </button>
           </ContextMenuTrigger>
           <ContextMenuContent>
             <ContextMenuItem disabled className="flex-col items-start gap-0">
               <span className="flex items-center">
                 <Pencil className="h-4 w-4 mr-2" />
-                Rename
+                {t("sidebar.rename")}
               </span>
               <span className="text-[10px] text-muted-foreground/60 ml-6">
-                Coming soon
+                {t("sidebar.renameSoon")}
               </span>
             </ContextMenuItem>
             {cabinetPath !== ROOT_CABINET_PATH && (
               <ContextMenuItem onClick={() => navigator.clipboard.writeText(cabinetPath)}>
                 <Copy className="h-4 w-4 mr-2" />
-                Copy Relative Path
+                {t("sidebar.copyRelativePath")}
               </ContextMenuItem>
             )}
             <ContextMenuItem onClick={async () => {
@@ -335,7 +337,7 @@ export function TreeView() {
               );
             }}>
               <ClipboardCopy className="h-4 w-4 mr-2" />
-              Copy Full Path
+              {t("sidebar.copyFullPath")}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => {
               fetch("/api/system/open-data-dir", {
@@ -347,7 +349,7 @@ export function TreeView() {
               });
             }}>
               <FolderOpen className="h-4 w-4 mr-2" />
-              Open in Finder
+              {t("sidebar.openInFinder")}
             </ContextMenuItem>
             {cabinetPath !== ROOT_CABINET_PATH && (
               <>
@@ -357,7 +359,7 @@ export function TreeView() {
                   onClick={() => setCabinetDeleteOpen(true)}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
+                  {t("sidebar.delete")}
                 </ContextMenuItem>
               </>
             )}
@@ -381,7 +383,7 @@ export function TreeView() {
               size="sm"
               className="ml-auto h-5 min-w-0 w-auto gap-0.5 rounded border-none bg-transparent px-1.5 py-0 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 shadow-none hover:text-foreground/80 focus-visible:ring-0"
             >
-              <SelectValue placeholder="Own" />
+              <SelectValue placeholder={t("sidebar.visibilityOwn")} />
             </SelectTrigger>
             <SelectContent align="end" className="min-w-[200px]">
               <SelectGroup>
@@ -432,7 +434,7 @@ export function TreeView() {
                 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 hover:text-foreground/80 transition-colors"
               >
                 <Users className="h-3.5 w-3.5 shrink-0" />
-                Agents
+                {t("sidebar.agents")}
               </button>
               {activeCabinet ? null : (
                 <button
@@ -444,7 +446,7 @@ export function TreeView() {
                     }, 100);
                   }}
                   className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                  title="Add agent"
+                  title={t("sidebar.addAgent")}
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>
@@ -498,8 +500,14 @@ export function TreeView() {
                           <p className="mt-0.5 truncate text-[10px] text-muted-foreground/70">
                             {[
                               agent.inherited ? agent.cabinetName : null,
-                              `${agent.jobCount || 0} ${(agent.jobCount || 0) === 1 ? "job" : "jobs"}`,
-                              `${agent.taskCount || 0} ${(agent.taskCount || 0) === 1 ? "task" : "tasks"}`,
+                              format("sidebar.jobCount", {
+                                count: agent.jobCount || 0,
+                                label: t((agent.jobCount || 0) === 1 ? "sidebar.jobSingular" : "sidebar.jobPlural"),
+                              }),
+                              format("sidebar.taskCount", {
+                                count: agent.taskCount || 0,
+                                label: t((agent.taskCount || 0) === 1 ? "sidebar.taskSingular" : "sidebar.taskPlural"),
+                              }),
                               agent.heartbeat ? cronToShortLabel(agent.heartbeat) : null,
                             ]
                               .filter(Boolean)
@@ -514,8 +522,8 @@ export function TreeView() {
                       style={pad(2)}
                     >
                       {cabinetVisibilityMode === "own"
-                        ? "This cabinet does not have local agents yet."
-                        : "No agents are visible in the selected cabinet scope."}
+                        ? t("sidebar.emptyOwnAgents")
+                        : t("sidebar.emptyVisibleAgents")}
                     </div>
                   )
                 ) : (
@@ -532,7 +540,7 @@ export function TreeView() {
                     >
                       <span className="w-3.5" />
                       <Bot className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <span className="truncate">General</span>
+                      <span className="truncate">{t("sidebar.general")}</span>
                     </button>
                     {/* Editor first, then rest (depth 2) */}
                     {[
@@ -617,7 +625,7 @@ export function TreeView() {
             >
               <ChevronRight className="h-3 w-3 shrink-0 invisible" />
               <SquareKanban className="h-3.5 w-3.5 shrink-0" />
-              Tasks
+              {t("sidebar.tasks")}
             </button>
 
             {/* ── Divider ──────────────────────────────────── */}
@@ -655,11 +663,11 @@ export function TreeView() {
               <ContextMenuContent>
                 <ContextMenuItem onClick={() => setKbSubPageOpen(true)}>
                   <FilePlus className="h-4 w-4 mr-2" />
-                  Add Sub Page
+                  {t("sidebar.addSubPage")}
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => setLinkRepoOpen(true)}>
                   <GitBranch className="h-4 w-4 mr-2" />
-                  Load Knowledge
+                  {t("sidebar.loadKnowledge")}
                 </ContextMenuItem>
                 <ContextMenuItem onClick={async () => {
                   const dir = await getDataDir();
@@ -668,7 +676,7 @@ export function TreeView() {
                   );
                 }}>
                   <ClipboardCopy className="h-4 w-4 mr-2" />
-                  Copy Full Path
+                  {t("sidebar.copyFullPath")}
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => {
                   fetch("/api/system/open-data-dir", {
@@ -678,7 +686,7 @@ export function TreeView() {
                   });
                 }}>
                   <FolderOpen className="h-4 w-4 mr-2" />
-                  Open in Finder
+                  {t("sidebar.openInFinder")}
                 </ContextMenuItem>
               </ContextMenuContent>
               </ContextMenu>
@@ -703,7 +711,7 @@ export function TreeView() {
                   >
                     <span className="w-3.5" />
                     <Plus className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    {activeCabinet ? "Add cabinet data" : "Add your first page"}
+                    {activeCabinet ? t("sidebar.addCabinetData") : t("sidebar.addFirstPage")}
                   </button>
                 ) : (
                   visibleTreeNodes.map((node) => (
@@ -726,7 +734,7 @@ export function TreeView() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            Add Sub Page to &ldquo;{kbSectionLabel}&rdquo;
+            {format("sidebar.addSubPageTo", { title: kbSectionLabel })}
           </DialogTitle>
         </DialogHeader>
         <form
@@ -764,13 +772,13 @@ export function TreeView() {
           className="flex gap-2"
         >
           <Input
-            placeholder="Page title..."
+            placeholder={t("sidebar.pageTitlePlaceholder")}
             value={kbSubPageTitle}
             onChange={(e) => setKbSubPageTitle(e.target.value)}
             autoFocus
           />
           <Button type="submit" disabled={!kbSubPageTitle.trim() || kbCreating}>
-            {kbCreating ? "Creating..." : "Create"}
+            {kbCreating ? t("sidebar.creating") : t("sidebar.create")}
           </Button>
         </form>
       </DialogContent>
@@ -787,17 +795,17 @@ export function TreeView() {
             </div>
             <div className="flex flex-col gap-1">
               <DialogTitle>
-                Delete Cabinet &ldquo;{activeCabinet?.frontmatter?.title || activeCabinet?.name || cabinetPath}&rdquo;
+                {format("sidebar.deleteCabinetTitle", { title: activeCabinet?.frontmatter?.title || activeCabinet?.name || cabinetPath })}
               </DialogTitle>
               <DialogDescription>
-                This will permanently delete the cabinet and everything inside it — all pages, agents, jobs, and tasks. This cannot be undone.
+                {t("sidebar.deleteCabinetDescription")}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
         <DialogFooter className="mt-2">
           <Button variant="outline" onClick={() => setCabinetDeleteOpen(false)}>
-            Cancel
+            {t("sidebar.cancel")}
           </Button>
           <Button
             variant="destructive"
@@ -807,7 +815,7 @@ export function TreeView() {
               setSection({ type: "home" });
             }}
           >
-            Delete
+            {t("sidebar.delete")}
           </Button>
         </DialogFooter>
       </DialogContent>

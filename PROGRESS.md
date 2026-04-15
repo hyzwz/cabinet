@@ -304,3 +304,8 @@
 [2026-04-15] Fixed the Docker demo provider status cache so the web container stops serving stale local-provider results after switching to the host daemon URL. Verified the live :3100 app now reaches the host daemon for health and provider status checks.
 
 [2026-04-15] Localized the demo login surface copy through the shared zh/en i18n layer, including helper text, password placeholder, submit label, inline auth/connection errors, and loading state, while keeping the existing client-side login flow and header language switcher intact.
+
+[2026-04-15] Localized the demo home and shared header shell copy through the zh/en message layer, covering greeting/prompt text, quick actions, registry teaser/import states, header export labels, search hint, and theme menu labels. Added i18n message formatting for template/count strings and extended the i18n tests to cover the new shell keys and English fallback behavior.
+
+[2026-04-15] Localized the demo-visible sidebar and editor core UI for zh/en, covering sidebar actions, tree/context dialogs, load-knowledge flows, editor toolbar labels, source/preview toggle, empty state, AI prompt, and save-state copy. Added i18n assertions for these sidebar/editor surfaces while preserving English fallback behavior.
+[2026-04-15] Localized remaining sidebar core literals and cabinet-creation copy, added focused regression coverage to catch hard-coded sidebar/editor strings, and verified sidebar-to-editor locale persistence in zh/en on the demo path.
