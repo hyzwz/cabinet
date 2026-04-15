@@ -23,6 +23,7 @@ export const codexCliProvider: AgentProvider = {
   command: "codex",
   commandCandidates: [
     `${process.env.HOME || ""}/.local/bin/codex`,
+    `${process.env.HOME || ""}/.bun/bin/codex`,
     "/usr/local/bin/codex",
     "/opt/homebrew/bin/codex",
     "codex",

@@ -6,10 +6,11 @@ import { getNvmNodeBin } from "./nvm-path";
 const nvmBin = getNvmNodeBin();
 
 export const RUNTIME_PATH = [
+  ...(nvmBin ? [nvmBin] : []),
   `${process.env.HOME || ""}/.local/bin`,
+  `${process.env.HOME || ""}/.bun/bin`,
   "/usr/local/bin",
   "/opt/homebrew/bin",
-  ...(nvmBin ? [nvmBin] : []),
   process.env.PATH || "",
 ].filter(Boolean).join(":");
 
@@ -59,7 +60,8 @@ export async function checkCliProviderAvailable(provider: AgentProvider): Promis
       return;
     }
 
-    const proc = spawn(command, ["--version"], {
+    const versionArgs = provider.id === "codex-cli" ? ["--version"] : ["--version"];
+    const proc = spawn(command, versionArgs, {
       env: {
         ...process.env,
         PATH: RUNTIME_PATH,
@@ -72,8 +74,31 @@ export async function checkCliProviderAvailable(provider: AgentProvider): Promis
       resolve(value);
     };
 
+    let stdout = "";
+    let stderr = "";
+
+    proc.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
     proc.on("close", (code) => {
-      settle(code === 0);
+      if (code === 0) {
+        settle(true);
+        return;
+      }
+
+      const combined = `${stdout}
+${stderr}`.toLowerCase();
+      if (provider.id === "codex-cli" && combined.includes("codex-cli")) {
+        settle(true);
+        return;
+      }
+
+      settle(false);
     });
 
     proc.on("error", () => {

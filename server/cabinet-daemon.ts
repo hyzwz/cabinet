@@ -33,6 +33,11 @@ import {
   getSessionLaunchSpec,
   resolveProviderId,
 } from "../src/lib/agents/provider-runtime";
+import {
+  getConfiguredDefaultProviderId,
+  isProviderEnabled,
+  readProviderSettings,
+} from "../src/lib/agents/provider-settings";
 import { getNvmNodeBin } from "../src/lib/agents/nvm-path";
 import {
   appendConversationTranscript,
@@ -46,6 +51,8 @@ import {
   getTokenFromAuthorizationHeader,
   isDaemonTokenValid,
 } from "../src/lib/agents/daemon-auth";
+import { providerRegistry } from "../src/lib/agents/provider-registry";
+import { getProviderUsage } from "../src/lib/agents/provider-management";
 import {
   normalizeJobConfig,
   normalizeJobId,
@@ -164,6 +171,64 @@ function applyCors(req: http.IncomingMessage, res: http.ServerResponse): void {
   res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
 }
 
+
+async function getProviderStatuses() {
+  const providers = providerRegistry.listAll();
+  const statuses = await Promise.all(
+    providers.map(async (provider) => ({
+      id: provider.id,
+      name: provider.name,
+      type: provider.type,
+      icon: provider.icon,
+      ...(await provider.healthCheck()),
+    }))
+  );
+
+  return {
+    providers: statuses,
+    anyReady: statuses.some((provider) => provider.available && provider.authenticated),
+  };
+}
+
+async function getProvidersPayload() {
+  const providers = providerRegistry.listAll();
+  const settings = await readProviderSettings();
+  const usage = await getProviderUsage();
+  const daemonStatus = await getProviderStatuses();
+  const statusById = new Map(daemonStatus.providers.map((provider) => [provider.id, provider]));
+
+  return {
+    providers: providers.map((provider) => {
+      const status = statusById.get(provider.id);
+      return {
+        id: provider.id,
+        name: provider.name,
+        type: provider.type,
+        icon: provider.icon,
+        installMessage: provider.installMessage,
+        installSteps: provider.installSteps,
+        models: provider.models || [],
+        effortLevels: provider.effortLevels || [],
+        enabled: isProviderEnabled(provider.id, settings),
+        usage: usage[provider.id] || {
+          agentSlugs: [],
+          jobs: [],
+          agentCount: 0,
+          jobCount: 0,
+          totalCount: 0,
+        },
+        available: status?.available ?? false,
+        authenticated: status?.authenticated ?? false,
+        version: status?.version,
+        error: status?.error,
+      };
+    }),
+    defaultProvider: getConfiguredDefaultProviderId(settings),
+    defaultModel: settings.defaultModel || null,
+    defaultEffort: settings.defaultEffort || null,
+  };
+}
+
 function requestToken(req: http.IncomingMessage, url: URL): string | null {
   const authHeader = Array.isArray(req.headers.authorization)
     ? req.headers.authorization[0]
@@ -189,6 +254,7 @@ function claudePromptReady(output: string): boolean {
   const plain = stripAnsi(output).replace(/\r/g, "\n");
   return (
     plain.includes("shift+tab to cycle") ||
+    plain.includes("shift+tabtocycle") ||
     /(?:^|\n)[❯>]\s*$/.test(plain)
   );
 }
@@ -731,10 +797,20 @@ function createDetachedSession(input: {
     }, input.timeoutSeconds * 1000);
   }
 
-  if (session.initialPrompt) {
+  if (session.initialPrompt && session.readyStrategy !== "claude") {
     session.initialPromptTimer = setTimeout(() => {
       submitInitialPrompt(session);
     }, 1500);
+  }
+
+  // Safety fallback for Claude: if TUI detection never fires, retry after 30s
+  if (session.initialPrompt && session.readyStrategy === "claude") {
+    session.initialPromptTimer = setTimeout(() => {
+      if (!session.initialPromptSent && !session.exited) {
+        console.warn(`Session ${input.sessionId}: Claude TUI detection timed out after 30s, force-submitting prompt`);
+        submitInitialPrompt(session);
+      }
+    }, 30000);
   }
 
   return session;
@@ -1002,7 +1078,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   const url = new URL(req.url || "", `http://localhost:${PORT}`);
-  if (url.pathname !== "/health" && !isDaemonTokenValid(requestToken(req, url))) {
+  const incomingToken = requestToken(req, url);
+  if (url.pathname !== "/health" && !isDaemonTokenValid(incomingToken)) {
     rejectUnauthorized(res);
     return;
   }
@@ -1219,6 +1296,20 @@ const server = http.createServer(async (req, res) => {
           heartbeats: scheduledHeartbeats.size,
         })
       );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: message }));
+    }
+    return;
+  }
+
+  if (url.pathname === "/providers" && req.method === "GET") {
+    applyCors(req, res);
+    try {
+      const payload = await getProvidersPayload();
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(payload));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       res.writeHead(500, { "Content-Type": "application/json" });
