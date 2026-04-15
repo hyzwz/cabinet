@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getMessage, isLocale, normalizeLocale, type Locale } from "../src/lib/i18n/messages";
+import { formatMessage, getMessage, isLocale, normalizeLocale, type Locale } from "../src/lib/i18n/messages";
 
 test("normalizeLocale defaults to zh for unsupported input", () => {
   assert.equal(normalizeLocale(undefined), "zh");
@@ -178,9 +178,14 @@ test("getMessage returns localized agents workspace copy for covered demo surfac
   assert.equal(getMessage("agents.orgChart.fallbackRole", "zh"), "首席执行官");
   assert.equal(getMessage("agents.conversations.allAgents", "zh"), "所有 agents");
   assert.equal(getMessage("agents.filters.jobs", "zh"), "任务");
+  assert.equal(getMessage("agents.filters.manual", "zh"), "手动");
   assert.equal(getMessage("agents.filters.job", "zh"), "任务");
   assert.equal(getMessage("agents.filters.heartbeat", "zh"), "心跳");
   assert.equal(getMessage("agents.filters.anyStatus", "zh"), "任意状态");
+  assert.equal(formatMessage("agents.orgChart.moreCount", "zh", { count: 3 }), "+3 个更多");
+  assert.equal(formatMessage("agents.orgChart.countLabel.lead", "zh", { count: 1 }), "1 名负责人");
+  assert.equal(formatMessage("agents.orgChart.countLabel.agent_one", "en", { count: 1 }), "1 agent");
+  assert.equal(formatMessage("agents.orgChart.countLabel.agent_other", "en", { count: 2 }), "2 agents");
   assert.equal(getMessage("agents.status.running", "zh"), "运行中");
   assert.equal(getMessage("agents.conversation.settings", "zh"), "设置");
   assert.equal(getMessage("agents.library.browse", "zh"), "浏览 Agent Library");
@@ -207,6 +212,10 @@ test("covered agents workspace component uses locale message keys instead of har
   assert.match(file, /t\("agents\.settings\.heartbeat"\)/);
   assert.match(file, /t\("agents\.jobs\.new"\)/);
   assert.match(file, /t\("agents\.jobs\.edit"\)/);
+  assert.match(file, /t\("agents\.filters\.manual"\)/);
+  assert.match(file, /format\("agents\.orgChart\.moreCount"/);
+  assert.match(file, /format\("agents\.orgChart\.countLabel\.lead"/);
+  assert.match(file, /group\.agents\.length === 1[\s\S]*agents\.orgChart\.countLabel\.agent_one[\s\S]*agents\.orgChart\.countLabel\.agent_other/);
   assert.doesNotMatch(file, />Your Team Org Chart</);
   assert.doesNotMatch(file, />All agents</);
   assert.doesNotMatch(file, />No conversations yet\./);
@@ -216,6 +225,9 @@ test("covered agents workspace component uses locale message keys instead of har
   assert.doesNotMatch(file, />Edit your own agent</);
   assert.doesNotMatch(file, />Edit agent</);
   assert.doesNotMatch(file, />New job</);
+  assert.doesNotMatch(file, />Manual</);
+  assert.doesNotMatch(file, /\}\s*more/);
+  assert.doesNotMatch(file, /\$\{leadCount\} lead/);
 });
 
 test("getMessage returns localized tasks workspace copy for covered demo surfaces", () => {

@@ -1838,7 +1838,9 @@ export function AgentsWorkspace({
                   ))}
                   {(agentJobsMap[orgRoot.slug] || []).length > 3 ? (
                     <span className="text-[10px] text-muted-foreground">
-                      +{(agentJobsMap[orgRoot.slug] || []).length - 3} more
+                      {format("agents.orgChart.moreCount", {
+                        count: (agentJobsMap[orgRoot.slug] || []).length - 3,
+                      })}
                     </span>
                   ) : null}
                 </div>
@@ -1874,12 +1876,17 @@ export function AgentsWorkspace({
                               {group.label}
                             </h5>
                             <p className="mt-0.5 text-[11px] text-muted-foreground">
-                              {group.agents.length} {group.agents.length === 1 ? "agent" : "agents"}
+                              {format(
+                                group.agents.length === 1
+                                  ? "agents.orgChart.countLabel.agent_one"
+                                  : "agents.orgChart.countLabel.agent_other",
+                                { count: group.agents.length }
+                              )}
                             </p>
                           </div>
                           {leadCount > 0 ? (
                             <div className="rounded-full bg-background/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
-                              {`${leadCount} lead`}
+                              {format("agents.orgChart.countLabel.lead", { count: leadCount })}
                             </div>
                           ) : null}
                         </div>
@@ -1964,7 +1971,9 @@ export function AgentsWorkspace({
                                     ))}
                                     {(agentJobsMap[agent.slug] || []).length > 2 ? (
                                       <span className="text-[10px] text-muted-foreground">
-                                        +{(agentJobsMap[agent.slug] || []).length - 2} more
+                                        {format("agents.orgChart.moreCount", {
+                                          count: (agentJobsMap[agent.slug] || []).length - 2,
+                                        })}
                                       </span>
                                     ) : null}
                                   </div>
@@ -2061,7 +2070,7 @@ export function AgentsWorkspace({
                 onClick={() => setTriggerFilter(filter)}
               >
                 {filter === "all" ? (
-                  "All"
+                  t("agents.filters.all")
                 ) : filter === "job" ? (
                   <span className="inline-flex items-center gap-1.5">
                     <TriggerIcon trigger="job" />
@@ -2073,7 +2082,7 @@ export function AgentsWorkspace({
                     {t("agents.filters.heartbeat")}
                   </span>
                 ) : (
-                  "Manual"
+                  t("agents.filters.manual")
                 )}
               </TriggerChip>
             ))}
