@@ -72,6 +72,7 @@ interface IntegrationConfig {
 type Tab = "providers" | "storage" | "integrations" | "notifications" | "appearance" | "updates" | "about";
 
 function TerminalCommand({ command }: { command: string }) {
+  const { t } = useLocale();
   const [copied, setCopied] = useState(false);
 
   const copy = () => {
@@ -90,7 +91,7 @@ function TerminalCommand({ command }: { command: string }) {
       <button
         onClick={copy}
         className="shrink-0 p-1 rounded transition-colors hover:bg-white/10"
-        title="Copy to clipboard"
+        title={t("settings.providers.copyToClipboard")}
       >
         {copied ? (
           <ClipboardCheck className="size-3.5" style={{ color: "#6A9955" }} />
@@ -648,13 +649,13 @@ export function SettingsPage() {
                         });
                         const data = await res.json().catch(() => null);
                         if (!res.ok) {
-                          alert(data?.error || "Failed to save.");
+                          alert(data?.error || t("settings.common.failedToSave"));
                           return;
                         }
                         setDataDirRestartNeeded(true);
                         setDataDirPending(null);
                       } catch {
-                        alert("Failed to save data directory.");
+                        alert(t("settings.storage.saveError"));
                       } finally {
                         setDataDirSaving(false);
                       }
@@ -785,7 +786,7 @@ export function SettingsPage() {
                             })}
                           {providers.filter((p) => p.type === "cli" && p.available && p.authenticated).length === 0 && (
                             <p className="text-[12px] text-muted-foreground py-2">
-                              No providers are installed and logged in. Follow the setup guides below.
+                              {t("settings.providers.noneInstalled")}
                             </p>
                           )}
                         </div>
@@ -938,7 +939,9 @@ export function SettingsPage() {
                                       </p>
                                       {(provider.usage?.totalCount ?? 0) > 0 && (
                                         <p className="text-[11px] text-muted-foreground">
-                                          In use by {describeProviderUsage(provider)}
+                                          {format("settings.providers.usageInUseBy", {
+                                            usage: describeProviderUsage(provider),
+                                          })}
                                         </p>
                                       )}
                                     </div>
@@ -998,7 +1001,11 @@ export function SettingsPage() {
 
                                         if (provider.enabled && (provider.usage?.totalCount ?? 0) > 0) {
                                           const confirmed = window.confirm(
-                                            `Disable ${provider.name} and migrate ${describeProviderUsage(provider)} to ${getProviderName(nextDefault)}?`
+                                            format("settings.providers.confirmDisableAndMigrate", {
+                                              provider: provider.name,
+                                              usage: describeProviderUsage(provider),
+                                              nextProvider: getProviderName(nextDefault),
+                                            })
                                           );
                                           if (!confirmed) return;
                                         }
@@ -1008,7 +1015,9 @@ export function SettingsPage() {
                                       disabled={savingProviders || (provider.id === defaultProvider && providers.filter((entry) => entry.type === "cli" && entry.enabled).length <= 1)}
                                       className="rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
                                     >
-                                      {provider.enabled ? "Disable" : "Enable"}
+                                      {provider.enabled
+                                        ? t("settings.providers.toggleDisable")
+                                        : t("settings.providers.toggleEnable")}
                                     </button>
                                   </div>
                                 </div>
@@ -1038,7 +1047,7 @@ export function SettingsPage() {
                                               <button
                                                 onClick={() => {
                                                   fetch("/api/terminal/open", { method: "POST" }).catch(() => {
-                                                    alert("Could not open terminal automatically. Please open Terminal.app (Mac) or your system terminal manually.");
+                                                    alert(t("settings.providers.openTerminalError"));
                                                   });
                                                 }}
                                                 className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 mt-1.5 text-[11px] font-medium transition-all hover:-translate-y-0.5"
@@ -1063,7 +1072,9 @@ export function SettingsPage() {
                                         </div>
                                       ))}
                                       <p className="text-[11px] text-muted-foreground">
-                                        After setup, click {t("settings.providers.recheck")} below to verify.
+                                        {format("settings.providers.setupAfter", {
+                                          recheck: t("settings.providers.recheck"),
+                                        })}
                                       </p>
                                     </div>
                                   </div>
@@ -1124,7 +1135,7 @@ export function SettingsPage() {
                 <div>
                   <h3 className="text-[14px] font-semibold mb-1">{t("settings.integrations.title")}</h3>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Configure tool servers that agents can use. Enable a server and provide API credentials for agents to access external services.
+                    {t("settings.integrations.description")}
                   </p>
                   <div className="space-y-3">
                     {["Brave Search", "GitHub", "Slack"].map((name) => (
@@ -1136,15 +1147,17 @@ export function SettingsPage() {
                             </div>
                             <span className="text-[13px] font-medium">{name}</span>
                           </div>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Disabled</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                            {t("settings.providers.disabledBadge")}
+                          </span>
                         </div>
                         <div className="space-y-1.5">
                           <div>
-                            <label className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">Command</label>
+                            <label className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">{t("settings.integrations.command")}</label>
                             <div className="w-full mt-0.5 h-7 bg-muted/30 border border-border/50 rounded" />
                           </div>
                           <div>
-                            <label className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">API Key</label>
+                            <label className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">{t("settings.integrations.apiKey")}</label>
                             <div className="w-full mt-0.5 h-7 bg-muted/30 border border-border/50 rounded" />
                           </div>
                         </div>
@@ -1156,17 +1169,17 @@ export function SettingsPage() {
                 <div className="border-t border-border pt-6 mt-6">
                   <h3 className="text-[14px] font-semibold mb-1">{t("settings.integrations.schedulingTitle")}</h3>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Configure default scheduling behavior for agents and jobs.
+                    {t("settings.integrations.description")}
                   </p>
                   <div className="bg-card border border-border rounded-lg p-3 space-y-3">
                     <div>
-                      <label className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">Max Concurrent Agents</label>
+                      <label className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">{t("settings.integrations.maxConcurrentAgents")}</label>
                       <div className="w-full mt-0.5 h-7 bg-muted/30 border border-border/50 rounded" />
                     </div>
                     <div>
                       <label className="text-[10px] text-muted-foreground/70 uppercase tracking-wide flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        Active Hours
+                        {t("settings.integrations.activeHours")}
                       </label>
                       <div className="w-full mt-0.5 h-7 bg-muted/30 border border-border/50 rounded" />
                     </div>
@@ -1180,7 +1193,7 @@ export function SettingsPage() {
                   <Plug className="h-6 w-6 text-muted-foreground/50" />
                   <span className="text-[13px] font-semibold">{t("settings.common.comingSoon")}</span>
                   <p className="text-[12px] text-muted-foreground text-center max-w-[220px]">
-                    MCP servers, scheduling, and third-party integrations.
+                    {t("settings.integrations.comingSoonDescription")}
                   </p>
                 </div>
               </div>
@@ -1195,14 +1208,14 @@ export function SettingsPage() {
                 <div>
                   <h3 className="text-[14px] font-semibold mb-1">{t("settings.notifications.title")}</h3>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Configure how you receive alerts when agents need your attention.
+                    {t("settings.notifications.description")}
                   </p>
                   <div className="space-y-3">
                     {[
-                      { icon: "🔔", name: "Browser Push", desc: "Instant alerts when Cabinet tab is open or PWA installed" },
-                      { icon: "✈️", name: "Telegram", desc: "Instant mobile notifications via Telegram bot" },
-                      { icon: "💬", name: "Slack Webhook", desc: "Forward alerts to your team's Slack channel" },
-                      { icon: "📧", name: "Email Digest", desc: "Batched summary of alerts and agent activity" },
+                      { icon: "🔔", name: t("settings.notifications.browserPush"), desc: t("settings.notifications.browserPushDescription") },
+                      { icon: "✈️", name: t("settings.notifications.telegram"), desc: t("settings.notifications.telegramDescription") },
+                      { icon: "💬", name: t("settings.notifications.slackWebhook"), desc: t("settings.notifications.slackWebhookDescription") },
+                      { icon: "📧", name: t("settings.notifications.emailDigest"), desc: t("settings.notifications.emailDigestDescription") },
                     ].map((ch) => (
                       <div key={ch.name} className="bg-card border border-border rounded-lg p-3">
                         <div className="flex items-center justify-between">
@@ -1225,14 +1238,14 @@ export function SettingsPage() {
                 <div className="border-t border-border pt-6 mt-6">
                   <h3 className="text-[14px] font-semibold mb-1">{t("settings.notifications.alertRules")}</h3>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Notifications are triggered automatically for these events:
+                    {t("settings.notifications.alertRulesDescription")}
                   </p>
                   <div className="space-y-2">
                     {[
-                      { event: "#alerts channel messages", desc: "Any agent posting to the alerts channel" },
-                      { event: "@human mentions", desc: "When an agent mentions @human in any channel" },
-                      { event: "Goal floor breached", desc: "A goal drops below its minimum threshold" },
-                      { event: "Agent health degraded", desc: "3+ consecutive heartbeat failures" },
+                      { event: t("settings.notifications.alertsChannelMessages"), desc: t("settings.notifications.alertsChannelMessagesDescription") },
+                      { event: t("settings.notifications.humanMentions"), desc: t("settings.notifications.humanMentionsDescription") },
+                      { event: t("settings.notifications.goalFloorBreached"), desc: t("settings.notifications.goalFloorBreachedDescription") },
+                      { event: t("settings.notifications.agentHealthDegraded"), desc: t("settings.notifications.agentHealthDegradedDescription") },
                     ].map((rule) => (
                       <div key={rule.event} className="flex items-center justify-between bg-card border border-border rounded-lg px-3 py-2">
                         <div>
@@ -1252,7 +1265,7 @@ export function SettingsPage() {
                   <Bell className="h-6 w-6 text-muted-foreground/50" />
                   <span className="text-[13px] font-semibold">{t("settings.common.comingSoon")}</span>
                   <p className="text-[12px] text-muted-foreground text-center max-w-[220px]">
-                    Browser push, Telegram, Slack, and email notifications.
+                    {t("settings.notifications.comingSoonDescription")}
                   </p>
                 </div>
               </div>
