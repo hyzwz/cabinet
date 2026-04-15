@@ -1,16 +1,20 @@
 import { providerRegistry } from "../provider-registry";
-import type { ProviderStatus } from "../provider-interface";
 import { claudeCodeProvider } from "../providers/claude-code";
 import { codexCliProvider } from "../providers/codex-cli";
 import type {
-  AdapterEnvironmentCheck,
   AdapterEnvironmentTestContext,
-  AdapterEnvironmentTestResult,
   AgentExecutionAdapter,
 } from "./types";
+import { claudeLocalAdapter } from "./claude-local";
+import { providerStatusToEnvironmentTest } from "./environment";
 
 export const LEGACY_ADAPTER_BY_PROVIDER_ID: Record<string, string> = {
   "claude-code": "claude_code_legacy",
+  "codex-cli": "codex_cli_legacy",
+};
+
+export const DEFAULT_ADAPTER_BY_PROVIDER_ID: Record<string, string> = {
+  "claude-code": claudeLocalAdapter.type,
   "codex-cli": "codex_cli_legacy",
 };
 
@@ -20,49 +24,6 @@ export const LEGACY_PROVIDER_ID_BY_ADAPTER: Record<string, string> = Object.from
     providerId,
   ])
 );
-
-function providerStatusToEnvironmentTest(
-  adapterType: string,
-  providerStatus: ProviderStatus,
-  installMessage?: string
-): AdapterEnvironmentTestResult {
-  const checks: AdapterEnvironmentCheck[] = [
-    {
-      code: "provider_available",
-      level: providerStatus.available ? "info" : "error",
-      message: providerStatus.available
-        ? "Provider command is available."
-        : providerStatus.error || installMessage || "Provider is not installed or not on PATH.",
-      ...(providerStatus.available
-        ? { detail: providerStatus.version || null }
-        : { hint: installMessage || null }),
-    },
-  ];
-
-  if (providerStatus.available) {
-    checks.push({
-      code: "provider_authenticated",
-      level: providerStatus.authenticated ? "info" : "warn",
-      message: providerStatus.authenticated
-        ? "Provider authentication is ready."
-        : providerStatus.error || "Provider is installed but not authenticated yet.",
-      detail: providerStatus.version || providerStatus.error || null,
-    });
-  }
-
-  const status = checks.some((check) => check.level === "error")
-    ? "fail"
-    : checks.some((check) => check.level === "warn")
-      ? "warn"
-      : "pass";
-
-  return {
-    adapterType,
-    status,
-    checks,
-    testedAt: new Date().toISOString(),
-  };
-}
 
 function buildLegacyCliAdapter(input: {
   type: string;
@@ -114,7 +75,7 @@ export const legacyCodexCliAdapter = buildLegacyCliAdapter({
 
 class AgentAdapterRegistry {
   adapters = new Map<string, AgentExecutionAdapter>();
-  defaultAdapterType = legacyClaudeCodeAdapter.type;
+  defaultAdapterType = claudeLocalAdapter.type;
 
   register(adapter: AgentExecutionAdapter): void {
     this.adapters.set(adapter.type, adapter);
@@ -135,19 +96,20 @@ class AgentAdapterRegistry {
 
 export const agentAdapterRegistry = new AgentAdapterRegistry();
 
+agentAdapterRegistry.register(claudeLocalAdapter);
 agentAdapterRegistry.register(legacyClaudeCodeAdapter);
 agentAdapterRegistry.register(legacyCodexCliAdapter);
 
 export function defaultAdapterTypeForProvider(
   providerId?: string | null
 ): string {
-  if (providerId && LEGACY_ADAPTER_BY_PROVIDER_ID[providerId]) {
-    return LEGACY_ADAPTER_BY_PROVIDER_ID[providerId];
+  if (providerId && DEFAULT_ADAPTER_BY_PROVIDER_ID[providerId]) {
+    return DEFAULT_ADAPTER_BY_PROVIDER_ID[providerId];
   }
 
   const defaultProviderId = providerRegistry.defaultProvider;
   return (
-    LEGACY_ADAPTER_BY_PROVIDER_ID[defaultProviderId] ||
+    DEFAULT_ADAPTER_BY_PROVIDER_ID[defaultProviderId] ||
     agentAdapterRegistry.defaultAdapterType
   );
 }

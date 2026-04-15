@@ -10,17 +10,22 @@ import {
 
 test("legacy adapter registry exposes the current compatibility adapters", () => {
   const adapterTypes = agentAdapterRegistry.listAll().map((adapter) => adapter.type).sort();
-  assert.deepEqual(adapterTypes, ["claude_code_legacy", "codex_cli_legacy"]);
+  assert.deepEqual(adapterTypes, ["claude_code_legacy", "claude_local", "codex_cli_legacy"]);
 
   const claudeAdapter = agentAdapterRegistry.get("claude_code_legacy");
   assert.ok(claudeAdapter);
   assert.equal(claudeAdapter.experimental, true);
   assert.equal(claudeAdapter.providerId, "claude-code");
   assert.equal(claudeAdapter.executionEngine, "legacy_pty_cli");
+
+  const claudeLocal = agentAdapterRegistry.get("claude_local");
+  assert.ok(claudeLocal);
+  assert.equal(claudeLocal.executionEngine, "structured_cli");
+  assert.equal(claudeLocal.providerId, "claude-code");
 });
 
 test("provider-to-adapter defaults map current providers onto legacy adapters", () => {
-  assert.equal(defaultAdapterTypeForProvider("claude-code"), "claude_code_legacy");
+  assert.equal(defaultAdapterTypeForProvider("claude-code"), "claude_local");
   assert.equal(defaultAdapterTypeForProvider("codex-cli"), "codex_cli_legacy");
 });
 

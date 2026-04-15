@@ -18,6 +18,8 @@ export {
   agentAdapterRegistry,
   defaultAdapterTypeForProvider,
   isLegacyAdapterType,
+  DEFAULT_ADAPTER_BY_PROVIDER_ID,
+  LEGACY_ADAPTER_BY_PROVIDER_ID,
   legacyClaudeCodeAdapter,
   legacyCodexCliAdapter,
   resolveExecutionProviderId,

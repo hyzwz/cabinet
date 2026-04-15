@@ -2,15 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeJobConfig } from "./job-normalization";
 
-test("normalizeJobConfig derives a legacy adapter type from the selected provider", () => {
+test("normalizeJobConfig derives the current default adapter type from the selected provider", () => {
   const normalized = normalizeJobConfig({
     name: "Daily Digest",
-    provider: "codex-cli",
+    provider: "claude-code",
     prompt: "Summarize yesterday.",
   });
 
-  assert.equal(normalized.provider, "codex-cli");
-  assert.equal(normalized.adapterType, "codex_cli_legacy");
+  assert.equal(normalized.provider, "claude-code");
+  assert.equal(normalized.adapterType, "claude_local");
   assert.equal(normalized.prompt, "Summarize yesterday.");
 });
 
@@ -32,4 +32,3 @@ test("normalizeJobConfig preserves explicit adapter settings", () => {
     timeoutSec: 120,
   });
 });
-

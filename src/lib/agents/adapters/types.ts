@@ -27,6 +27,7 @@ export interface AdapterExecutionContext {
   config: Record<string, unknown>;
   prompt: string;
   cwd: string;
+  timeoutMs?: number;
   sessionId?: string | null;
   sessionParams?: Record<string, unknown> | null;
   onLog: (stream: "stdout" | "stderr", chunk: string) => Promise<void>;
@@ -116,4 +117,3 @@ export interface AgentExecutionAdapter {
   ): Promise<AdapterEnvironmentTestResult>;
   execute?(ctx: AdapterExecutionContext): Promise<AdapterExecutionResult>;
 }
-
