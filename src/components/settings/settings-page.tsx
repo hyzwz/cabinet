@@ -12,8 +12,6 @@ import {
   Bell,
   Plug,
   Cpu,
-  Eye,
-  EyeOff,
   Save,
   Loader2,
   Clock,
@@ -36,6 +34,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { UpdateSummary } from "@/components/system/update-summary";
 import { useCabinetUpdate } from "@/hooks/use-cabinet-update";
 import { useTheme } from "next-themes";
+import { useLocale } from "@/components/i18n/locale-provider";
 import {
   THEMES,
   applyTheme,
@@ -122,6 +121,7 @@ const PROVIDER_SETUP_STEPS: Record<string, SetupStep[]> = {
 };
 
 export function SettingsPage() {
+  const { t, format } = useLocale();
   const { showHiddenFiles, setShowHiddenFiles } = useTreeStore();
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [defaultProvider, setDefaultProvider] = useState("");
@@ -385,13 +385,13 @@ export function SettingsPage() {
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "providers", label: "Providers", icon: <Cpu className="h-3.5 w-3.5" /> },
-    { id: "storage", label: "Storage", icon: <HardDrive className="h-3.5 w-3.5" /> },
-    { id: "integrations", label: "Integrations", icon: <Plug className="h-3.5 w-3.5" /> },
-    { id: "notifications", label: "Notifications", icon: <Bell className="h-3.5 w-3.5" /> },
-    { id: "appearance", label: "Appearance", icon: <Palette className="h-3.5 w-3.5" /> },
-    { id: "updates", label: "Updates", icon: <CloudDownload className="h-3.5 w-3.5" /> },
-    { id: "about", label: "About", icon: <Info className="h-3.5 w-3.5" /> },
+    { id: "providers", label: t("settings.tabs.providers"), icon: <Cpu className="h-3.5 w-3.5" /> },
+    { id: "storage", label: t("settings.tabs.storage"), icon: <HardDrive className="h-3.5 w-3.5" /> },
+    { id: "integrations", label: t("settings.tabs.integrations"), icon: <Plug className="h-3.5 w-3.5" /> },
+    { id: "notifications", label: t("settings.tabs.notifications"), icon: <Bell className="h-3.5 w-3.5" /> },
+    { id: "appearance", label: t("settings.tabs.appearance"), icon: <Palette className="h-3.5 w-3.5" /> },
+    { id: "updates", label: t("settings.tabs.updates"), icon: <CloudDownload className="h-3.5 w-3.5" /> },
+    { id: "about", label: t("settings.tabs.about"), icon: <Info className="h-3.5 w-3.5" /> },
   ];
 
   return (
@@ -403,7 +403,7 @@ export function SettingsPage() {
         <div className="flex items-center gap-2">
           <Settings className="h-4 w-4" />
           <h2 className="text-[15px] font-semibold tracking-[-0.02em]">
-            Settings
+            {t("settings.title")}
           </h2>
         </div>
         <div className="flex items-center gap-1.5">
@@ -414,7 +414,7 @@ export function SettingsPage() {
             onClick={() => { refresh(); loadConfig(); }}
           >
             <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
+            {t("settings.refresh")}
           </Button>
         </div>
       </div>
@@ -444,14 +444,14 @@ export function SettingsPage() {
           {tab === "appearance" && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-[13px] font-semibold mb-1">Theme</h3>
+                <h3 className="text-[13px] font-semibold mb-1">{t("settings.appearance.themeTitle")}</h3>
                 <p className="text-[12px] text-muted-foreground mb-4">
-                  Choose a theme for the interface.
+                  {t("settings.appearance.themeDescription")}
                 </p>
 
                 <div className="space-y-4">
                   <div>
-                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground/60 mb-2">Light Themes</p>
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground/60 mb-2">{t("settings.appearance.lightThemes")}</p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {lightThemes.map((t) => (
                         <button
@@ -490,7 +490,7 @@ export function SettingsPage() {
                   </div>
 
                   <div>
-                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground/60 mb-2">Dark Themes</p>
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground/60 mb-2">{t("settings.appearance.darkThemes")}</p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {darkThemes.map((t) => (
                         <button
@@ -524,9 +524,9 @@ export function SettingsPage() {
               </div>
 
               <div className="border-t border-border pt-6">
-                <h3 className="text-[13px] font-semibold mb-1">Sidebar</h3>
+                <h3 className="text-[13px] font-semibold mb-1">{t("settings.appearance.sidebarTitle")}</h3>
                 <p className="text-[12px] text-muted-foreground mb-4">
-                  Configure how files are displayed in the sidebar.
+                  {t("settings.appearance.sidebarDescription")}
                 </p>
 
                 <label className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 cursor-pointer hover:border-primary/30 transition-colors">
@@ -538,9 +538,9 @@ export function SettingsPage() {
                       className="h-4 w-4 rounded border-border accent-primary"
                     />
                     <div>
-                      <span className="text-[13px] font-medium">Show hidden files</span>
+                      <span className="text-[13px] font-medium">{t("settings.appearance.showHiddenFiles")}</span>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Display files and folders starting with a dot (e.g. .env, .git)
+                        {t("settings.appearance.showHiddenFilesHint")}
                       </p>
                     </div>
                   </div>
@@ -556,10 +556,9 @@ export function SettingsPage() {
           {tab === "storage" && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-[14px] font-semibold mb-1">Data Directory</h3>
+                <h3 className="text-[14px] font-semibold mb-1">{t("settings.storage.title")}</h3>
                 <p className="text-[12px] text-muted-foreground">
-                  All Knowledge Base content is stored in this directory.
-                  Changing the path requires a restart.
+                  {t("settings.storage.description")}
                 </p>
               </div>
 
@@ -567,9 +566,9 @@ export function SettingsPage() {
                 <div className="flex items-center gap-3 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
                   <RotateCw className="h-4 w-4 shrink-0 text-yellow-500" />
                   <div className="flex-1">
-                    <p className="text-[13px] font-medium text-yellow-500">Restart required</p>
+                    <p className="text-[13px] font-medium text-yellow-500">{t("settings.storage.restartRequired")}</p>
                     <p className="text-[12px] text-muted-foreground">
-                      The data directory will change after you restart Cabinet.
+                      {t("settings.storage.restartDescription")}
                     </p>
                   </div>
                 </div>
@@ -577,12 +576,12 @@ export function SettingsPage() {
 
               <div className="space-y-2">
                 <label className="text-[12px] font-medium text-muted-foreground">
-                  Current path
+                  {t("settings.storage.currentPath")}
                 </label>
                 <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 bg-muted/30">
                   <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="flex-1 font-mono text-[12px] truncate select-all">
-                    {dataDir || "Loading..."}
+                    {dataDir || t("settings.storage.loading")}
                   </span>
                   <Button
                     variant="ghost"
@@ -599,11 +598,11 @@ export function SettingsPage() {
 
               <div className="space-y-2">
                 <label className="text-[12px] font-medium text-muted-foreground">
-                  Change directory
+                  {t("settings.storage.changeDirectory")}
                 </label>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="/path/to/data"
+                    placeholder={t("settings.storage.pathPlaceholder")}
                     value={dataDirPending ?? ""}
                     onChange={(e) => setDataDirPending(e.target.value)}
                     className="font-mono text-[12px]"
@@ -631,7 +630,7 @@ export function SettingsPage() {
                     ) : (
                       <FolderOpen className="h-3.5 w-3.5" />
                     )}
-                    Browse
+                    {t("settings.storage.browse")}
                   </Button>
                 </div>
                 <div className="flex gap-2 pt-1">
@@ -666,7 +665,7 @@ export function SettingsPage() {
                     ) : (
                       <Save className="h-3.5 w-3.5 mr-1.5" />
                     )}
-                    Save
+                    {t("settings.storage.save")}
                   </Button>
                   {dataDir && (
                     <Button
@@ -682,7 +681,7 @@ export function SettingsPage() {
                       }}
                     >
                       <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                      Open in Finder
+                      {t("settings.storage.openInFinder")}
                     </Button>
                   )}
                 </div>
@@ -690,8 +689,13 @@ export function SettingsPage() {
 
               <div className="border-t border-border pt-4">
                 <p className="text-[12px] text-muted-foreground">
-                  You can also set the <code className="px-1 py-0.5 rounded bg-muted text-[11px]">CABINET_DATA_DIR</code> environment
-                  variable, which takes priority over this setting.
+                  {format("settings.storage.envNotice", {
+                    variable: "CABINET_DATA_DIR",
+                  }).split("CABINET_DATA_DIR")[0]}
+                  <code className="px-1 py-0.5 rounded bg-muted text-[11px]">CABINET_DATA_DIR</code>
+                  {format("settings.storage.envNotice", {
+                    variable: "CABINET_DATA_DIR",
+                  }).split("CABINET_DATA_DIR")[1]}
                 </p>
               </div>
             </div>
@@ -718,26 +722,26 @@ export function SettingsPage() {
           )}
 
           {tab === "updates" && !update && updateLoading && (
-            <p className="text-[13px] text-muted-foreground">Checking for Cabinet updates...</p>
+            <p className="text-[13px] text-muted-foreground">{t("settings.updates.checking")}</p>
           )}
 
           {/* Providers Tab */}
           {tab === "providers" && (
             <>
               <div>
-                <h3 className="text-[14px] font-semibold mb-3">Agent Providers</h3>
+                <h3 className="text-[14px] font-semibold mb-3">{t("settings.providers.title")}</h3>
                 <p className="text-xs text-muted-foreground mb-4">
-                  Configure AI agent providers. CLI agents run via terminal, API agents use direct API calls.
+                  {t("settings.providers.description")}
                 </p>
 
                 {loading ? (
-                  <p className="text-[13px] text-muted-foreground">Loading...</p>
+                  <p className="text-[13px] text-muted-foreground">{t("settings.providers.loading")}</p>
                 ) : (
                   <div className="space-y-3">
                     <div>
                       <div className="mb-3 rounded-lg border border-border bg-card p-3">
                         <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Default provider
+                          {t("settings.providers.defaultProvider")}
                         </label>
                         <div className="mt-2 space-y-1">
                           {providers
@@ -801,7 +805,7 @@ export function SettingsPage() {
                             {models.length > 0 && (
                               <div>
                                 <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                  Default model
+                                  {t("settings.providers.defaultModel")}
                                 </label>
                                 <div className="mt-2 grid gap-1.5 sm:grid-cols-3">
                                   {models.map((m) => {
@@ -848,7 +852,7 @@ export function SettingsPage() {
                             {effortLevels.length > 0 && (
                               <div>
                                 <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                  Reasoning effort
+                                  {t("settings.providers.reasoningEffort")}
                                 </label>
                                 <div className="mt-2 grid gap-1.5 sm:grid-cols-4">
                                   {effortLevels.map((e) => {
@@ -897,7 +901,7 @@ export function SettingsPage() {
                       })()}
 
                       <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
-                        CLI Agents
+                        {t("settings.providers.cliAgents")}
                       </h4>
                       <div className="space-y-2">
                         {providers
@@ -909,10 +913,10 @@ export function SettingsPage() {
                             const setupSteps = PROVIDER_SETUP_STEPS[provider.id] || [];
                             const statusColor = isReady ? "text-green-500" : isInstalled ? "text-amber-500" : "text-muted-foreground";
                             const statusText = isReady
-                              ? provider.version || "Ready"
+                              ? provider.version || t("settings.providers.ready")
                               : isInstalled
-                                ? "Installed but not logged in"
-                                : "Not installed";
+                                ? t("settings.providers.installedNotLoggedIn")
+                                : t("settings.providers.notInstalled");
                             return (
                               <div
                                 key={provider.id}
@@ -947,10 +951,10 @@ export function SettingsPage() {
                                           "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all",
                                           isExpanded ? "bg-muted" : ""
                                         )}
-                                        title="Setup guide"
+                                        title={t("settings.providers.guide")}
                                       >
                                         <Info className="size-3" />
-                                        Guide
+                                        {t("settings.providers.guide")}
                                         <ChevronDown
                                           className="size-3 transition-transform duration-300"
                                           style={{ transform: isExpanded ? "rotate(0deg)" : "rotate(-90deg)" }}
@@ -966,10 +970,10 @@ export function SettingsPage() {
                                           : "bg-muted text-muted-foreground"
                                     )}>
                                       {provider.id === defaultProvider
-                                        ? "Default"
+                                        ? t("settings.providers.defaultBadge")
                                         : provider.enabled
-                                          ? "Enabled"
-                                          : "Disabled"}
+                                          ? t("settings.providers.enabledBadge")
+                                          : t("settings.providers.disabledBadge")}
                                     </span>
                                     <button
                                       onClick={async () => {
@@ -1041,7 +1045,7 @@ export function SettingsPage() {
                                                 style={{ background: "#1e1e1e", color: "#d4d4d4" }}
                                               >
                                                 <Terminal className="size-3" />
-                                                Open terminal
+                                                {t("settings.providers.openTerminal")}
                                               </button>
                                             )}
                                             {step.link && (
@@ -1059,7 +1063,7 @@ export function SettingsPage() {
                                         </div>
                                       ))}
                                       <p className="text-[11px] text-muted-foreground">
-                                        After setup, click Re-check below to verify.
+                                        After setup, click {t("settings.providers.recheck")} below to verify.
                                       </p>
                                     </div>
                                   </div>
@@ -1076,19 +1080,19 @@ export function SettingsPage() {
                         className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted disabled:opacity-50 mt-2"
                       >
                         <RefreshCw className={cn("size-3", loading && "animate-spin")} />
-                        Re-check providers
+                        {t("settings.providers.recheck")}
                       </button>
                     </div>
 
                     <div>
                       <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
-                        API Agents
+                        {t("settings.providers.apiAgents")}
                       </h4>
                       <div className="space-y-2">
                         {[
-                          { name: "Anthropic API", env: "ANTHROPIC_API_KEY", status: "Coming soon" },
-                          { name: "OpenAI API", env: "OPENAI_API_KEY", status: "Coming soon" },
-                          { name: "Google AI API", env: "GOOGLE_AI_API_KEY", status: "Coming soon" },
+                          { name: "Anthropic API", env: "ANTHROPIC_API_KEY", status: t("settings.providers.comingSoon") },
+                          { name: "OpenAI API", env: "OPENAI_API_KEY", status: t("settings.providers.comingSoon") },
+                          { name: "Google AI API", env: "GOOGLE_AI_API_KEY", status: t("settings.providers.comingSoon") },
                         ].map((p) => (
                           <div
                             key={p.name}
@@ -1118,7 +1122,7 @@ export function SettingsPage() {
               {/* Blurred content preview */}
               <div className="pointer-events-none select-none blur-[2px] opacity-70" aria-hidden="true">
                 <div>
-                  <h3 className="text-[14px] font-semibold mb-1">MCP Servers</h3>
+                  <h3 className="text-[14px] font-semibold mb-1">{t("settings.integrations.title")}</h3>
                   <p className="text-xs text-muted-foreground mb-4">
                     Configure tool servers that agents can use. Enable a server and provide API credentials for agents to access external services.
                   </p>
@@ -1150,7 +1154,7 @@ export function SettingsPage() {
                 </div>
 
                 <div className="border-t border-border pt-6 mt-6">
-                  <h3 className="text-[14px] font-semibold mb-1">Scheduling Defaults</h3>
+                  <h3 className="text-[14px] font-semibold mb-1">{t("settings.integrations.schedulingTitle")}</h3>
                   <p className="text-xs text-muted-foreground mb-4">
                     Configure default scheduling behavior for agents and jobs.
                   </p>
@@ -1174,7 +1178,7 @@ export function SettingsPage() {
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-2 bg-background/80 backdrop-blur-sm rounded-xl px-8 py-6 border border-border shadow-lg">
                   <Plug className="h-6 w-6 text-muted-foreground/50" />
-                  <span className="text-[13px] font-semibold">Coming Soon</span>
+                  <span className="text-[13px] font-semibold">{t("settings.common.comingSoon")}</span>
                   <p className="text-[12px] text-muted-foreground text-center max-w-[220px]">
                     MCP servers, scheduling, and third-party integrations.
                   </p>
@@ -1189,7 +1193,7 @@ export function SettingsPage() {
               {/* Blurred content preview */}
               <div className="pointer-events-none select-none blur-[2px] opacity-70" aria-hidden="true">
                 <div>
-                  <h3 className="text-[14px] font-semibold mb-1">Notification Channels</h3>
+                  <h3 className="text-[14px] font-semibold mb-1">{t("settings.notifications.title")}</h3>
                   <p className="text-xs text-muted-foreground mb-4">
                     Configure how you receive alerts when agents need your attention.
                   </p>
@@ -1219,7 +1223,7 @@ export function SettingsPage() {
                 </div>
 
                 <div className="border-t border-border pt-6 mt-6">
-                  <h3 className="text-[14px] font-semibold mb-1">Alert Rules</h3>
+                  <h3 className="text-[14px] font-semibold mb-1">{t("settings.notifications.alertRules")}</h3>
                   <p className="text-xs text-muted-foreground mb-4">
                     Notifications are triggered automatically for these events:
                   </p>
@@ -1235,7 +1239,7 @@ export function SettingsPage() {
                           <p className="text-[12px] font-medium">{rule.event}</p>
                           <p className="text-[10px] text-muted-foreground/60">{rule.desc}</p>
                         </div>
-                        <span className="text-[10px] text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">Always on</span>
+                        <span className="text-[10px] text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">{t("settings.notifications.alwaysOn")}</span>
                       </div>
                     ))}
                   </div>
@@ -1246,7 +1250,7 @@ export function SettingsPage() {
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-2 bg-background/80 backdrop-blur-sm rounded-xl px-8 py-6 border border-border shadow-lg">
                   <Bell className="h-6 w-6 text-muted-foreground/50" />
-                  <span className="text-[13px] font-semibold">Coming Soon</span>
+                  <span className="text-[13px] font-semibold">{t("settings.common.comingSoon")}</span>
                   <p className="text-[12px] text-muted-foreground text-center max-w-[220px]">
                     Browser push, Telegram, Slack, and email notifications.
                   </p>
@@ -1259,7 +1263,7 @@ export function SettingsPage() {
           {tab === "about" && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-[14px] font-semibold mb-1">Cabinet</h3>
+                <h3 className="text-[14px] font-semibold mb-1">{t("settings.about.title")}</h3>
                 <p className="text-[12px] text-muted-foreground">
                   AI-first self-hosted knowledge base and startup OS.
                 </p>
@@ -1267,19 +1271,19 @@ export function SettingsPage() {
 
               <div className="space-y-3 text-[13px]">
                 <div className="flex items-center justify-between py-2 border-b border-border">
-                  <span className="text-muted-foreground">Version</span>
+                  <span className="text-muted-foreground">{t("settings.about.version")}</span>
                   <span className="font-mono">0.2.6</span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-border">
-                  <span className="text-muted-foreground">Framework</span>
+                  <span className="text-muted-foreground">{t("settings.about.framework")}</span>
                   <span>Next.js (App Router)</span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-border">
-                  <span className="text-muted-foreground">Storage</span>
+                  <span className="text-muted-foreground">{t("settings.about.storage")}</span>
                   <span className="font-mono text-[12px] truncate max-w-[300px]" title={dataDir}>{dataDir || "Local filesystem"}</span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-border">
-                  <span className="text-muted-foreground">AI</span>
+                  <span className="text-muted-foreground">{t("settings.about.ai")}</span>
                   <span className="flex items-center gap-1.5">
                     <Sparkles className="h-3.5 w-3.5" />
                     Powered by local AI CLIs
