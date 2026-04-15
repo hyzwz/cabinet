@@ -16,6 +16,11 @@ test("isLocale only accepts zh and en", () => {
 test("getMessage returns locale-specific value when present", () => {
   assert.equal(getMessage("login.helper", "zh"), "输入密码以继续");
   assert.equal(getMessage("login.helper", "en"), "Enter password to continue");
+  assert.equal(getMessage("login.passwordPlaceholder", "zh"), "密码");
+  assert.equal(getMessage("login.signIn", "zh"), "登录");
+  assert.equal(getMessage("login.wrongPassword", "zh"), "密码错误");
+  assert.equal(getMessage("login.connectionError", "en"), "Connection error");
+  assert.equal(getMessage("login.loading", "en"), "...");
 });
 
 test("getMessage falls back to English when zh translation is missing", () => {
