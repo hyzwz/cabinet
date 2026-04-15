@@ -1,0 +1,15 @@
+{
+  "featureId": "agents-leftover-core-copy-fix",
+  "reviewedAt": "2026-04-15T11:55:00Z",
+  "commitId": "af2b9be53797e5599c65da596a757e511ebd93d8",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix commit directly addresses all three blocking gaps from the prior Agents review: the Manual filter chip now uses locale messages, both visible +N more overflow summaries route through a formatted i18n key, and department card count badges/labels now use localized count-label messages instead of inline English strings. The scoped regression test coverage and current file contents match the fix description, and I did not find a remaining covered first-screen localization regression in the reviewed surface.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/demo-workspaces/scrutiny/reviews/workspace-agents-core-copy.json",
+  "summary": "Reviewed the fix handoff, transcript skeleton, prior failing review, prior feature diff, and fix diff for agents-leftover-core-copy-fix. The new commit af2b9be resolves the previously blocked Manual/+N more/agent-count/lead-copy gaps in src/components/agents/agents-workspace.tsx with focused locale-message wiring and matching regression coverage, so this fix passes scrutiny."
+}

@@ -1,0 +1,40 @@
+{
+  "featureId": "workspace-agents-core-copy",
+  "reviewedAt": "2026-04-15T11:20:36Z",
+  "commitId": "af968d0d032fadd12228271ebbdf1a5719cc38af",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature correctly localizes several covered Agents workspace strings, but it does not fully satisfy the feature contract because multiple first-screen/core customer-visible labels in the same workspace remain hard-coded in English on the demo path.",
+    "issues": [
+      {
+        "file": "src/components/agents/agents-workspace.tsx",
+        "line": 2076,
+        "severity": "blocking",
+        "description": "The visible trigger filter chip for the manual run filter still renders the hard-coded English label \"Manual\" instead of using the locale dictionary, so the first-screen Agents filter row is not fully localized in zh/en as required."
+      },
+      {
+        "file": "src/components/agents/agents-workspace.tsx",
+        "line": 1872,
+        "severity": "blocking",
+        "description": "The org-chart summary chip still shows the hard-coded English suffix \"+N more\" for overflow jobs. This is visible core workspace copy and should be localized or formatted through i18n per the feature scope."
+      },
+      {
+        "file": "src/components/agents/agents-workspace.tsx",
+        "line": 1945,
+        "severity": "blocking",
+        "description": "The department cards still render hard-coded English count labels like \"agent/agents\" and \"lead\". These are customer-visible org-chart headings/chips on the Agents first screen and remain outside the locale system."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The frontend-i18n-worker skill says to read .factory/library/user-testing.md, but that library file is not listed in .factory/library/architecture.md and the worker transcript shows repeated test-file discovery misses (e.g. non-existent test/i18n-messages.test.ts and test/locale-provider.test.ts) before settling on test/i18n-core.test.ts. The skill guidance does not point reviewers/workers to the actual existing i18n regression test location.",
+      "evidence": "worker-transcripts.jsonl entry for ae0f2a06-7851-4e93-98c5-711946a1d605 shows failed Read calls for test/i18n-messages.test.ts and test/locale-provider.test.ts before updating test/i18n-core.test.ts."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed commit af968d0d032fadd12228271ebbdf1a5719cc38af and the ae0f2a06-7851-4e93-98c5-711946a1d605 transcript. The feature is close, but it misses several still-visible English strings in the Agents first-screen filters and org-chart chips, so it should not pass scrutiny yet."
+}

@@ -1,0 +1,49 @@
+{
+  "milestone": "demo-workspaces",
+  "round": 3,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": false,
+      "command": "cd \"/Users/murunkun/MeishuSourceCode/cabinet\" && npm test",
+      "exitCode": 1
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cd \"/Users/murunkun/MeishuSourceCode/cabinet\" && npx tsc --noEmit",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": false,
+      "command": "cd \"/Users/murunkun/MeishuSourceCode/cabinet\" && npm run lint",
+      "exitCode": 1
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [
+    {
+      "featureId": "validators",
+      "severity": "blocking",
+      "description": "Milestone validators are still not green: `npm test` fails on the pre-existing machine-specific absolute-path assertion in `test/conversation-output-cleaning.test.ts`, and `npm run lint` fails on unrelated repo-wide lint errors outside the demo-workspaces feature scope."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [],
+  "rejectedObservations": [
+    {
+      "observation": "Re-review all previously passed demo-workspaces implementation features.",
+      "reason": "This is a re-run after fixes; only the new fix feature tied to the prior failed Agents review required scrutiny per the prior synthesis."
+    },
+    {
+      "observation": "Re-open the original Manual/+N more/agent(s)/lead Agents findings as fresh issues.",
+      "reason": "The dedicated fix feature `agents-leftover-core-copy-fix` now passes scrutiny and resolves those historical findings in the current tree."
+    }
+  ],
+  "previousRound": ".factory/validation/demo-workspaces/scrutiny/synthesis.json",
+  "generatedAt": "2026-04-15T11:46:50.019369+00:00"
+}

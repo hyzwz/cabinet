@@ -1,0 +1,21 @@
+{
+  "featureId": "workspace-settings-core-copy",
+  "reviewedAt": "2026-04-15T11:20:25.175503+00:00",
+  "commitId": "bc45d76",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Reviewed commit bc45d76 for the Settings demo-scope localization follow-up. The change stays within the feature contract by routing remaining first-screen provider/integrations/notifications helper copy through the shared locale catalog, adding both zh/en entries, and extending the focused Settings regression test to cover the newly localized strings and guard against reintroducing hard-coded covered-surface English copy.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The worker reused the earlier settings-browser-verification-pass and skipped a fresh browser session for this narrow string-key cleanup, marking the frontend-i18n-worker procedure as not fully followed. That deviation appears justified because this commit only touched covered helper strings and test coverage, and the mission already has a dedicated browser verification feature for the same surface.",
+      "evidence": "Handoff skillFeedback for session 4dd378dd-3e7a-48aa-a6c2-130dc9489070 notes a deviation from manual browser verification; features.json includes completed feature settings-browser-verification-pass for the Settings surface."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Pass. The reviewed Settings localization follow-up is scoped correctly, satisfies the covered first-screen contract, and does not show a correctness regression in the inspected diff or supporting test coverage."
+}
