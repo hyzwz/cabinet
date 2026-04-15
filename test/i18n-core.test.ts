@@ -273,6 +273,7 @@ test("covered tasks workspace component uses locale message keys instead of hard
   assert.match(file, /t\("tasks\.bulk\.killAll"\)/);
   assert.match(file, /t\("tasks\.schedule\.header"\)/);
   assert.match(file, /t\("tasks\.schedule\.field\.schedule"\)/);
+  assert.match(file, /t\("tasks\.loading"\)/);
   assert.doesNotMatch(file, />Jobs & Heartbeats</);
   assert.doesNotMatch(file, />Refresh</);
   assert.doesNotMatch(file, />What needs to get done\\?</);
@@ -284,6 +285,10 @@ test("covered tasks workspace component uses locale message keys instead of hard
   assert.doesNotMatch(file, />List</);
   assert.doesNotMatch(file, />Today</);
   assert.doesNotMatch(file, />Run now</);
+  assert.doesNotMatch(file, />Loading the task board\.\.\.</);
+  assert.doesNotMatch(file, /placeholder="All visible agents"/);
+  assert.doesNotMatch(file, />All visible agents</);
+  assert.doesNotMatch(file, />Heartbeat</);
 });
 
 test("getMessage returns key when missing from all locales", () => {

@@ -1053,7 +1053,7 @@ export function TasksBoard({
 
   const filterAgentItems = useMemo(
     () => [
-      { label: "All visible agents", value: "all" },
+      { label: t("tasks.filters.allVisibleAgents"), value: "all" },
       ...visibleAgents.map((agent) => ({
         label: `${agent.name}${agent.cabinetName ? ` · ${agent.cabinetName}` : ""}`,
         value: agent.scopedId,
@@ -1370,24 +1370,63 @@ export function TasksBoard({
   const scopeLabel =
     CABINET_VISIBILITY_OPTIONS.find((option) => option.value === effectiveVisibilityMode)?.label ||
     t("tasks.filters.ownAgentsOnly");
+  const countSuffix = (count: number) => (count === 1 ? "" : "s");
   const boardTitle =
     resolvedWorkspaceMode === "cabinet"
       ? format("tasks.board.title.cabinet", { name: cabinetName })
       : t("tasks.board.title.allCabinets");
   const runsLabel =
     triggerFilter === "all"
-      ? `${filteredConversations.length} run${filteredConversations.length === 1 ? "" : "s"}`
+      ? format("tasks.board.runs.all", {
+          count: filteredConversations.length,
+          suffix: countSuffix(filteredConversations.length),
+        })
       : triggerFilter === "job"
-        ? `${filteredConversations.length} job run${filteredConversations.length === 1 ? "" : "s"}`
-        : `${filteredConversations.length} ${triggerFilter} run${filteredConversations.length === 1 ? "" : "s"}`;
+        ? format("tasks.board.runs.job", {
+            count: filteredConversations.length,
+            suffix: countSuffix(filteredConversations.length),
+          })
+        : format("tasks.board.runs.trigger", {
+            count: filteredConversations.length,
+            trigger: localizedTriggerLabels[triggerFilter],
+            suffix: countSuffix(filteredConversations.length),
+          });
   const boardDescription = selectedFilterAgent
-    ? `${drafts.length} inbox draft${drafts.length === 1 ? "" : "s"}. ${runsLabel} for ${selectedFilterAgent.name}.`
+    ? format("tasks.board.summary.agent", {
+        drafts: drafts.length,
+        draftsSuffix: countSuffix(drafts.length),
+        runs: runsLabel,
+        agent: selectedFilterAgent.name,
+      })
     : resolvedWorkspaceMode === "cabinet"
-      ? `${scopeLabel}. ${drafts.length} inbox draft${drafts.length === 1 ? "" : "s"} and ${runsLabel} across ${visibleAgents.length} visible agent${visibleAgents.length === 1 ? "" : "s"}.`
-      : `${drafts.length} inbox draft${drafts.length === 1 ? "" : "s"} and ${runsLabel} across ${visibleAgents.length} visible agent${visibleAgents.length === 1 ? "" : "s"} in all cabinets.`;
+      ? format("tasks.board.summary.cabinet", {
+          scope: scopeLabel,
+          drafts: drafts.length,
+          draftsSuffix: countSuffix(drafts.length),
+          runs: runsLabel,
+          agents: visibleAgents.length,
+          agentsSuffix: countSuffix(visibleAgents.length),
+        })
+      : format("tasks.board.summary.allCabinets", {
+          drafts: drafts.length,
+          draftsSuffix: countSuffix(drafts.length),
+          runs: runsLabel,
+          agents: visibleAgents.length,
+          agentsSuffix: countSuffix(visibleAgents.length),
+        });
 
   const jobCount = overview?.jobs.length ?? 0;
   const heartbeatCount = overview?.agents.filter((a) => a.heartbeat).length ?? 0;
+  const scheduleSummary = format("tasks.schedule.summary", {
+    jobs: jobCount,
+    jobsSuffix: countSuffix(jobCount),
+    heartbeats: heartbeatCount,
+    heartbeatsSuffix: countSuffix(heartbeatCount),
+    scope:
+      resolvedWorkspaceMode === "cabinet"
+        ? format("tasks.schedule.scope.cabinet", { name: cabinetName })
+        : t("tasks.schedule.scope.allCabinets"),
+  });
 
   /* ─── Schedule view (full page) ─── */
   if (boardView === "schedule") {
@@ -1404,7 +1443,7 @@ export function TasksBoard({
                 {t("tasks.schedule.header")}
               </h1>
               <p className="pt-2 text-sm leading-6 text-muted-foreground">
-                {jobCount} scheduled job{jobCount === 1 ? "" : "s"} and {heartbeatCount} heartbeat{heartbeatCount === 1 ? "" : "s"}{resolvedWorkspaceMode === "cabinet" ? ` in ${cabinetName}` : " across all cabinets"}.
+                {scheduleSummary}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-3">
@@ -1433,8 +1472,8 @@ export function TasksBoard({
               <>
                 <div className="flex items-center rounded-lg border border-border/60 p-0.5">
                   {(["day", "week", "month"] as CalendarMode[]).map((m) => (
-                    <button key={m} onClick={() => setCalendarMode(m)} className={cn("rounded-md px-2.5 py-1 text-[11px] font-medium capitalize transition-colors", calendarMode === m ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
-                      {m}
+                    <button key={m} onClick={() => setCalendarMode(m)} className={cn("rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors", calendarMode === m ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
+                      {t(`tasks.schedule.view.${m}` as "tasks.schedule.view.day")}
                     </button>
                   ))}
                 </div>
@@ -1462,11 +1501,11 @@ export function TasksBoard({
                 }
               >
                 <SelectTrigger size="sm" className="bg-background">
-                  <SelectValue placeholder="All visible agents" />
+                  <SelectValue placeholder={t("tasks.filters.allVisibleAgents")} />
                 </SelectTrigger>
                 <SelectContent align="end" className="min-w-[280px]">
                   <SelectGroup>
-                    <SelectItem value="all">All visible agents</SelectItem>
+                    <SelectItem value="all">{t("tasks.filters.allVisibleAgents")}</SelectItem>
                     {visibleAgents.map((agent) => (
                       <SelectItem key={agent.scopedId} value={agent.scopedId}>
                         <span className="text-sm leading-none">{agent.emoji || "🤖"}</span>
@@ -1556,7 +1595,7 @@ export function TasksBoard({
                 <div className="flex items-center justify-between gap-3 pr-10">
                   <DialogTitle className="flex items-center gap-2">
                     <Clock3 className="h-4 w-4 text-emerald-400" />
-                    {scheduleJobDialog.draft.name || "Job"}
+                    {scheduleJobDialog.draft.name || t("tasks.schedule.dialog.jobFallback")}
                     <span className="text-[11px] font-normal text-muted-foreground">· {scheduleJobDialog.agentName}</span>
                   </DialogTitle>
                   <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => void runScheduleJob()} disabled={scheduleDialogBusy}>
@@ -1600,7 +1639,7 @@ export function TasksBoard({
                 <div className="flex items-center justify-between gap-3 pr-10">
                   <DialogTitle className="flex items-center gap-2">
                     <HeartPulse className="h-4 w-4 text-pink-400" />
-                    Heartbeat
+                    {t("tasks.filters.heartbeat")}
                     <span className="text-[11px] font-normal text-muted-foreground">· {scheduleHeartbeatDialog.agentName}</span>
                   </DialogTitle>
                   <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => void runScheduleHeartbeat()} disabled={scheduleDialogBusy}>
@@ -1789,7 +1828,7 @@ export function TasksBoard({
           {loading ? (
             <div className="flex h-full items-center justify-center gap-3 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Loading the task board...
+              {t("tasks.loading")}
             </div>
           ) : (
             <div className="flex h-full min-w-max">

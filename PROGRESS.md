@@ -1,3 +1,4 @@
+[2026-04-15] Localized the Tasks workspace core demo copy in tasks-board.tsx, including the board filters/loading state, schedule controls/dialog labels, and first-screen summaries via the shared zh/en message catalog. This keeps Tasks board and schedule surfaces on the demo path locale-aware with English fallback while staying scoped to the existing i18n layer.
 [2026-04-15] Fixed the Tasks workspace typecheck regression by restoring the board scope label to use the existing visibility option label lookup instead of passing unsupported arguments through the locale helper. This keeps the change narrowly scoped to the Tasks board locale wiring and unblocks workspace-tasks-core-copy validation.
 
 # Progress
