@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Instrument_Serif } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeInitializer } from "@/components/layout/theme-initializer";
+import { LocaleProvider } from "@/components/i18n/locale-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -50,8 +51,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ThemeInitializer />
-          {children}
+          <LocaleProvider>
+            <ThemeInitializer />
+            {children}
+          </LocaleProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -1,5 +1,7 @@
 # Progress
 
+[2026-04-15] Added the demo i18n foundation: a lightweight client-side locale provider with persisted `zh`/`en` state, English fallback message lookup, and automatic `html lang` synchronization. Added a visible language switcher next to the theme control across shared header chrome, and wired the login surface to use localized copy before authentication without affecting theme persistence.
+
 [2026-04-14] CLI: `cabinetai run` is now fully all-in-one — no `create` needed first. Extracted scaffold logic into `cabinetai/src/lib/scaffold.ts` and added `resolveOrBootstrapCabinetRoot()` which auto-creates the cabinet structure (`.cabinet`, `.agents/`, `.jobs/`, `.cabinet-state/`) in the current directory if none is found. `ensureApp()` then detects and installs the web app if needed. Updated Quick Start in README and CABINETAI.md to reflect the single-command flow.
 
 [2026-04-14] CLI: all user-facing messages and README docs now show `npx cabinetai run` instead of bare `cabinetai run`. Users install via npx, so the bare command doesn't exist.
@@ -290,3 +292,13 @@
 [2026-04-13] Moved editor file-type and Cabinet-structure knowledge out of `data/getting-started` and into the canonical editor library template at `src/lib/agents/library/editor/persona.md`. New cabinet creation and onboarding now resolve agent templates from the seeded library or source fallback, enforce mandatory `ceo` + `editor`, and create full agent scaffolds including `workspace/`.
 
 [2026-04-13] AI editor runs now use the owning cabinet's `editor` persona when editing a page inside a cabinet, fall back to the shared editor template when needed, and default their working directory to the owning cabinet instead of the global data root. Electron packaging now seeds `.agents/.library` from `src/lib/agents/library` so fresh managed data directories can install agents correctly.
+[2026-04-15] Added a single-container Docker deployment for local Cabinet demos with `Dockerfile` and `docker-compose.yml`. The container builds the Next.js app, starts the daemon and web server together, mounts the existing `data/` directory, and supports a demo password via `KB_PASSWORD`.
+[2026-04-15] Adjusted the Docker demo port mapping to 3100/3101 to avoid collisions with existing local containers while keeping Cabinet internal ports at 3000/3001.
+[2026-04-15] Split the demo runtime so Docker serves only the Cabinet web app while the daemon runs on the host. Updated the container to use the standalone Next.js server, point daemon requests at `host.docker.internal:4100`, and publish only the web port for the local demo flow.
+[2026-04-15] Split the local demo runtime so the Docker container serves only the web UI while the daemon runs on the host. Added a host-daemon env helper and relaxed CLI availability checks to recognize Codex versions that print successfully but return a non-zero status during `--version` probing.
+[2026-04-15] Stopped mounting the host `data/` directory into the Docker web container so provider settings and daemon health now come from the host-run daemon rather than stale container-side config.
+[2026-04-15] Routed provider status APIs through the host daemon so dockerized web UI reflects real host CLI availability/authentication for Claude Code and Codex in the split-runtime demo. Added a daemon provider-status endpoint and reused it in both provider list/status Next.js routes.
+
+[2026-04-15] Provider APIs now read host daemon truth for authenticated availability in the Docker web app. The daemon /providers endpoint returns the full provider payload (metadata, settings, usage, availability, auth), and the web GET /api/agents/providers route now proxies that payload so UI state matches the host-run daemon.
+
+[2026-04-15] Fixed the Docker demo provider status cache so the web container stops serving stale local-provider results after switching to the host daemon URL. Verified the live :3100 app now reaches the host daemon for health and provider status checks.

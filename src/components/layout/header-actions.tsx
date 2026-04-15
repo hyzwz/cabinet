@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAIPanelStore } from "@/stores/ai-panel-store";
 import { useAppStore } from "@/stores/app-store";
 import { ThemePicker } from "@/components/layout/theme-picker";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { cn } from "@/lib/utils";
 
 /**
@@ -53,6 +54,9 @@ export function HeaderActions() {
       >
         <Sparkles className="h-4 w-4" />
       </Button>
+
+      {/* Language switcher */}
+      <LanguageSwitcher />
 
       {/* Theme picker */}
       <ThemePicker />

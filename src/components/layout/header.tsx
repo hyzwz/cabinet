@@ -10,9 +10,11 @@ import {
 import { useEditorStore } from "@/stores/editor-store";
 import { VersionHistory } from "@/components/editor/version-history";
 import { HeaderActions } from "@/components/layout/header-actions";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export function Header() {
   const { frontmatter, content, currentPath } = useEditorStore();
+  const { t } = useLocale();
 
   const handleCopyMarkdown = async () => {
     if (!content) return;
@@ -50,7 +52,7 @@ export function Header() {
     >
       <div className="flex items-center gap-2">
         <h1 className="text-[13px] font-medium text-foreground truncate tracking-[-0.01em]">
-          {frontmatter?.title || "Cabinet"}
+          {frontmatter?.title || t("header.productName")}
         </h1>
       </div>
       <div className="flex items-center gap-1">

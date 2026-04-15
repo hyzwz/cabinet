@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { HeaderActions } from "@/components/layout/header-actions";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { t } = useLocale();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,21 +28,25 @@ export default function LoginPage() {
         router.push("/");
         router.refresh();
       } else {
-        setError("Wrong password");
+        setError(t("login.wrongPassword"));
       }
     } catch {
-      setError("Connection error");
+      setError(t("login.connectionError"));
     }
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-screen bg-background">
+      <div className="flex justify-end px-4 py-3">
+        <HeaderActions />
+      </div>
+      <div className="flex min-h-[calc(100vh-56px)] items-center justify-center">
       <div className="w-full max-w-sm mx-auto p-6">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold tracking-[-0.03em]">Cabinet</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Enter password to continue
+            {t("login.helper")}
           </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -47,7 +54,7 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
+            placeholder={t("login.passwordPlaceholder")}
             autoFocus
             className="w-full px-3 py-2 rounded-md border border-border bg-background text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
@@ -59,9 +66,10 @@ export default function LoginPage() {
             disabled={loading || !password}
             className="w-full px-3 py-2 rounded-md bg-primary text-primary-foreground text-[14px] font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            {loading ? "..." : "Sign in"}
+            {loading ? t("login.loading") : t("login.signIn")}
           </button>
         </form>
+      </div>
       </div>
     </div>
   );
