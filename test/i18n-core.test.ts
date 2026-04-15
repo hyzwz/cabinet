@@ -172,6 +172,52 @@ test("covered sidebar and editor components use locale message keys instead of h
   assert.match(files.editor, /t\("editor\.saveFailed"\)/);
 });
 
+
+test("getMessage returns localized agents workspace copy for covered demo surfaces", () => {
+  assert.equal(getMessage("agents.orgChart.title", "zh"), "你的团队组织架构");
+  assert.equal(getMessage("agents.orgChart.fallbackRole", "zh"), "首席执行官");
+  assert.equal(getMessage("agents.conversations.allAgents", "zh"), "所有 agents");
+  assert.equal(getMessage("agents.filters.jobs", "zh"), "任务");
+  assert.equal(getMessage("agents.filters.job", "zh"), "任务");
+  assert.equal(getMessage("agents.filters.heartbeat", "zh"), "心跳");
+  assert.equal(getMessage("agents.filters.anyStatus", "zh"), "任意状态");
+  assert.equal(getMessage("agents.status.running", "zh"), "运行中");
+  assert.equal(getMessage("agents.conversation.settings", "zh"), "设置");
+  assert.equal(getMessage("agents.library.browse", "zh"), "浏览 Agent Library");
+  assert.equal(getMessage("agents.custom.createAgent", "zh"), "创建 agent");
+  assert.equal(getMessage("agents.settings.write", "zh"), "编写");
+  assert.equal(getMessage("agents.jobs.save", "zh"), "保存 job");
+});
+
+test("covered agents workspace component uses locale message keys instead of hard-coded core UI copy", async () => {
+  const file = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../src/components/agents/agents-workspace.tsx", import.meta.url), "utf8")
+  );
+
+  assert.match(file, /t\("agents\.orgChart\.title"\)/);
+  assert.match(file, /t\("agents\.conversations\.allAgents"\)/);
+  assert.match(file, /localizedTriggerLabels/);
+  assert.match(file, /localizedStatusLabels/);
+  assert.match(file, /t\("agents\.conversation\.settings"\)/);
+  assert.match(file, /t\("agents\.library\.browse"\)/);
+  assert.match(file, /t\("agents\.settings\.write"\)/);
+  assert.match(file, /t\("agents\.jobs\.save"\)/);
+  assert.match(file, /t\("agents\.library\.bringIn"\)/);
+  assert.match(file, /t\("agents\.settings\.editAgent"\)/);
+  assert.match(file, /t\("agents\.settings\.heartbeat"\)/);
+  assert.match(file, /t\("agents\.jobs\.new"\)/);
+  assert.match(file, /t\("agents\.jobs\.edit"\)/);
+  assert.doesNotMatch(file, />Your Team Org Chart</);
+  assert.doesNotMatch(file, />All agents</);
+  assert.doesNotMatch(file, />No conversations yet\./);
+  assert.doesNotMatch(file, />Browse Agent Library</);
+  assert.doesNotMatch(file, />Save job</);
+  assert.doesNotMatch(file, /"Bringing in\.\.\."/);
+  assert.doesNotMatch(file, />Edit your own agent</);
+  assert.doesNotMatch(file, />Edit agent</);
+  assert.doesNotMatch(file, />New job</);
+});
+
 test("getMessage returns key when missing from all locales", () => {
   assert.equal(getMessage("missing.key" as never, "zh" satisfies Locale), "missing.key");
 });

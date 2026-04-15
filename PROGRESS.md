@@ -309,3 +309,4 @@
 
 [2026-04-15] Localized the demo-visible sidebar and editor core UI for zh/en, covering sidebar actions, tree/context dialogs, load-knowledge flows, editor toolbar labels, source/preview toggle, empty state, AI prompt, and save-state copy. Added i18n assertions for these sidebar/editor surfaces while preserving English fallback behavior.
 [2026-04-15] Localized remaining sidebar core literals and cabinet-creation copy, added focused regression coverage to catch hard-coded sidebar/editor strings, and verified sidebar-to-editor locale persistence in zh/en on the demo path.
+[2026-04-15] Localized the Agents workspace demo-path core copy in zh/en, covering org-chart labels, visible run filters and statuses, conversation actions, and immediate agent settings/library/job affordances with English fallback. Added regression checks for the new Agents i18n keys and component wiring.

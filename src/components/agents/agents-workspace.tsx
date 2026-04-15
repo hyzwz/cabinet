@@ -62,6 +62,7 @@ import {
 } from "@/components/ui/select";
 import { ComposerInput } from "@/components/composer/composer-input";
 import { useComposer, type MentionableItem } from "@/hooks/use-composer";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 type TriggerFilter = "all" | "manual" | "job" | "heartbeat";
 type StatusFilter = "all" | "running" | "completed" | "failed";
@@ -387,6 +388,7 @@ export function AgentsWorkspace({
   cabinetPath?: string;
   workspaceMode?: "ops" | "cabinet";
 }) {
+  const { t, format } = useLocale();
   const [agents, setAgents] = useState<AgentListItem[]>([]);
   const [conversations, setConversations] = useState<ConversationMeta[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(true);
@@ -1604,7 +1606,7 @@ export function AgentsWorkspace({
   );
   const chiefAgent = findChiefAgent(agents);
   const orgRoot = chiefAgent || {
-    name: "CEO",
+    name: t("agents.orgChart.ceoBadge"),
     slug: "__ceo_fallback__",
     emoji: "👑",
     role: "Executive lead not configured yet",
@@ -1640,16 +1642,27 @@ export function AgentsWorkspace({
   const activeOrgCount =
     orgAgents.filter((agent) => agent.active || (agent.runningCount || 0) > 0).length +
     (orgRoot.active || (orgRoot.runningCount || 0) > 0 ? 1 : 0);
+  const localizedTriggerLabels: Record<ConversationMeta["trigger"], string> = {
+    manual: t("agents.filters.manual"),
+    job: t("agents.filters.job"),
+    heartbeat: t("agents.filters.heartbeat"),
+  };
+  const localizedStatusLabels: Record<StatusFilter, string> = {
+    all: t("agents.filters.anyStatus"),
+    running: t("agents.status.running"),
+    completed: t("agents.status.completed"),
+    failed: t("agents.status.failed"),
+  };
 
   function renderOrgChartHeader() {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-          <h3 className="text-[15px] font-semibold">Your Team Org Chart</h3>
+          <h3 className="text-[15px] font-semibold">{t("agents.orgChart.title")}</h3>
           <div className="flex flex-wrap items-center gap-1.5">
             <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5">
               <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                Agents
+                {t("agents.orgChart.agents")}
               </span>
               <span className="rounded-full bg-foreground px-1.5 py-0.5 text-[9px] font-semibold text-background">
                 {orgAgentCount}
@@ -1657,7 +1670,7 @@ export function AgentsWorkspace({
             </div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5">
               <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                Departments
+                {t("agents.orgChart.departments")}
               </span>
               <span className="rounded-full bg-background/90 px-1.5 py-0.5 text-[9px] font-semibold text-foreground">
                 {groupedOrgAgents.length}
@@ -1665,7 +1678,7 @@ export function AgentsWorkspace({
             </div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5">
               <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                Active
+                {t("agents.orgChart.active")}
               </span>
               <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground">
                 {activeOrgCount}
@@ -1694,9 +1707,9 @@ export function AgentsWorkspace({
               className="h-7 min-w-0 w-auto gap-1 rounded-md border-border/60 bg-transparent px-2 text-[11px] font-medium text-muted-foreground shadow-none hover:text-foreground"
             >
               <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground/70">
-                Depth
+                {t("agents.orgChart.depth")}
               </span>
-              <SelectValue placeholder="All" />
+              <SelectValue placeholder={t("agents.orgChart.depthPlaceholder")} />
             </SelectTrigger>
             <SelectContent align="end" className="min-w-[200px]">
               <SelectGroup>
@@ -1713,7 +1726,7 @@ export function AgentsWorkspace({
           </Select>
           <Button size="sm" className="h-8 gap-1 text-xs" onClick={openAddAgentDialog}>
             <Plus className="h-3.5 w-3.5" />
-            Add agent
+            {t("agents.orgChart.addAgent")}
           </Button>
         </div>
       </div>
@@ -1775,13 +1788,13 @@ export function AgentsWorkspace({
                   <div className="min-w-0 flex-1">
                     <div className="inline-flex items-center gap-2 rounded-full bg-background/72 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
                       <Crown className="h-3 w-3" />
-                      CEO
+                      {t("agents.orgChart.ceoBadge")}
                     </div>
                     <h5 className="mt-2 text-[20px] font-semibold tracking-[-0.03em] text-foreground">
                       {orgRoot.name}
                     </h5>
                     <p className="mt-0.5 text-[13px] text-foreground/85">
-                      {orgRoot.role || "Chief Executive Officer"}
+                      {orgRoot.role || t("agents.orgChart.fallbackRole")}
                     </p>
                   </div>
                 </div>
@@ -1967,7 +1980,7 @@ export function AgentsWorkspace({
               </div>
             ) : (
               <div className="rounded-[26px] bg-card p-6 text-center text-[13px] text-muted-foreground">
-                Add more agents to start populating departments under the CEO.
+                {t("agents.orgChart.empty")}
               </div>
             )}
           </div>
@@ -2016,16 +2029,16 @@ export function AgentsWorkspace({
                   {activeAgent.name}
                 </h3>
                 <p className="text-[11px] text-muted-foreground">
-                  {`Recent runs for ${activeAgent.name}`}
+                  {format("agents.conversations.recentRunsAgent", { name: activeAgent.name })}
                 </p>
               </button>
             ) : (
               <div
                 className="rounded-xl bg-muted/40 px-3 py-2"
               >
-                <h3 className="text-[14px] font-semibold">All agents</h3>
+                <h3 className="text-[14px] font-semibold">{t("agents.conversations.allAgents")}</h3>
                 <p className="text-[11px] text-muted-foreground">
-                  Recent runs across your whole team
+                  {t("agents.conversations.recentRunsTeam")}
                 </p>
               </div>
             )}
@@ -2052,12 +2065,12 @@ export function AgentsWorkspace({
                 ) : filter === "job" ? (
                   <span className="inline-flex items-center gap-1.5">
                     <TriggerIcon trigger="job" />
-                    Jobs
+                    {t("agents.filters.jobs")}
                   </span>
                 ) : filter === "heartbeat" ? (
                   <span className="inline-flex items-center gap-1.5">
                     <TriggerIcon trigger="heartbeat" />
-                    Heartbeat
+                    {t("agents.filters.heartbeat")}
                   </span>
                 ) : (
                   "Manual"
@@ -2072,7 +2085,7 @@ export function AgentsWorkspace({
                 active={statusFilter === filter}
                 onClick={() => setStatusFilter(filter)}
               >
-                {filter === "all" ? "Any status" : filter[0].toUpperCase() + filter.slice(1)}
+                {filter === "all" ? localizedStatusLabels.all : localizedStatusLabels[filter]}
               </TriggerChip>
             ))}
           </div>
@@ -2082,13 +2095,13 @@ export function AgentsWorkspace({
             {conversationsLoading && conversations.length > 0 ? (
               <div className="flex items-center gap-2 px-3 py-6 text-[12px] text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading conversations...
+                {t("agents.conversations.loading")}
               </div>
             ) : !hasLoadedConversations && conversations.length === 0 ? (
               <div className="px-3 py-8" />
             ) : conversations.length === 0 ? (
               <div className="animate-in fade-in duration-300 px-3 py-8 text-[12px] text-muted-foreground">
-                No conversations yet.
+                {t("agents.conversations.empty")}
               </div>
             ) : (
               conversations.map((conversation) => {
@@ -2152,8 +2165,8 @@ export function AgentsWorkspace({
                           <span
                             role="button"
                             tabIndex={0}
-                            aria-label="Delete conversation"
-                            title="Delete conversation"
+                            aria-label={t("agents.conversation.deleteAria")}
+                            title={t("agents.conversation.deleteAria")}
                             onClick={(e) => {
                               e.stopPropagation();
                               void deleteConversation(conversation.id, conversation.cabinetPath);
@@ -2218,7 +2231,7 @@ export function AgentsWorkspace({
               <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                   <div className="flex items-center justify-between gap-3 pr-10">
-                    <DialogTitle>Job Details</DialogTitle>
+                    <DialogTitle>{t("agents.conversation.jobDetails")}</DialogTitle>
                     <Button
                       variant="outline"
                       size="sm"
@@ -2226,7 +2239,7 @@ export function AgentsWorkspace({
                       onClick={() => void copyConversationDetails()}
                     >
                       <Copy className="h-3.5 w-3.5" />
-                      {detailsCopied ? "Copied" : "Copy"}
+                      {detailsCopied ? t("agents.conversation.copied") : t("agents.conversation.copy")}
                     </Button>
                   </div>
                 </DialogHeader>
@@ -2259,7 +2272,7 @@ export function AgentsWorkspace({
                       )}
                     >
                       <TriggerIcon trigger={selectedConversationMeta.trigger} className="h-2.5 w-2.5" />
-                      {TRIGGER_LABELS[selectedConversationMeta.trigger]}
+                      {localizedTriggerLabels[selectedConversationMeta.trigger]}
                     </span>
                     <span
                       className={cn(
@@ -2267,7 +2280,7 @@ export function AgentsWorkspace({
                         STATUS_TAG_STYLES[selectedConversationMeta.status] || "bg-muted text-muted-foreground ring-1 ring-border"
                       )}
                     >
-                      {selectedConversationMeta.status}
+                      {localizedStatusLabels[selectedConversationMeta.status as StatusFilter] || selectedConversationMeta.status}
                     </span>
                   </div>
                 </div>
@@ -2280,7 +2293,7 @@ export function AgentsWorkspace({
                       onClick={() => openAgentSettings(selectedConversationMeta.agentSlug)}
                     >
                       <Settings className="h-3 w-3" />
-                      Settings
+                      {t("agents.conversation.settings")}
                     </Button>
                   )}
                   <Button
@@ -2290,7 +2303,7 @@ export function AgentsWorkspace({
                     onClick={() => setConversationDetailsOpen(true)}
                   >
                     <Copy className="h-3 w-3" />
-                    Details
+                    {t("agents.conversation.details")}
                   </Button>
                   <Button
                     variant="ghost"
@@ -2304,7 +2317,7 @@ export function AgentsWorkspace({
                     }
                   >
                     <Trash2 className="h-3 w-3" />
-                    Delete
+                    {t("agents.conversation.delete")}
                   </Button>
                 </div>
               </div>
@@ -2352,10 +2365,10 @@ export function AgentsWorkspace({
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <Library className="h-4 w-4" />
-                        <DialogTitle>Browse Agent Library</DialogTitle>
+                        <DialogTitle>{t("agents.library.browse")}</DialogTitle>
                       </div>
                       <DialogDescription>
-                        Bring in a predefined agent, or open a custom editor and make your own.
+                        {t("agents.library.description")}
                       </DialogDescription>
                     </div>
                     <Button
@@ -2365,7 +2378,7 @@ export function AgentsWorkspace({
                       onClick={openCustomAgentDialog}
                     >
                       <Settings className="h-3.5 w-3.5" />
-                      Edit your own agent
+                      {t("agents.library.editOwn")}
                     </Button>
                   </div>
                   {agentFlowError ? (
@@ -2379,7 +2392,7 @@ export function AgentsWorkspace({
                     {loadingAgentTemplates ? (
                       <div className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading the agent library...
+                        {t("agents.library.loading")}
                       </div>
                     ) : groupedAgentTemplates.length > 0 ? (
                       groupedAgentTemplates.map(([department, templates]) => (
@@ -2417,7 +2430,7 @@ export function AgentsWorkspace({
                                   disabled={addingAgentSlug === template.slug}
                                 >
                                   <Plus className="h-3.5 w-3.5" />
-                                  {addingAgentSlug === template.slug ? "Bringing in..." : "Bring in"}
+                                  {addingAgentSlug === template.slug ? t("agents.custom.creatingAgent") : t("agents.library.bringIn")}
                                 </Button>
                               </div>
                             ))}
@@ -2438,7 +2451,7 @@ export function AgentsWorkspace({
             <Dialog open={customAgentDialogOpen} onOpenChange={handleCustomAgentDialogOpenChange}>
               <DialogContent className="sm:max-w-4xl">
                 <DialogHeader className="gap-1">
-                  <DialogTitle>Edit your own agent</DialogTitle>
+                  <DialogTitle>{t("agents.library.editOwn")}</DialogTitle>
                   <DialogDescription>
                     Create a custom agent from scratch, then fine-tune it in the same popup flow.
                   </DialogDescription>
@@ -2498,7 +2511,7 @@ export function AgentsWorkspace({
                       />
                     </label>
                     <div className="space-y-1 text-[11px] text-muted-foreground">
-                      <span>Heartbeat</span>
+                      <span>{t("agents.settings.heartbeat")}</span>
                       <SchedulePicker
                         value={newAgentDraft.heartbeat || "0 */4 * * *"}
                         onChange={(cron) =>
@@ -2629,7 +2642,7 @@ export function AgentsWorkspace({
                       onClick={() => void createAgent()}
                       disabled={creatingAgent || !newAgentDraft.name.trim() || !newAgentDraft.role.trim()}
                     >
-                      {creatingAgent ? "Creating..." : "Create agent"}
+                      {creatingAgent ? t("agents.custom.creatingAgent") : t("agents.custom.createAgent")}
                     </Button>
                   </div>
                 </div>
@@ -2648,7 +2661,7 @@ export function AgentsWorkspace({
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{settingsAgent?.emoji || "🤖"}</span>
                       <h3 className="text-[15px] font-semibold">
-                        {settingsAgent?.name || "Agent settings"}
+                        {settingsAgent?.name || t("agents.settings.fallbackTitle")}
                       </h3>
                     </div>
                     <div className="flex gap-2">
@@ -2659,7 +2672,7 @@ export function AgentsWorkspace({
                         onClick={() => handleSettingsEditorOpenChange(true)}
                       >
                         <Settings className="h-3.5 w-3.5" />
-                        Edit agent
+                        {t("agents.settings.editAgent")}
                       </Button>
                       <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={runHeartbeatNow}>
                         <Zap className="h-3.5 w-3.5" />
@@ -2709,9 +2722,9 @@ export function AgentsWorkspace({
                 <Dialog open={settingsEditorOpen} onOpenChange={handleSettingsEditorOpenChange}>
                   <DialogContent className="sm:max-w-5xl">
                     <DialogHeader className="gap-1">
-                      <DialogTitle>Edit Agent</DialogTitle>
+                      <DialogTitle>{t("agents.settings.editAgent")}</DialogTitle>
                       <DialogDescription>
-                        Review the live agent, make your changes here, and save when you are ready.
+                        {t("agents.settings.editDescription")}
                       </DialogDescription>
                       {agentFlowError ? (
                         <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -2725,7 +2738,7 @@ export function AgentsWorkspace({
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                              Instructions
+                              {t("agents.settings.instructions")}
                             </span>
                             <div className="flex rounded-lg bg-muted/60 p-0.5">
                               <button
@@ -2738,7 +2751,7 @@ export function AgentsWorkspace({
                                     : "text-muted-foreground hover:text-foreground"
                                 )}
                               >
-                                Write
+                                {t("agents.settings.write")}
                               </button>
                               <button
                                 type="button"
@@ -2750,7 +2763,7 @@ export function AgentsWorkspace({
                                     : "text-muted-foreground hover:text-foreground"
                                 )}
                               >
-                                Preview
+                                {t("agents.settings.preview")}
                               </button>
                             </div>
                           </div>
@@ -2759,7 +2772,7 @@ export function AgentsWorkspace({
                               value={settingsEditorBody}
                               onChange={(event) => setSettingsEditorBody(event.target.value)}
                               className="h-[60vh] w-full resize-none rounded-lg bg-muted/60 px-3 py-2 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:bg-muted"
-                              placeholder="Write markdown for this agent's instructions."
+                              placeholder={t("agents.settings.writePlaceholder")}
                             />
                           ) : (
                             <div className="h-[60vh] overflow-auto rounded-lg bg-muted/60 px-3 py-3">
@@ -2802,7 +2815,7 @@ export function AgentsWorkspace({
                             />
                           </label>
                           <div className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                            <span>Heartbeat</span>
+                            <span>{t("agents.settings.heartbeat")}</span>
                             <SchedulePicker
                               value={settingsEditorDraft.heartbeat || "0 */4 * * *"}
                               onChange={(cron) =>
@@ -2924,7 +2937,7 @@ export function AgentsWorkspace({
                     <DialogHeader className="gap-1">
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
-                          <DialogTitle>{selectedJobId && selectedJobId !== "__new__" ? "Edit Job" : "New Job"}</DialogTitle>
+                          <DialogTitle>{selectedJobId && selectedJobId !== "__new__" ? t("agents.jobs.edit") : t("agents.jobs.new")}</DialogTitle>
                           <DialogDescription>
                             {selectedJobId && selectedJobId !== "__new__"
                               ? "Edit this scheduled job. Changes take effect on the next run."
@@ -2959,7 +2972,7 @@ export function AgentsWorkspace({
                               ) : (
                                 <Trash2 className="h-3.5 w-3.5" />
                               )}
-                              Delete
+                              {t("agents.conversation.delete")}
                             </Button>
                           </div>
                         ) : null}
@@ -3096,7 +3109,7 @@ export function AgentsWorkspace({
                               }
                             >
                               <Save className="h-3.5 w-3.5" />
-                              {savingJob ? "Saving..." : selectedJobId && selectedJobId !== "__new__" ? "Save job" : "Create job"}
+                              {savingJob ? t("agents.jobs.saving") : selectedJobId && selectedJobId !== "__new__" ? t("agents.jobs.save") : t("agents.jobs.create")}
                             </Button>
                           </div>
                         </div>
@@ -3184,7 +3197,7 @@ export function AgentsWorkspace({
                   <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border">
                     <div className="flex items-center justify-between border-b border-border px-4 py-3">
                       <h4 className="text-[13px] font-semibold" title="Per-agent recurring prompts">
-                        Jobs
+                        {t("agents.filters.jobs")}
                       </h4>
                       <Button
                         variant="outline"
@@ -3193,7 +3206,7 @@ export function AgentsWorkspace({
                         onClick={startNewJobDraft}
                       >
                         <Plus className="h-3.5 w-3.5" />
-                        New job
+                        {t("agents.jobs.new")}
                       </Button>
                     </div>
                     <ScrollArea className="min-h-0 flex-1">
@@ -3404,7 +3417,7 @@ export function AgentsWorkspace({
               <div className="flex items-center justify-between gap-3 pr-10">
                 <DialogTitle className="flex items-center gap-2">
                   <HeartPulse className="h-4 w-4 text-pink-400" />
-                  Heartbeat
+                  {t("agents.filters.heartbeat")}
                   <span className="text-[11px] font-normal text-muted-foreground">· {orgChartHeartbeatDialog.agentName}</span>
                 </DialogTitle>
                 <Button
@@ -3441,7 +3454,7 @@ export function AgentsWorkspace({
                     }
                     className="h-3.5 w-3.5 cursor-pointer appearance-none rounded-sm border border-border bg-background transition-colors checked:border-primary checked:bg-primary focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1"
                   />
-                  Active
+                  {t("agents.orgChart.active")}
                 </label>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setOrgChartHeartbeatDialog(null)}>
