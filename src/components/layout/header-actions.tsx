@@ -7,6 +7,7 @@ import { useAppStore } from "@/stores/app-store";
 import { ThemePicker } from "@/components/layout/theme-picker";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 /**
  * Global header actions shared across all file-type toolbars:
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 export function HeaderActions() {
   const { isOpen, toggle } = useAIPanelStore();
   const { terminalOpen, toggleTerminal } = useAppStore();
+  const { t } = useLocale();
 
   return (
     <>
@@ -30,6 +32,7 @@ export function HeaderActions() {
         }}
       >
         <Search className="h-3.5 w-3.5" />
+        <span>{t("header.searchHint")}</span>
         <kbd className="pointer-events-none text-[10px] font-mono bg-muted px-1 py-0.5 rounded">
           ⌘K
         </kbd>

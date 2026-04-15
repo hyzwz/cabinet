@@ -74,3 +74,96 @@ export async function reloadDaemonSchedules(): Promise<void> {
     throw new Error(`Failed to reload daemon schedules (${response.status})`);
   }
 }
+
+
+export async function getDaemonProviderStatuses(): Promise<{
+  providers: Array<{
+    id: string;
+    name: string;
+    type: "cli" | "api";
+    icon: string;
+    available: boolean;
+    authenticated: boolean;
+    version?: string;
+    error?: string;
+  }>;
+  anyReady: boolean;
+}> {
+  const response = await daemonFetch("/providers");
+  if (!response.ok) {
+    throw new Error(`Failed to load daemon provider status (${response.status})`);
+  }
+  return response.json() as Promise<{
+    providers: Array<{
+      id: string;
+      name: string;
+      type: "cli" | "api";
+      icon: string;
+      available: boolean;
+      authenticated: boolean;
+      version?: string;
+      error?: string;
+    }>;
+    anyReady: boolean;
+  }>;
+}
+
+export async function getDaemonProviders(): Promise<{
+  providers: Array<{
+    id: string;
+    name: string;
+    type: "cli" | "api";
+    icon: string;
+    installMessage?: string;
+    installSteps?: Array<{ title: string; detail: string; link?: { label: string; url: string } }>;
+    models: Array<{ id: string; name: string; description?: string }>;
+    effortLevels: Array<{ id: string; name: string; description?: string }>;
+    enabled: boolean;
+    usage: {
+      agentSlugs: string[];
+      jobs: Array<{ agentSlug: string; jobId: string; jobName: string }>;
+      agentCount: number;
+      jobCount: number;
+      totalCount: number;
+    };
+    available: boolean;
+    authenticated: boolean;
+    version?: string;
+    error?: string;
+  }>;
+  defaultProvider: string;
+  defaultModel: string | null;
+  defaultEffort: string | null;
+}> {
+  const response = await daemonFetch("/providers");
+  if (!response.ok) {
+    throw new Error(`Failed to load daemon providers (${response.status})`);
+  }
+  return response.json() as Promise<{
+    providers: Array<{
+      id: string;
+      name: string;
+      type: "cli" | "api";
+      icon: string;
+      installMessage?: string;
+      installSteps?: Array<{ title: string; detail: string; link?: { label: string; url: string } }>;
+      models: Array<{ id: string; name: string; description?: string }>;
+      effortLevels: Array<{ id: string; name: string; description?: string }>;
+      enabled: boolean;
+      usage: {
+        agentSlugs: string[];
+        jobs: Array<{ agentSlug: string; jobId: string; jobName: string }>;
+        agentCount: number;
+        jobCount: number;
+        totalCount: number;
+      };
+      available: boolean;
+      authenticated: boolean;
+      version?: string;
+      error?: string;
+    }>;
+    defaultProvider: string;
+    defaultModel: string | null;
+    defaultEffort: string | null;
+  }>;
+}

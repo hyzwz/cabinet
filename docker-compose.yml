@@ -1,0 +1,23 @@
+services:
+  cabinet:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cabinet-demo
+    ports:
+      - "3100:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      CABINET_APP_PORT: "3000"
+      CABINET_DATA_DIR: /app/data
+      CABINET_DAEMON_URL: http://host.docker.internal:4100
+      CABINET_PUBLIC_DAEMON_ORIGIN: http://host.docker.internal:4100
+      KB_PASSWORD: "demo123"
+      DOMAIN: localhost
+    volumes:
+      - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

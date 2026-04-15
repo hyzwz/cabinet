@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
-import { providerRegistry } from "@/lib/agents/provider-registry";
+import { getDaemonProviderStatuses } from "@/lib/agents/daemon-client";
 
 interface CachedStatus {
-  providers: { id: string; name: string; available: boolean; authenticated: boolean }[];
+  providers: {
+    id: string;
+    name: string;
+    available: boolean;
+    authenticated: boolean;
+  }[];
   anyReady: boolean;
 }
 
@@ -10,29 +15,35 @@ let cachedResult: CachedStatus | null = null;
 let cachedAt = 0;
 const CACHE_TTL = 30_000;
 
+function cacheKey(): string {
+  return process.env.CABINET_DAEMON_URL || "";
+}
+
+let cachedDaemonUrl = cacheKey();
+
 export async function GET() {
   try {
     const now = Date.now();
+    const daemonUrl = cacheKey();
+    if (daemonUrl !== cachedDaemonUrl) {
+      cachedResult = null;
+      cachedAt = 0;
+      cachedDaemonUrl = daemonUrl;
+    }
+
     if (cachedResult && now - cachedAt < CACHE_TTL) {
       return NextResponse.json(cachedResult);
     }
 
-    const providers = providerRegistry.listAll();
-    const results = await Promise.all(
-      providers.map(async (p) => {
-        const status = await p.healthCheck();
-        return {
-          id: p.id,
-          name: p.name,
-          available: status.available,
-          authenticated: status.authenticated,
-        };
-      }),
-    );
-
+    const daemonStatus = await getDaemonProviderStatuses();
     const response: CachedStatus = {
-      providers: results,
-      anyReady: results.some((p) => p.available && p.authenticated),
+      providers: daemonStatus.providers.map((provider) => ({
+        id: provider.id,
+        name: provider.name,
+        available: provider.available,
+        authenticated: provider.authenticated,
+      })),
+      anyReady: daemonStatus.anyReady,
     };
 
     cachedResult = response;

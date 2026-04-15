@@ -12,6 +12,7 @@ import { useTreeStore } from "@/stores/tree-store";
 import { markdownToHtml } from "@/lib/markdown/to-html";
 import { htmlToMarkdown } from "@/lib/markdown/to-markdown";
 import type { TreeNode } from "@/types";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 async function uploadFile(pagePath: string, file: File): Promise<string | null> {
   const formData = new FormData();
@@ -114,6 +115,7 @@ export function KBEditor() {
   const isLoadingRef = useRef(false);
   const [sourceMode, setSourceMode] = useState(false);
   const [sourceText, setSourceText] = useState("");
+  const { t } = useLocale();
 
   const handleUpdate = useCallback(
     ({ editor }: { editor: ReturnType<typeof useEditor> }) => {
@@ -260,10 +262,10 @@ export function KBEditor() {
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
         <div className="text-center space-y-3">
           <p className="text-lg font-medium tracking-[-0.02em]">
-            No page selected
+            {t("editor.noPageSelected")}
           </p>
           <p className="text-sm text-muted-foreground/70">
-            Select a page from the sidebar or create a new one
+            {t("editor.selectPageHint")}
           </p>
         </div>
       </div>
@@ -303,7 +305,7 @@ export function KBEditor() {
           }`}
         >
           <Code2 className="h-3 w-3" />
-          {sourceMode ? "Preview" : "Source"}
+          {sourceMode ? t("editor.preview") : t("editor.source")}
         </button>
       </div>
 
@@ -328,7 +330,7 @@ export function KBEditor() {
               className="group flex items-center gap-2 text-[13px] text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer"
             >
               <Sparkles className="h-3.5 w-3.5 group-hover:text-primary transition-colors" />
-              <span>How would you like to edit this page?</span>
+              <span>{t("editor.aiPrompt")}</span>
             </button>
           </div>
         </div>
@@ -336,9 +338,9 @@ export function KBEditor() {
 
       {/* Status bar */}
       <div className="flex items-center justify-end px-4 py-1 border-t border-border text-xs text-muted-foreground/60">
-        {saveStatus === "saving" && "Saving..."}
-        {saveStatus === "saved" && "Saved"}
-        {saveStatus === "error" && "Save failed"}
+        {saveStatus === "saving" && t("editor.saving")}
+        {saveStatus === "saved" && t("editor.saved")}
+        {saveStatus === "error" && t("editor.saveFailed")}
       </div>
 
     </div>

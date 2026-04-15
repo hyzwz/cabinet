@@ -1,53 +1,14 @@
 import { NextResponse } from "next/server";
 import { providerRegistry } from "@/lib/agents/provider-registry";
-import {
-  getConfiguredDefaultProviderId,
-  isProviderEnabled,
-  readProviderSettings,
-} from "@/lib/agents/provider-settings";
+import { getDaemonProviders } from "@/lib/agents/daemon-client";
 import {
   ProviderSettingsConflictError,
-  getProviderUsage,
   updateProviderSettingsWithMigrations,
 } from "@/lib/agents/provider-management";
 
 export async function GET() {
   try {
-    const providers = providerRegistry.listAll();
-    const settings = await readProviderSettings();
-    const usage = await getProviderUsage();
-
-    const results = await Promise.all(
-      providers.map(async (p) => {
-        const status = await p.healthCheck();
-        return {
-          id: p.id,
-          name: p.name,
-          type: p.type,
-          icon: p.icon,
-          installMessage: p.installMessage,
-          installSteps: p.installSteps,
-          models: p.models || [],
-          effortLevels: p.effortLevels || [],
-          enabled: isProviderEnabled(p.id, settings),
-          usage: usage[p.id] || {
-            agentSlugs: [],
-            jobs: [],
-            agentCount: 0,
-            jobCount: 0,
-            totalCount: 0,
-          },
-          ...status,
-        };
-      })
-    );
-
-    return NextResponse.json({
-      providers: results,
-      defaultProvider: getConfiguredDefaultProviderId(settings),
-      defaultModel: settings.defaultModel || null,
-      defaultEffort: settings.defaultEffort || null,
-    });
+    return NextResponse.json(await getDaemonProviders());
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });

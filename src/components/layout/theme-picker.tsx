@@ -6,6 +6,7 @@ import { Moon, Sun, Check, Palette } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 import {
   THEMES,
   applyTheme,
@@ -16,6 +17,7 @@ import {
 
 export function ThemePicker() {
   const { theme, setTheme } = useTheme();
+  const { t } = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeCustomTheme, setActiveCustomTheme] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
@@ -102,7 +104,7 @@ export function ThemePicker() {
         >
           {/* Default themes */}
           <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground/60">
-            Default
+            {t("theme.default")}
           </div>
           <button
             onClick={() => selectDefault("light")}
@@ -114,7 +116,7 @@ export function ThemePicker() {
             )}
           >
             <Sun className="h-3.5 w-3.5 shrink-0" />
-            <span className="flex-1 text-left">Light</span>
+            <span className="flex-1 text-left">{t("theme.light")}</span>
             {!activeCustomTheme && theme === "light" && (
               <Check className="h-3 w-3 text-primary shrink-0" />
             )}
@@ -129,7 +131,7 @@ export function ThemePicker() {
             )}
           >
             <Moon className="h-3.5 w-3.5 shrink-0" />
-            <span className="flex-1 text-left">Dark</span>
+            <span className="flex-1 text-left">{t("theme.dark")}</span>
             {!activeCustomTheme && theme === "dark" && (
               <Check className="h-3 w-3 text-primary shrink-0" />
             )}
@@ -139,7 +141,7 @@ export function ThemePicker() {
 
           {/* Dark themes */}
           <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground/60">
-            Dark Themes
+            {t("theme.darkThemes")}
           </div>
           {darkThemes.map((t) => (
             <button
@@ -172,7 +174,7 @@ export function ThemePicker() {
 
           {/* Light themes */}
           <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground/60">
-            Light Themes
+            {t("theme.lightThemes")}
           </div>
           {lightThemes.map((t) => (
             <button

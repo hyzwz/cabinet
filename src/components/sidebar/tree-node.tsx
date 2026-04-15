@@ -52,6 +52,7 @@ import { Button } from "@/components/ui/button";
 import { LinkRepoDialog } from "./link-repo-dialog";
 import { NewCabinetDialog } from "./new-cabinet-dialog";
 import { getDataDir } from "@/lib/data-dir-cache";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 interface TreeNodeProps {
   node: TreeNodeType;
@@ -86,6 +87,7 @@ export function TreeNode({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [linkRepoOpen, setLinkRepoOpen] = useState(false);
   const [createCabinetOpen, setCreateCabinetOpen] = useState(false);
+  const { t, format } = useLocale();
 
   const isSelected = selectedPath === node.path;
   const isDragOver = dragOverPath === node.path;
@@ -287,30 +289,30 @@ export function TreeNode({
         <ContextMenuContent>
           <ContextMenuItem onClick={() => setSubPageOpen(true)}>
             <FilePlus className="h-4 w-4 mr-2" />
-            Add Sub Page
+            {t("sidebar.addSubPage")}
           </ContextMenuItem>
           <ContextMenuItem onClick={() => setLinkRepoOpen(true)}>
             <GitBranch className="h-4 w-4 mr-2" />
-            Load Knowledge
+            {t("sidebar.loadKnowledge")}
           </ContextMenuItem>
           <ContextMenuItem onClick={() => setCreateCabinetOpen(true)}>
             <Archive className="h-4 w-4 mr-2" />
-            Create Cabinet Here
+            {t("sidebar.createCabinetHere")}
           </ContextMenuItem>
           <ContextMenuItem onClick={() => { setRenameTitle(title); setRenameOpen(true); }}>
             <Pencil className="h-4 w-4 mr-2" />
-            Rename
+            {t("sidebar.rename")}
           </ContextMenuItem>
           <ContextMenuItem onClick={() => navigator.clipboard.writeText(node.path)}>
             <Copy className="h-4 w-4 mr-2" />
-            Copy Relative Path
+            {t("sidebar.copyRelativePath")}
           </ContextMenuItem>
           <ContextMenuItem onClick={async () => {
             const dir = await getDataDir();
             navigator.clipboard.writeText(`${dir}/${node.path}`);
           }}>
             <ClipboardCopy className="h-4 w-4 mr-2" />
-            Copy Full Path
+            {t("sidebar.copyFullPath")}
           </ContextMenuItem>
           <ContextMenuItem onClick={() => {
             fetch("/api/system/open-data-dir", {
@@ -320,7 +322,7 @@ export function TreeNode({
             });
           }}>
             <FolderOpen className="h-4 w-4 mr-2" />
-            Open in Finder
+            {t("sidebar.openInFinder")}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={handleDelete} className="text-destructive">
@@ -329,7 +331,7 @@ export function TreeNode({
             ) : (
               <Trash2 className="h-4 w-4 mr-2" />
             )}
-            {node.isLinked ? "Unlink" : "Delete"}
+            {node.isLinked ? t("sidebar.unlink") : t("sidebar.delete")}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -351,7 +353,7 @@ export function TreeNode({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              Add Sub Page to &ldquo;{title}&rdquo;
+              {format("sidebar.addSubPageTo", { title })}
             </DialogTitle>
           </DialogHeader>
           <form
@@ -362,13 +364,13 @@ export function TreeNode({
             className="flex gap-2"
           >
             <Input
-              placeholder="Page title..."
+              placeholder={t("sidebar.pageTitlePlaceholder")}
               value={subPageTitle}
               onChange={(e) => setSubPageTitle(e.target.value)}
               autoFocus
             />
             <Button type="submit" disabled={!subPageTitle.trim() || creating}>
-              {creating ? "Creating..." : "Create"}
+              {creating ? t("sidebar.creating") : t("sidebar.create")}
             </Button>
           </form>
         </DialogContent>
@@ -377,7 +379,7 @@ export function TreeNode({
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Rename</DialogTitle>
+            <DialogTitle>{t("sidebar.rename")}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={async (e) => {
@@ -394,7 +396,7 @@ export function TreeNode({
               autoFocus
             />
             <Button type="submit" disabled={!renameTitle.trim()}>
-              Rename
+              {t("sidebar.rename")}
             </Button>
           </form>
         </DialogContent>
@@ -421,18 +423,20 @@ export function TreeNode({
               <div className="flex flex-col gap-1">
                 <DialogTitle>
                   {node.isLinked
-                    ? `Unlink "${title}"`
+                    ? format("sidebar.unlinkTitle", { title })
                     : node.type === "cabinet"
-                      ? `Delete Cabinet "${title}"`
-                      : `Delete "${title}"`
+                      ? format("sidebar.deleteCabinetTitle", { title })
+                      : format("sidebar.deleteTitle", { title })
                   }
                 </DialogTitle>
                 <DialogDescription>
                   {node.isLinked
-                    ? `This will remove the link from your knowledge base. The original folder on disk will not be affected.`
+                    ? t("sidebar.unlinkDescription")
                     : node.type === "cabinet"
-                      ? `This will permanently delete the cabinet and everything inside it — all pages, agents, jobs, and tasks. This cannot be undone.`
-                      : `This will permanently delete this ${node.type === "directory" ? "page and all its sub-pages" : "file"}. This cannot be undone.`
+                      ? t("sidebar.deleteCabinetDescription")
+                      : node.type === "directory"
+                        ? t("sidebar.deleteDirectoryDescription")
+                        : t("sidebar.deleteFileDescription")
                   }
                 </DialogDescription>
               </div>
@@ -440,7 +444,7 @@ export function TreeNode({
           </DialogHeader>
           <DialogFooter className="mt-2">
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-              Cancel
+              {t("sidebar.cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -449,7 +453,7 @@ export function TreeNode({
                 setDeleteOpen(false);
               }}
             >
-              {node.isLinked ? "Unlink" : "Delete"}
+              {node.isLinked ? t("sidebar.unlink") : t("sidebar.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

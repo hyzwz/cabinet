@@ -65,15 +65,15 @@ export function Header() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handleCopyMarkdown}>
                 <Copy className="h-4 w-4 mr-2" />
-                Copy Markdown
+                {t("header.export.copyMarkdown")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCopyHTML}>
                 <FileCode className="h-4 w-4 mr-2" />
-                Copy as HTML
+                {t("header.export.copyHtml")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleDownloadMarkdown}>
                 <Download className="h-4 w-4 mr-2" />
-                Download .md
+                {t("header.export.downloadMarkdown")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={async () => {
                 const editorEl = document.querySelector(".tiptap");
@@ -94,7 +94,7 @@ export function Header() {
                 pdf.save(`${frontmatter?.title || "page"}.pdf`);
               }}>
                 <FileDown className="h-4 w-4 mr-2" />
-                Download PDF
+                {t("header.export.downloadPdf")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

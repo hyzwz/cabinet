@@ -14,6 +14,7 @@ import { useTreeStore } from "@/stores/tree-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { cn } from "@/lib/utils";
 import type { TreeNode } from "@/types";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 interface LinkRepoDialogProps {
   open: boolean;
@@ -53,6 +54,7 @@ export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialo
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [devExpanded, setDevExpanded] = useState(false);
+  const { t } = useLocale();
 
   // Warn if the parent directory already has children beyond index.md
   const parentHasContent = useMemo(() => {
@@ -85,7 +87,7 @@ export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialo
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        throw new Error(data?.error || "Failed to open folder picker.");
+        throw new Error(data?.error || t("sidebar.failedOpenFolderPicker"));
       }
 
       if (data?.cancelled || !data?.path) {
@@ -96,7 +98,7 @@ export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialo
       setName((current) => current || basenameForPath(data.path));
     } catch (error) {
       setError(
-        error instanceof Error ? error.message : "Failed to open folder picker."
+        error instanceof Error ? error.message : t("sidebar.failedOpenFolderPicker")
       );
     } finally {
       setBrowsing(false);
@@ -126,7 +128,7 @@ export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialo
 
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        throw new Error(data?.error || "Failed to load knowledge.");
+        throw new Error(data?.error || t("sidebar.failedLoadKnowledge"));
       }
 
       await loadTree();
@@ -135,7 +137,7 @@ export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialo
       onOpenChange(false);
     } catch (error) {
       setError(
-        error instanceof Error ? error.message : "Failed to load knowledge."
+        error instanceof Error ? error.message : t("sidebar.failedLoadKnowledge")
       );
     } finally {
       setCreating(false);
@@ -146,7 +148,7 @@ export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Load Knowledge</DialogTitle>
+          <DialogTitle>{t("sidebar.loadKnowledge")}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(event) => {
@@ -156,27 +158,25 @@ export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialo
           className="flex flex-col gap-3"
         >
           <p className="text-xs text-muted-foreground">
-            Point Cabinet to any folder on your machine. Its contents will appear
-            in the Knowledge Base and be available to AI agents as context.
+{t("sidebar.folderHelper")}
           </p>
 
           {parentHasContent && (
             <div className="flex items-start gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
               <TriangleAlert className="h-4 w-4 shrink-0 text-yellow-500 mt-0.5" />
               <p className="text-xs text-yellow-500">
-                This page already has sub-pages. The loaded folder will be
-                added as a new child alongside the existing content.
+                {t("sidebar.folderExistingContentWarning")}
               </p>
             </div>
           )}
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted-foreground">
-              Folder
+              {t("sidebar.folder")}
             </label>
             <div className="flex gap-2">
               <Input
-                placeholder="/Users/me/Documents/my-folder"
+                placeholder={t("sidebar.folderPathPlaceholder")}
                 value={localPath}
                 onChange={(event) => setLocalPath(event.target.value)}
                 autoFocus
@@ -192,17 +192,17 @@ export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialo
                 ) : (
                   <FolderOpen data-icon="inline-start" />
                 )}
-                Browse
+                {t("sidebar.browse")}
               </Button>
             </div>
           </div>
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted-foreground">
-              Name
+              {t("sidebar.name")}
             </label>
             <Input
-              placeholder={basenameForPath(localPath) || "My Folder"}
+              placeholder={basenameForPath(localPath) || t("sidebar.folderNamePlaceholder")}
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
@@ -221,22 +221,20 @@ export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialo
                   devExpanded && "rotate-90"
                 )}
               />
-              For Developers
+              {t("sidebar.forDevelopers")}
             </button>
             {devExpanded && (
               <div className="flex flex-col gap-3 px-3 pb-3">
                 <p className="text-xs text-muted-foreground">
-                  If the folder is a git repo, Cabinet auto-detects the branch
-                  and remote. A <code>.repo.yaml</code> is written into the
-                  folder so agents can read the source code in context.
+                  {t("sidebar.forDevelopersHelp")}
                 </p>
 
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-muted-foreground">
-                    Remote URL
+                    {t("sidebar.remoteUrl")}
                   </label>
                   <Input
-                    placeholder="Auto-detect from git remote (optional)"
+                    placeholder={t("sidebar.remoteUrlPlaceholder")}
                     value={remote}
                     onChange={(event) => setRemote(event.target.value)}
                   />
@@ -244,10 +242,10 @@ export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialo
 
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-muted-foreground">
-                    Description
+                    {t("sidebar.description")}
                   </label>
                   <Input
-                    placeholder="Optional short summary for agents"
+                    placeholder={t("sidebar.descriptionPlaceholder")}
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
                   />
@@ -265,10 +263,10 @@ export function LinkRepoDialog({ open, onOpenChange, parentPath }: LinkRepoDialo
               onClick={() => onOpenChange(false)}
               disabled={creating}
             >
-              Cancel
+              {t("sidebar.cancel")}
             </Button>
             <Button type="submit" disabled={!localPath.trim() || creating}>
-              {creating ? "Loading..." : "Load"}
+              {creating ? t("sidebar.loading") : t("sidebar.load")}
             </Button>
           </div>
         </form>

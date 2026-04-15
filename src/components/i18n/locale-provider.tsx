@@ -12,6 +12,7 @@ import {
 import {
   DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
+  formatMessage,
   getMessage,
   normalizeLocale,
   type Locale,
@@ -22,6 +23,7 @@ interface LocaleContextValue {
   locale: Locale;
   setLocale: (locale: Locale) => void;
   t: (key: MessageKey) => string;
+  format: (key: MessageKey, values: Record<string, string | number>) => string;
 }
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
@@ -56,8 +58,13 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback((key: MessageKey) => getMessage(key, locale), [locale]);
+  const format = useCallback(
+    (key: MessageKey, values: Record<string, string | number>) =>
+      formatMessage(key, locale, values),
+    [locale]
+  );
 
-  const value = useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t]);
+  const value = useMemo(() => ({ locale, setLocale, t, format }), [locale, setLocale, t, format]);
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 }

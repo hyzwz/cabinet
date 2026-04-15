@@ -23,6 +23,7 @@ import {
   PilcrowLeft,
 } from "lucide-react";
 import { useEditorStore } from "@/stores/editor-store";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 interface EditorToolbarProps {
   editor: Editor | null;
@@ -32,6 +33,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
   const frontmatter = useEditorStore((s) => s.frontmatter);
   const updateFrontmatter = useEditorStore((s) => s.updateFrontmatter);
   const isRtl = frontmatter?.dir === "rtl";
+  const { t } = useLocale();
 
   if (!editor) return null;
 
@@ -40,101 +42,101 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       icon: Heading1,
       action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
       isActive: editor.isActive("heading", { level: 1 }),
-      label: "Heading 1",
+      label: t("editor.heading1"),
     },
     {
       icon: Heading2,
       action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
       isActive: editor.isActive("heading", { level: 2 }),
-      label: "Heading 2",
+      label: t("editor.heading2"),
     },
     {
       icon: Heading3,
       action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
       isActive: editor.isActive("heading", { level: 3 }),
-      label: "Heading 3",
+      label: t("editor.heading3"),
     },
     { separator: true },
     {
       icon: Bold,
       action: () => editor.chain().focus().toggleBold().run(),
       isActive: editor.isActive("bold"),
-      label: "Bold",
+      label: t("editor.bold"),
     },
     {
       icon: Italic,
       action: () => editor.chain().focus().toggleItalic().run(),
       isActive: editor.isActive("italic"),
-      label: "Italic",
+      label: t("editor.italic"),
     },
     {
       icon: Strikethrough,
       action: () => editor.chain().focus().toggleStrike().run(),
       isActive: editor.isActive("strike"),
-      label: "Strikethrough",
+      label: t("editor.strikethrough"),
     },
     {
       icon: Code,
       action: () => editor.chain().focus().toggleCode().run(),
       isActive: editor.isActive("code"),
-      label: "Inline Code",
+      label: t("editor.inlineCode"),
     },
     { separator: true },
     {
       icon: List,
       action: () => editor.chain().focus().toggleBulletList().run(),
       isActive: editor.isActive("bulletList"),
-      label: "Bullet List",
+      label: t("editor.bulletList"),
     },
     {
       icon: ListOrdered,
       action: () => editor.chain().focus().toggleOrderedList().run(),
       isActive: editor.isActive("orderedList"),
-      label: "Ordered List",
+      label: t("editor.orderedList"),
     },
     {
       icon: Quote,
       action: () => editor.chain().focus().toggleBlockquote().run(),
       isActive: editor.isActive("blockquote"),
-      label: "Blockquote",
+      label: t("editor.blockquote"),
     },
     {
       icon: CheckSquare,
       action: () => editor.chain().focus().toggleTaskList().run(),
       isActive: editor.isActive("taskList"),
-      label: "Checklist",
+      label: t("editor.checklist"),
     },
     {
       icon: FileCode,
       action: () => editor.chain().focus().toggleCodeBlock().run(),
       isActive: editor.isActive("codeBlock"),
-      label: "Code Block",
+      label: t("editor.codeBlock"),
     },
     {
       icon: Minus,
       action: () => editor.chain().focus().setHorizontalRule().run(),
       isActive: false,
-      label: "Divider",
+      label: t("editor.divider"),
     },
     { separator: true },
     {
       icon: Undo,
       action: () => editor.chain().focus().undo().run(),
       isActive: false,
-      label: "Undo",
+      label: t("editor.undo"),
     },
     {
       icon: Redo,
       action: () => editor.chain().focus().redo().run(),
       isActive: false,
-      label: "Redo",
+      label: t("editor.redo"),
     },
     { separator: true },
     {
       icon: isRtl ? PilcrowLeft : PilcrowRight,
       action: () => updateFrontmatter({ dir: isRtl ? undefined : "rtl" }),
       isActive: isRtl,
-      label: isRtl ? "Switch to LTR" : "Switch to RTL",
+      label: isRtl ? t("editor.switchToLtr") : t("editor.switchToRtl"),
     },
   ];
 

@@ -16,16 +16,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type { AgentListItem } from "@/types/agents";
 import type { RegistryTemplate } from "@/lib/registry/registry-manifest";
 
 const QUICK_ACTIONS = [
-  "Brainstorm ideas",
-  "Map user journey",
-  "Plan roadmap",
-  "Create research plan",
-  "Create requirements doc",
-];
+  "home.quickActions.brainstormIdeas",
+  "home.quickActions.mapUserJourney",
+  "home.quickActions.planRoadmap",
+  "home.quickActions.createResearchPlan",
+  "home.quickActions.createRequirementsDoc",
+] as const;
 
 const DOMAIN_COLORS: Record<string, string> = {
   "Marketing": "bg-blue-500/15 text-blue-400",
@@ -42,11 +43,11 @@ const DOMAIN_COLORS: Record<string, string> = {
   "Content Ops": "bg-amber-500/15 text-amber-400",
 };
 
-function getGreeting(): string {
+function getGreetingKey(): (typeof QUICK_ACTIONS)[number] | "home.greeting.morning" | "home.greeting.afternoon" | "home.greeting.evening" {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+  if (hour < 12) return "home.greeting.morning";
+  if (hour < 17) return "home.greeting.afternoon";
+  return "home.greeting.evening";
 }
 
 function CabinetCard({
@@ -160,9 +161,7 @@ function ImportDialog({
   const [name, setName] = useState("");
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const loadTree = useTreeStore((s) => s.loadTree);
-  const selectPage = useTreeStore((s) => s.selectPage);
-  const setSection = useAppStore((s) => s.setSection);
+  const { t, format } = useLocale();
 
   useEffect(() => {
     if (template) setName(template.name);
@@ -187,7 +186,7 @@ function ImportDialog({
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || "Import failed");
+        setError(data.error || t("home.registry.importFailed"));
         setImporting(false);
         onImportEnd();
         onOpenChange(true);
@@ -198,7 +197,7 @@ function ImportDialog({
       onImportEnd();
       window.location.reload();
     } catch {
-      setError("Import failed. Check your internet connection.");
+      setError(t("home.registry.importConnectionError"));
       setImporting(false);
       onImportEnd();
       onOpenChange(true);
@@ -211,30 +210,30 @@ function ImportDialog({
     <Dialog open={open} onOpenChange={(v) => { if (!importing) onOpenChange(v); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Import {template.name}</DialogTitle>
+          <DialogTitle>{format("home.registry.importDialogTitle", { name: template.name })}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             {template.description}
           </p>
           <div className="flex gap-4 text-xs text-muted-foreground">
-            <span>{template.agentCount} agents</span>
-            <span>{template.jobCount} jobs</span>
+            <span>{format("home.registry.agentCount", { count: template.agentCount })}</span>
+            <span>{format("home.registry.jobCount", { count: template.jobCount })}</span>
             {template.childCount > 0 && (
-              <span>{template.childCount} sub-cabinets</span>
+              <span>{format("home.registry.childCount", { count: template.childCount })}</span>
             )}
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">
-              Cabinet name
+              {t("home.registry.cabinetNameLabel")}
             </label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Cabinet name..."
+              placeholder={t("home.registry.cabinetNamePlaceholder")}
             />
             <p className="text-[11px] text-muted-foreground/70">
-              Cabinet names can&apos;t be renamed later (for now). Choose wisely.
+              {t("home.registry.cabinetNameHint")}
             </p>
           </div>
           {error && (
@@ -246,14 +245,14 @@ function ImportDialog({
               onClick={() => onOpenChange(false)}
               disabled={importing}
             >
-              Cancel
+              {t("home.registry.cancel")}
             </Button>
             <Button
               onClick={handleImport}
               disabled={importing || !name.trim()}
             >
               <Download className="mr-2 h-4 w-4" />
-              Import
+              {t("home.registry.import")}
             </Button>
           </div>
         </div>
@@ -265,6 +264,7 @@ function ImportDialog({
 export function HomeScreen() {
   const setSection = useAppStore((s) => s.setSection);
   const treeNodes = useTreeStore((s) => s.nodes);
+  const { t, format } = useLocale();
   const [userName, setUserName] = useState<string | null>(null);
   const [agents, setAgents] = useState<AgentListItem[]>([]);
   const [registryTemplates, setRegistryTemplates] = useState<
@@ -355,20 +355,20 @@ export function HomeScreen() {
     },
   });
 
-  const greeting = getGreeting();
-  const displayName = userName || "there";
+  const greeting = t(getGreetingKey());
+  const displayName = userName || t("home.displayNameFallback");
 
   return (
     <div className="flex-1 flex flex-col items-center px-4 overflow-hidden">
       <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl space-y-8">
         <h1 className="text-3xl md:text-4xl font-semibold text-center text-foreground tracking-tight">
           {greeting}, {displayName}.<br />
-          What are we working on today?
+          {t("home.prompt")}
         </h1>
 
         <ComposerInput
           composer={composer}
-          placeholder="I want to create..."
+          placeholder={t("home.composerPlaceholder")}
           variant="card"
           items={mentionItems}
           autoFocus
@@ -381,7 +381,7 @@ export function HomeScreen() {
           {QUICK_ACTIONS.map((action) => (
             <button
               key={action}
-              onClick={() => void composer.submit(action)}
+              onClick={() => void composer.submit(t(action))}
               disabled={composer.submitting}
               className={cn(
                 "rounded-full border border-border px-4 py-1.5",
@@ -391,7 +391,7 @@ export function HomeScreen() {
                 composer.submitting && "opacity-50 cursor-not-allowed"
               )}
             >
-              {action}
+              {t(action)}
             </button>
           ))}
         </div>
@@ -400,13 +400,13 @@ export function HomeScreen() {
       <div className="w-screen pb-8 pt-4 space-y-3">
         <div className="flex items-center justify-center gap-3">
           <h2 className="text-sm font-medium text-muted-foreground">
-            Import a pre-made zero-human team
+            {t("home.registry.heading")}
           </h2>
           <button
             onClick={() => setSection({ type: "registry" })}
             className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
           >
-            Browse all &rarr;
+            {t("home.registry.browseAll")}
           </button>
         </div>
         <RegistryCarousel
@@ -433,13 +433,15 @@ export function HomeScreen() {
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="mt-4 text-sm font-medium text-foreground">
-            Importing {importTemplate?.name || "cabinet"}...
+            {format("home.registry.importingTemplate", {
+              name: importTemplate?.name || "cabinet",
+            })}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Downloading agents, jobs, and content from the registry
+            {t("home.registry.importingDescription")}
           </p>
           <p className="mt-3 text-[11px] text-muted-foreground/60">
-            Please do not refresh the page while importing
+            {t("home.registry.importingWarning")}
           </p>
         </div>
       )}

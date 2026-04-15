@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useTreeStore } from "@/stores/tree-store";
 import { useEditorStore } from "@/stores/editor-store";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export function NewPageDialog() {
   const [open, setOpen] = useState(false);
@@ -20,6 +21,7 @@ export function NewPageDialog() {
   const [creating, setCreating] = useState(false);
   const { createPage } = useTreeStore();
   const { loadPage } = useEditorStore();
+  const { t } = useLocale();
 
   const handleCreate = async () => {
     if (!title.trim()) return;
@@ -50,11 +52,11 @@ export function NewPageDialog() {
         className="flex items-center gap-1.5 w-full text-xs px-2.5 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer whitespace-nowrap"
       >
         <Plus className="h-4 w-4" />
-        New Page
+        {t("sidebar.newPage")}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create New Page</DialogTitle>
+          <DialogTitle>{t("sidebar.createNewPage")}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(e) => {
@@ -64,13 +66,13 @@ export function NewPageDialog() {
           className="flex gap-2"
         >
           <Input
-            placeholder="Page title..."
+            placeholder={t("sidebar.pageTitlePlaceholder")}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             autoFocus
           />
           <Button type="submit" disabled={!title.trim() || creating}>
-            {creating ? "Creating..." : "Create"}
+            {creating ? t("sidebar.creating") : t("sidebar.create")}
           </Button>
         </form>
       </DialogContent>

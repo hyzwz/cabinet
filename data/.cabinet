@@ -1,7 +1,7 @@
 schemaVersion: 1
-id: apple-root
-name: Apple
+id: jyutechcn-root
+name: jyutech.cn
 kind: root
 version: 0.1.0
-description: Fun
+description: jyutech.cn cabinet.
 entry: index.md
