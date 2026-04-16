@@ -304,6 +304,75 @@ export function parseCabinetBlock(output: string, prompt?: string): ParsedCabine
   };
 }
 
+/**
+ * Fallback artifact detection: extract file paths from git diff headers
+ * and tool-use patterns when the agent didn't output a ```cabinet block.
+ * Matches patterns like:
+ *   a/path/to/file.md → b/path/to/file.md
+ *   diff --git a/path/to/file.md b/path/to/file.md
+ *   --- a/path/to/file.md
+ *   +++ b/path/to/file.md
+ *   Wrote to /data/path/to/file.md
+ *   Created /data/path/to/file.md
+ *   Updated /data/path/to/file.md
+ */
+function extractArtifactsFromTranscript(transcript: string, cabinetPath?: string): string[] {
+  const seen = new Set<string>();
+  const dataPrefix = cabinetPath ? `/data/${cabinetPath}/` : "/data/";
+  const dotPrefix = cabinetPath ? `./${cabinetPath}/` : "./";
+
+  // Pattern 1: git diff "b/" paths — "a/X → b/X" or "diff --git a/X b/X" or "+++ b/X"
+  const diffPatterns = [
+    /(?:→|->)\s*b\/(.+?)(?:\s|$)/gm,
+    /diff\s+--git\s+a\/.+?\s+b\/(.+?)(?:\s|$)/gm,
+    /\+\+\+\s+b\/(.+?)(?:\s|$)/gm,
+  ];
+
+  for (const pattern of diffPatterns) {
+    for (const m of transcript.matchAll(pattern)) {
+      let p = m[1].trim();
+      // Strip leading "./" or cabinet path prefix
+      if (p.startsWith(dotPrefix)) p = p.slice(dotPrefix.length);
+      else if (p.startsWith("./")) p = p.slice(2);
+      if (p && !p.startsWith("..") && /\.\w+$/.test(p)) {
+        seen.add(p);
+      }
+    }
+  }
+
+  // Pattern 2: "Wrote to /data/..." or "Created /data/..." or "Updated /data/..."
+  const writePattern = /(?:Wrote to|Created|Updated)\s+(\/data\/\S+)/gim;
+  for (const m of transcript.matchAll(writePattern)) {
+    let p = m[1].replace(/^\/data\//, "");
+    if (cabinetPath && p.startsWith(cabinetPath + "/")) {
+      p = p.slice(cabinetPath.length + 1);
+    }
+    if (p && !p.startsWith("..") && /\.\w+$/.test(p)) {
+      seen.add(p);
+    }
+  }
+
+  // Pattern 3: Claude-style "Edit" / "Write" tool markers in PTY output
+  // e.g. "⎿ Wrote to vc-os/intelligence/file.md"
+  const toolWritePattern = /⎿\s*(?:Wrote to|Created|Updated)\s+(\S+)/gm;
+  for (const m of transcript.matchAll(toolWritePattern)) {
+    let p = m[1].trim();
+    if (p.startsWith(dataPrefix)) p = p.slice(dataPrefix.length);
+    else if (p.startsWith("/data/")) p = p.slice(6);
+    if (p && !p.startsWith("..") && /\.\w+$/.test(p)) {
+      seen.add(p);
+    }
+  }
+
+  // Filter to KB-relevant files (skip .git, node_modules, etc.)
+  return Array.from(seen).filter(
+    (p) =>
+      !p.startsWith(".git/") &&
+      !p.startsWith("node_modules/") &&
+      !p.startsWith(".agents/.conversations/")
+  );
+}
+
 export function buildConversationId(input: {
   agentSlug: string;
   trigger: ConversationTrigger;
@@ -698,6 +767,10 @@ async function maybeResolveCompletedConversation(
     return meta;
   }
   const parsed = parseCabinetBlock(transcript, prompt);
+  // Also check transcript-based artifacts as fallback
+  const transcriptArtifacts = parsed.artifactPaths.length === 0
+    ? extractArtifactsFromTranscript(transcript, cabinetPath)
+    : [];
   const needsRepair =
     meta.status === "running" ||
     isPlaceholderCabinetValue(meta.summary) ||
@@ -706,7 +779,8 @@ async function maybeResolveCompletedConversation(
     (!!parsed.summary && parsed.summary !== meta.summary) ||
     (!!parsed.contextSummary && parsed.contextSummary !== meta.contextSummary) ||
     (parsed.artifactPaths.length > 0 &&
-      parsed.artifactPaths.join("|") !== meta.artifactPaths.join("|"));
+      parsed.artifactPaths.join("|") !== meta.artifactPaths.join("|")) ||
+    (transcriptArtifacts.length > 0 && meta.artifactPaths.length === 0);
 
   if (!needsRepair) {
     return meta;
@@ -764,7 +838,13 @@ export async function finalizeConversation(
   ]);
   const cleanedOutput = cleanConversationOutputForParsing(output, prompt);
   const parsed = parseCabinetBlock(cleanedOutput, prompt);
-  const artifacts = parsed.artifactPaths.map((artifactPath) => ({
+
+  // Fallback: if no artifacts from cabinet block, try extracting from transcript
+  let artifactPaths = parsed.artifactPaths;
+  if (artifactPaths.length === 0) {
+    artifactPaths = extractArtifactsFromTranscript(output, cp);
+  }
+  const artifacts = artifactPaths.map((artifactPath) => ({
     path: artifactPath,
   }));
 
