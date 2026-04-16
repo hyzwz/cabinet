@@ -44,7 +44,7 @@ export const hermesCliProvider: AgentProvider = {
   ],
 
   buildArgs(prompt: string, _workdir: string): string[] {
-    return ["chat", "--yolo", "-Q", "-q", prompt];
+    return ["chat", "--yolo", "-q", prompt];
   },
 
   buildOneShotInvocation(prompt: string, workdir: string) {
@@ -58,7 +58,7 @@ export const hermesCliProvider: AgentProvider = {
     if (prompt?.trim()) {
       return {
         command: this.command || "hermes",
-        args: ["chat", "--yolo", "-Q", "-q", prompt.trim()],
+        args: ["chat", "--yolo", "-q", prompt.trim()],
       };
     }
     return {
