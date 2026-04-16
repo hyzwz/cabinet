@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+
+type ConnectionState = "idle" | "connecting" | "connected" | "error" | "closed";
 
 interface WebTerminalProps {
   sessionId?: string;
@@ -16,6 +18,17 @@ interface DaemonAuthPayload {
   token: string;
   wsOrigin?: string;
 }
+
+interface SessionOutputPayload {
+  status?: string;
+  output?: string;
+  exitCode?: number | null;
+}
+
+const MAX_WS_RETRIES = 3;
+const WS_RETRY_DELAY_MS = 2000;
+const HTTP_POLL_INTERVAL_MS = 2000;
+const STATUS_POLL_INTERVAL_MS = 3000;
 
 function readRootVar(name: string, fallback: string) {
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -73,11 +86,23 @@ export function WebTerminal({
   const xtermRef = useRef<import("@xterm/xterm").Terminal | null>(null);
   const fitAddonRef = useRef<import("@xterm/addon-fit").FitAddon | null>(null);
   const onCloseRef = useRef(onClose);
-  const [error, setError] = useState<string | null>(null);
+  const [connState, setConnState] = useState<ConnectionState>("idle");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+  const retryCountRef = useRef(0);
+  const httpFallbackActiveRef = useRef(false);
 
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+
+  // Manual retry handler exposed to the UI
+  const handleRetry = useCallback(() => {
+    retryCountRef.current = 0;
+    setConnState("idle");
+    setErrorMsg(null);
+    setRetryKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     let terminal: import("@xterm/xterm").Terminal | null = null;
@@ -85,22 +110,57 @@ export function WebTerminal({
     let resizeObserver: ResizeObserver | null = null;
     let themeObserver: MutationObserver | null = null;
     let statusPollHandle: ReturnType<typeof setInterval> | null = null;
+    let httpPollHandle: ReturnType<typeof setInterval> | null = null;
     let disposed = false;
     let sessionFinished = false;
+    let wsRetryTimer: ReturnType<typeof setTimeout> | null = null;
+    let httpOutputOffset = 0;
 
     const finishSession = (closeSocket = false) => {
       if (disposed || sessionFinished) return;
       sessionFinished = true;
-      if (statusPollHandle) {
-        clearInterval(statusPollHandle);
-        statusPollHandle = null;
-      }
+      if (statusPollHandle) { clearInterval(statusPollHandle); statusPollHandle = null; }
+      if (httpPollHandle) { clearInterval(httpPollHandle); httpPollHandle = null; }
       terminal?.write("\r\n\x1b[90m[Session ended]\x1b[0m\r\n");
       if (closeSocket && ws && ws.readyState === WebSocket.OPEN) {
         ws.close();
       }
+      setConnState("closed");
       onCloseRef.current?.();
     };
+
+    // HTTP polling fallback: fetch output via Next.js proxy when WebSocket fails
+    function startHttpFallback(id: string) {
+      if (httpFallbackActiveRef.current || disposed) return;
+      httpFallbackActiveRef.current = true;
+      httpOutputOffset = 0;
+
+      terminal?.write("\x1b[33m[Streaming via HTTP fallback]\x1b[0m\r\n");
+      setConnState("connected");
+
+      httpPollHandle = setInterval(() => {
+        if (disposed || sessionFinished) return;
+        void (async () => {
+          try {
+            const resp = await fetch(`/api/daemon/session/${id}/output`);
+            if (!resp.ok) return;
+            const data = (await resp.json()) as SessionOutputPayload;
+            if (data.output && terminal) {
+              const newContent = data.output.substring(httpOutputOffset);
+              if (newContent) {
+                terminal.write(newContent);
+                httpOutputOffset = data.output.length;
+              }
+            }
+            if (data.status && data.status !== "running") {
+              finishSession(false);
+            }
+          } catch {
+            // Ignore transient polling failures
+          }
+        })();
+      }, HTTP_POLL_INTERVAL_MS);
+    }
 
     const init = async () => {
       const { Terminal } = await import("@xterm/xterm");
@@ -108,7 +168,6 @@ export function WebTerminal({
       const { WebLinksAddon } = await import("@xterm/addon-web-links");
       const { Unicode11Addon } = await import("@xterm/addon-unicode11");
 
-      // Import CSS
       await import("@xterm/xterm/css/xterm.css");
 
       if (disposed) return;
@@ -134,10 +193,8 @@ export function WebTerminal({
       terminal.loadAddon(fitAddon);
       fitAddonRef.current = fitAddon;
 
-      // Enable clickable links in output
       terminal.loadAddon(new WebLinksAddon());
 
-      // Enable Unicode 11 for better emoji/icon rendering
       const unicode11Addon = new Unicode11Addon();
       terminal.loadAddon(unicode11Addon);
       terminal.unicode.activeVersion = "11";
@@ -159,9 +216,7 @@ export function WebTerminal({
 
         themeObserver = new MutationObserver(() => {
           requestAnimationFrame(() => {
-            if (!disposed) {
-              applyTheme();
-            }
+            if (!disposed) applyTheme();
           });
         });
         themeObserver.observe(document.documentElement, {
@@ -199,8 +254,10 @@ export function WebTerminal({
         resizeObserver.observe(termRef.current);
       }
 
-      function connectWebSocket() {
+      function connectWebSocket(retryAttempt = 0) {
         if (disposed || !terminal) return;
+
+        setConnState("connecting");
 
         void (async () => {
           const id = sessionId || `session-${Date.now()}`;
@@ -223,13 +280,29 @@ export function WebTerminal({
                 : `ws://${window.location.host}`);
             const wsUrl = `${wsOrigin}/api/daemon/pty?${params.toString()}`;
 
+            if (retryAttempt === 0) {
+              terminal?.write(`\x1b[90mConnecting to daemon...\x1b[0m\r\n`);
+            } else {
+              terminal?.write(`\x1b[90mRetrying (${retryAttempt}/${MAX_WS_RETRIES})...\x1b[0m\r\n`);
+            }
+
             ws = new WebSocket(wsUrl);
             wsRef.current = ws;
             ws.binaryType = "arraybuffer";
 
+            // Timeout: if no open event within 5s, consider it failed
+            const connectTimeout = setTimeout(() => {
+              if (ws && ws.readyState !== WebSocket.OPEN) {
+                ws.close();
+              }
+            }, 5000);
+
             ws.onopen = () => {
+              clearTimeout(connectTimeout);
               if (disposed) return;
-              setError(null);
+              retryCountRef.current = 0;
+              setConnState("connected");
+              setErrorMsg(null);
               if (terminal) {
                 ws?.send(
                   JSON.stringify({
@@ -251,37 +324,67 @@ export function WebTerminal({
             };
 
             ws.onerror = () => {
+              clearTimeout(connectTimeout);
               if (disposed) return;
-              setError("Connection failed. Is the daemon running?");
-              terminal?.write(
-                "\r\n\x1b[31mConnection error.\x1b[0m Run \x1b[33mnpm run dev:all\x1b[0m to start Cabinet locally.\r\n"
-              );
+
+              if (retryAttempt < MAX_WS_RETRIES) {
+                // Auto-retry with backoff
+                setConnState("connecting");
+                wsRetryTimer = setTimeout(() => {
+                  if (!disposed && !sessionFinished) {
+                    connectWebSocket(retryAttempt + 1);
+                  }
+                }, WS_RETRY_DELAY_MS * (retryAttempt + 1));
+              } else {
+                // All retries exhausted — fall back to HTTP polling
+                terminal?.write(
+                  "\r\n\x1b[33mWebSocket unavailable, switching to HTTP streaming...\x1b[0m\r\n"
+                );
+                startHttpFallback(id);
+              }
             };
 
-            ws.onclose = () => {
+            ws.onclose = (event) => {
+              clearTimeout(connectTimeout);
               if (disposed) return;
+              // Code 1006 = abnormal close (connection never established properly)
+              if (event.code === 1006 && retryAttempt < MAX_WS_RETRIES && !sessionFinished) {
+                setConnState("connecting");
+                wsRetryTimer = setTimeout(() => {
+                  if (!disposed && !sessionFinished) {
+                    connectWebSocket(retryAttempt + 1);
+                  }
+                }, WS_RETRY_DELAY_MS * (retryAttempt + 1));
+                return;
+              }
               finishSession(false);
             };
 
-            statusPollHandle = setInterval(() => {
-              if (disposed || sessionFinished) return;
-              void (async () => {
-                try {
-                  const response = await fetch(`/api/daemon/session/${id}/output`);
-                  if (!response.ok) return;
-                  const data = (await response.json()) as { status?: string };
-                  if (data.status && data.status !== "running") {
-                    finishSession(true);
+            // Status polling to detect when session completes
+            if (!statusPollHandle) {
+              statusPollHandle = setInterval(() => {
+                if (disposed || sessionFinished) return;
+                void (async () => {
+                  try {
+                    const response = await fetch(`/api/daemon/session/${id}/output`);
+                    if (!response.ok) return;
+                    const data = (await response.json()) as SessionOutputPayload;
+                    if (data.status && data.status !== "running") {
+                      finishSession(true);
+                    }
+                  } catch {
+                    // Ignore transient polling failures
                   }
-                } catch {
-                  // Ignore transient polling failures; the socket remains the primary signal.
-                }
-              })();
-            }, 3000);
-          } catch {
-            setError("Connection failed. Is the daemon running?");
+                })();
+              }, STATUS_POLL_INTERVAL_MS);
+            }
+          } catch (err) {
+            if (disposed) return;
+            const msg = err instanceof Error ? err.message : "Connection failed";
+            setConnState("error");
+            setErrorMsg(msg);
             terminal?.write(
-              "\r\n\x1b[31mConnection error.\x1b[0m Run \x1b[33mnpm run dev:all\x1b[0m to start Cabinet locally.\r\n"
+              `\r\n\x1b[31m${msg}\x1b[0m\r\n\x1b[90mIs the daemon running? Use: npm run dev:all\x1b[0m\r\n`
             );
           }
         })();
@@ -298,9 +401,10 @@ export function WebTerminal({
 
     return () => {
       disposed = true;
-      if (statusPollHandle) {
-        clearInterval(statusPollHandle);
-      }
+      if (statusPollHandle) clearInterval(statusPollHandle);
+      if (httpPollHandle) clearInterval(httpPollHandle);
+      if (wsRetryTimer) clearTimeout(wsRetryTimer);
+      httpFallbackActiveRef.current = false;
       resizeObserver?.disconnect();
       themeObserver?.disconnect();
       ws?.close();
@@ -309,7 +413,7 @@ export function WebTerminal({
       xtermRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [sessionId, prompt, displayPrompt, providerId, reconnect, themeSurface]);
+  }, [sessionId, prompt, displayPrompt, providerId, reconnect, themeSurface, retryKey]);
 
   const surfaceBackground = themeSurface === "page" ? "var(--background)" : "var(--terminal-bg)";
   const surfaceForeground = themeSurface === "page" ? "var(--foreground)" : "var(--terminal-fg)";
@@ -320,17 +424,38 @@ export function WebTerminal({
       style={{
         backgroundColor: surfaceBackground,
         color: surfaceForeground,
+        minHeight: 100,
       }}
     >
-      {error && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 px-3 py-1 bg-destructive/90 text-destructive-foreground text-xs rounded-md">
-          {error}
+      {/* Connection status overlay */}
+      {connState === "connecting" && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <div className="flex items-center gap-2 rounded-lg bg-background/80 px-4 py-2 text-xs text-muted-foreground backdrop-blur-sm border border-border">
+            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-yellow-400" />
+            Connecting to daemon...
+          </div>
         </div>
       )}
+
+      {/* Error overlay with retry */}
+      {connState === "error" && errorMsg && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3 rounded-lg bg-background/90 px-6 py-4 text-center backdrop-blur-sm border border-destructive/30">
+            <div className="text-xs text-destructive font-medium">{errorMsg}</div>
+            <button
+              onClick={handleRetry}
+              className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Retry Connection
+            </button>
+          </div>
+        </div>
+      )}
+
       <div
         ref={termRef}
         className="h-full w-full overflow-hidden"
-        style={{ padding: "4px 8px" }}
+        style={{ padding: "4px 8px", minHeight: 100 }}
       />
     </div>
   );
