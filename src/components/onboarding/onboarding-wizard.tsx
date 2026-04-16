@@ -14,7 +14,6 @@ import {
   Info,
   Loader2,
   Rocket,
-  Bot,
   ChevronDown,
   ChevronRight,
   RefreshCw,
@@ -25,6 +24,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
+import { ProviderGlyph } from "@/components/agents/provider-glyph";
 import type { ProviderInfo } from "@/types/agents";
 import type { RegistryTemplate } from "@/lib/registry/registry-manifest";
 import { RegistryBrowser } from "@/components/registry/registry-browser";
@@ -1696,27 +1696,23 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
                     const isInstalled = !!p.available;
                     const isExpanded = expandedProvider === p.id;
                     const isSelected = selectedProvider === p.id;
-                    const ProviderIcon = p.icon === "sparkles" ? Sparkles : p.icon === "bot" ? Bot : Terminal;
                     const statusColor = isReady ? "#16a34a" : isInstalled ? "#d97706" : WEB.textTertiary;
                     const statusText = isReady
                       ? `Ready ${p.version ? `\u2014 ${p.version}` : ""}`
                       : isInstalled
                         ? "Installed but not logged in"
                         : "Not detected on this machine";
-                    const setupSteps: { title: string; detail: string; cmd?: string; openTerminal?: boolean; link?: { label: string; url: string } }[] = p.id === "claude-code"
-                      ? [
-                          { title: "Get a Claude subscription", detail: "Any Claude Code subscription will do (Pro, Max, or Team).", link: { label: "Open Claude billing", url: "https://claude.ai/settings/billing" } },
-                          { title: "Open a terminal", detail: "You'll need a terminal to run the next steps.", openTerminal: true },
-                          { title: "Install Claude Code", detail: "Run the following in your terminal:", cmd: "npm install -g @anthropic-ai/claude-code" },
-                          { title: "Log in to Claude", detail: "Authenticate with your subscription:", cmd: "claude auth login" },
-                          { title: "Verify login", detail: "Check that you're logged in:", cmd: "claude auth status" },
-                        ]
-                      : [
-                          { title: "Open a terminal", detail: "You'll need a terminal to run the next steps.", openTerminal: true },
-                          { title: "Install Codex CLI", detail: "Run the following in your terminal:", cmd: "npm i -g @openai/codex" },
-                          { title: "Log in to Codex", detail: "Authenticate with your ChatGPT or API account:", cmd: "codex login" },
-                          { title: "Verify login", detail: "Check that you're logged in:", cmd: "codex login status" },
-                        ];
+                    const setupSteps: { title: string; detail: string; cmd?: string; openTerminal?: boolean; link?: { label: string; url: string } }[] = [
+                      { title: "Open a terminal", detail: "You'll need a terminal to run the next steps.", openTerminal: true },
+                      ...((p.installSteps || []).map((step) => {
+                        return {
+                          title: step.title,
+                          detail: step.detail,
+                          cmd: step.command,
+                          link: step.link,
+                        };
+                      })),
+                    ];
                     return (
                       <div
                         key={p.id}
@@ -1755,7 +1751,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
                             className="flex size-9 items-center justify-center rounded-lg"
                             style={{ background: WEB.bgWarm, color: WEB.accent }}
                           >
-                            <ProviderIcon className="size-4" />
+                            <ProviderGlyph icon={p.icon} className="size-4" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium" style={{ color: WEB.text }}>

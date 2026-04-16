@@ -15,6 +15,7 @@ test("legacy adapter registry exposes the current compatibility adapters", () =>
     "claude_local",
     "codex_cli_legacy",
     "codex_local",
+    "gemini_local",
   ]);
 
   const claudeAdapter = agentAdapterRegistry.get("claude_code_legacy");
@@ -32,11 +33,17 @@ test("legacy adapter registry exposes the current compatibility adapters", () =>
   assert.ok(codexLocal);
   assert.equal(codexLocal.executionEngine, "structured_cli");
   assert.equal(codexLocal.providerId, "codex-cli");
+
+  const geminiLocal = agentAdapterRegistry.get("gemini_local");
+  assert.ok(geminiLocal);
+  assert.equal(geminiLocal.executionEngine, "structured_cli");
+  assert.equal(geminiLocal.providerId, "gemini-cli");
 });
 
 test("provider-to-adapter defaults map current providers onto structured adapters when available", () => {
   assert.equal(defaultAdapterTypeForProvider("claude-code"), "claude_local");
   assert.equal(defaultAdapterTypeForProvider("codex-cli"), "codex_local");
+  assert.equal(defaultAdapterTypeForProvider("gemini-cli"), "gemini_local");
 });
 
 test("execution provider resolution prefers explicit legacy adapter mappings", () => {

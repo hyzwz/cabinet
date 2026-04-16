@@ -23,25 +23,26 @@ export const claudeCodeProvider: AgentProvider = {
   installMessage: "Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code",
   installSteps: [
     { title: "Get a Claude subscription", detail: "Any Claude Code subscription will do (Pro, Max, or Team).", link: { label: "Open Claude billing", url: "https://claude.ai/settings/billing" } },
-    { title: "Install Claude Code", detail: "npm install -g @anthropic-ai/claude-code" },
-    { title: "Log in", detail: "Run claude in your terminal and follow the login prompts." },
+    { title: "Install Claude Code", detail: "Run the following in your terminal:", command: "npm install -g @anthropic-ai/claude-code" },
+    { title: "Log in", detail: "Authenticate with your Claude account:", command: "claude auth login" },
+    { title: "Verify login", detail: "Check that you're logged in:", command: "claude auth status" },
   ],
   models: [
     {
-      id: "sonnet",
-      name: "Claude Sonnet",
-      description: "Fast and capable with configurable effort",
-      effortLevels: [...CLAUDE_THINKING_LEVELS],
-    },
-    {
       id: "opus",
-      name: "Claude Opus",
+      name: "Claude Opus 4.7",
       description: "Most intelligent with configurable effort",
       effortLevels: [...CLAUDE_THINKING_LEVELS],
     },
     {
+      id: "sonnet",
+      name: "Claude Sonnet 4.6",
+      description: "Fast and capable with configurable effort",
+      effortLevels: [...CLAUDE_THINKING_LEVELS],
+    },
+    {
       id: "haiku",
-      name: "Claude Haiku",
+      name: "Claude Haiku 4.5",
       description: "Fastest responses",
       effortLevels: [],
     },

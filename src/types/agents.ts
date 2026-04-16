@@ -108,7 +108,12 @@ export interface ProviderInfo {
   version?: string;
   error?: string;
   installMessage?: string;
-  installSteps?: Array<{ title: string; detail: string; link?: { label: string; url: string } }>;
+  installSteps?: Array<{
+    title: string;
+    detail: string;
+    command?: string;
+    link?: { label: string; url: string };
+  }>;
   models?: ProviderModel[];
   effortLevels?: ProviderEffortLevel[];
   defaultAdapterType?: string;

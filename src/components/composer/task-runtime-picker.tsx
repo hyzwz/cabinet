@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bot, BrainCircuit } from "lucide-react";
+import { BrainCircuit } from "lucide-react";
+import { ProviderGlyph } from "@/components/agents/provider-glyph";
 import { cn } from "@/lib/utils";
 import {
   formatEffortName,
@@ -13,8 +14,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -267,34 +266,6 @@ function sameSelection(
     (left.model || "") === (right.model || "") &&
     (left.effort || "") === (right.effort || "")
   );
-}
-
-function ProviderGlyph({
-  icon,
-  className,
-}: {
-  icon?: string;
-  className?: string;
-}) {
-  if (icon === "sparkles") {
-    return (
-      <img
-        src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Claude_AI_symbol.svg"
-        alt="Claude"
-        className={className}
-      />
-    );
-  }
-  if (icon === "bot") {
-    return (
-      <img
-        src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/OpenAI_logo_2025_%28symbol%29.svg/960px-OpenAI_logo_2025_%28symbol%29.svg.png?_=20250205041901"
-        alt="OpenAI"
-        className={className}
-      />
-    );
-  }
-  return <Bot className={className} />;
 }
 
 function SelectionRadio({
