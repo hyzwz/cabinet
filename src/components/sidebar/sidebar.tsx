@@ -121,9 +121,9 @@ export function Sidebar() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSection({ type: "home" })}
-              className="font-logo text-[22px] italic tracking-[-0.01em] text-foreground hover:text-foreground/80 transition-colors"
+              className="text-[22px] font-semibold tracking-[-0.01em] text-foreground hover:text-foreground/80 transition-colors"
             >
-              cabinet
+              GreatClaw
             </button>
           </div>
           <Button

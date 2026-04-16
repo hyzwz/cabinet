@@ -2195,7 +2195,7 @@ export function AgentsWorkspace({
                           </span>
                           <span
                             aria-label={TRIGGER_LABELS[conversation.trigger]}
-                            title={TRIGGER_LABELS[conversation.trigger]}
+                            title={localizedTriggerLabels[conversation.trigger]}
                             className={cn(
                               "inline-flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-full",
                               TASK_CARD_TRIGGER_STYLES[conversation.trigger]

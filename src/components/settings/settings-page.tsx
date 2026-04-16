@@ -27,6 +27,7 @@ import {
   HardDrive,
   FolderOpen,
   RotateCw,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,8 @@ import {
 } from "@/lib/themes";
 import { cn } from "@/lib/utils";
 import type { ProviderInfo } from "@/types/agents";
+import { useAuthStore } from "@/stores/auth-store";
+import { UsersTab } from "@/components/settings/users-tab";
 
 interface McpServer {
   name: string;
@@ -69,7 +72,7 @@ interface IntegrationConfig {
   };
 }
 
-type Tab = "providers" | "storage" | "integrations" | "notifications" | "appearance" | "updates" | "about";
+type Tab = "providers" | "storage" | "integrations" | "notifications" | "appearance" | "updates" | "about" | "users";
 
 function TerminalCommand({ command }: { command: string }) {
   const { t } = useLocale();
@@ -124,6 +127,9 @@ const PROVIDER_SETUP_STEPS: Record<string, SetupStep[]> = {
 export function SettingsPage() {
   const { t, format } = useLocale();
   const { showHiddenFiles, setShowHiddenFiles } = useTreeStore();
+  const currentUser = useAuthStore((s) => s.user);
+  const authMode = useAuthStore((s) => s.authMode);
+  const isAdmin = authMode === "multi" && currentUser?.role === "admin";
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [defaultProvider, setDefaultProvider] = useState("");
   const [defaultModel, setDefaultModel] = useState("");
@@ -136,7 +142,7 @@ export function SettingsPage() {
   const [dataDirBrowsing, setDataDirBrowsing] = useState(false);
   const [dataDirSaving, setDataDirSaving] = useState(false);
   const [dataDirRestartNeeded, setDataDirRestartNeeded] = useState(false);
-  const VALID_TABS: Tab[] = ["providers", "storage", "integrations", "notifications", "appearance", "updates", "about"];
+  const VALID_TABS: Tab[] = ["providers", "storage", "integrations", "notifications", "appearance", "updates", "about", "users"];
   const initialTab = (() => {
     const slug = useAppStore.getState().section.slug as Tab | undefined;
     return slug && VALID_TABS.includes(slug) ? slug : "providers";
@@ -392,6 +398,7 @@ export function SettingsPage() {
     { id: "notifications", label: t("settings.tabs.notifications"), icon: <Bell className="h-3.5 w-3.5" /> },
     { id: "appearance", label: t("settings.tabs.appearance"), icon: <Palette className="h-3.5 w-3.5" /> },
     { id: "updates", label: t("settings.tabs.updates"), icon: <CloudDownload className="h-3.5 w-3.5" /> },
+    ...(isAdmin ? [{ id: "users" as Tab, label: t("settings.tabs.users"), icon: <Users className="h-3.5 w-3.5" /> }] : []),
     { id: "about", label: t("settings.tabs.about"), icon: <Info className="h-3.5 w-3.5" /> },
   ];
 
@@ -1275,6 +1282,11 @@ export function SettingsPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Users Tab (admin only) */}
+          {tab === "users" && isAdmin && (
+            <UsersTab />
           )}
 
           {/* About Tab */}

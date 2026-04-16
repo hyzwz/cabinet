@@ -24,8 +24,8 @@ test("getMessage returns locale-specific value when present", () => {
 });
 
 test("getMessage falls back to English when zh translation is missing", () => {
-  assert.equal(getMessage("header.productName", "zh"), "Cabinet");
-  assert.equal(getMessage("header.productName", "en"), "Cabinet");
+  assert.equal(getMessage("header.productName", "zh"), "GreatClaw");
+  assert.equal(getMessage("header.productName", "en"), "GreatClaw");
   assert.equal(getMessage("home.registry.browseAll", "zh"), "Browse all →");
 });
 
@@ -45,7 +45,7 @@ test("getMessage returns localized shell copy for the covered home and header su
   assert.equal(getMessage("home.registry.importingTemplate", "zh"), "正在导入 {name}...");
   assert.equal(
     getMessage("home.registry.importingDescription", "zh"),
-    "正在从注册表下载 agents、jobs 和内容"
+    "正在从注册表下载 AI 代理、任务和内容"
   );
   assert.equal(
     getMessage("home.registry.importingWarning", "zh"),
@@ -66,20 +66,20 @@ test("getMessage returns localized shell copy for the covered home and header su
 
 test("getMessage returns localized sidebar and editor copy for covered demo surfaces", () => {
   assert.equal(getMessage("sidebar.newPage", "zh"), "新建页面");
-  assert.equal(getMessage("sidebar.newCabinet", "zh"), "新建 Cabinet");
+  assert.equal(getMessage("sidebar.newCabinet", "zh"), "新建工作空间");
   assert.equal(getMessage("sidebar.createNewPage", "zh"), "创建新页面");
-  assert.equal(getMessage("sidebar.createNewCabinet", "zh"), "创建新 Cabinet");
-  assert.equal(getMessage("sidebar.createCabinet", "zh"), "创建 Cabinet");
+  assert.equal(getMessage("sidebar.createNewCabinet", "zh"), "创建新工作空间");
+  assert.equal(getMessage("sidebar.createCabinet", "zh"), "创建工作空间");
   assert.equal(getMessage("sidebar.importFromRegistry", "zh"), "从注册表导入");
-  assert.equal(getMessage("sidebar.cabinetName", "zh"), "Cabinet 名称");
+  assert.equal(getMessage("sidebar.cabinetName", "zh"), "工作空间名称");
   assert.equal(getMessage("sidebar.back", "zh"), "返回");
-  assert.equal(getMessage("sidebar.agents", "zh"), "Agents");
-  assert.equal(getMessage("sidebar.tasks", "zh"), "Tasks");
+  assert.equal(getMessage("sidebar.agents", "zh"), "AI 代理");
+  assert.equal(getMessage("sidebar.tasks", "zh"), "任务");
   assert.equal(getMessage("sidebar.data", "zh"), "数据");
   assert.equal(getMessage("sidebar.addFirstPage", "zh"), "添加你的第一个页面");
   assert.equal(getMessage("sidebar.addCabinetData", "zh"), "添加 cabinet 数据");
-  assert.equal(getMessage("sidebar.emptyOwnAgents", "zh"), "此 cabinet 还没有本地 agents。");
-  assert.equal(getMessage("sidebar.emptyVisibleAgents", "zh"), "所选 cabinet 范围内没有可见的 agents。");
+  assert.equal(getMessage("sidebar.emptyOwnAgents", "zh"), "此 cabinet 还没有本地 AI 代理。");
+  assert.equal(getMessage("sidebar.emptyVisibleAgents", "zh"), "所选 cabinet 范围内没有可见的 AI 代理。");
   assert.equal(getMessage("sidebar.addSubPage", "zh"), "添加子页面");
   assert.equal(getMessage("sidebar.loadKnowledge", "zh"), "加载知识");
   assert.equal(getMessage("sidebar.copyRelativePath", "zh"), "复制相对路径");
@@ -96,7 +96,7 @@ test("getMessage returns localized sidebar and editor copy for covered demo surf
   assert.equal(getMessage("sidebar.description", "zh"), "描述");
   assert.equal(getMessage("sidebar.load", "zh"), "加载");
   assert.equal(getMessage("sidebar.pageTitlePlaceholder", "zh"), "页面标题...");
-  assert.equal(getMessage("sidebar.deleteCabinetTitle", "zh"), "删除 Cabinet \"{title}\"");
+  assert.equal(getMessage("sidebar.deleteCabinetTitle", "zh"), "删除工作空间 \"{title}\"");
   assert.equal(getMessage("editor.heading1", "zh"), "标题 1");
   assert.equal(getMessage("editor.heading2", "zh"), "标题 2");
   assert.equal(getMessage("editor.heading3", "zh"), "标题 3");
@@ -176,10 +176,10 @@ test("covered sidebar and editor components use locale message keys instead of h
 test("getMessage returns localized agents workspace copy for covered demo surfaces", () => {
   assert.equal(getMessage("agents.orgChart.title", "zh"), "你的团队组织架构");
   assert.equal(getMessage("agents.orgChart.fallbackRole", "zh"), "首席执行官");
-  assert.equal(getMessage("agents.conversations.allAgents", "zh"), "所有 agents");
-  assert.equal(getMessage("agents.filters.jobs", "zh"), "任务");
+  assert.equal(getMessage("agents.conversations.allAgents", "zh"), "所有 AI 代理");
+  assert.equal(getMessage("agents.filters.jobs", "zh"), "定时任务");
   assert.equal(getMessage("agents.filters.manual", "zh"), "手动");
-  assert.equal(getMessage("agents.filters.job", "zh"), "任务");
+  assert.equal(getMessage("agents.filters.job", "zh"), "定时任务");
   assert.equal(getMessage("agents.filters.heartbeat", "zh"), "心跳");
   assert.equal(getMessage("agents.filters.anyStatus", "zh"), "任意状态");
   assert.equal(formatMessage("agents.orgChart.moreCount", "zh", { count: 3 }), "+3 个更多");
@@ -188,10 +188,10 @@ test("getMessage returns localized agents workspace copy for covered demo surfac
   assert.equal(formatMessage("agents.orgChart.countLabel.agent_other", "en", { count: 2 }), "2 agents");
   assert.equal(getMessage("agents.status.running", "zh"), "运行中");
   assert.equal(getMessage("agents.conversation.settings", "zh"), "设置");
-  assert.equal(getMessage("agents.library.browse", "zh"), "浏览 Agent Library");
-  assert.equal(getMessage("agents.custom.createAgent", "zh"), "创建 agent");
+  assert.equal(getMessage("agents.library.browse", "zh"), "浏览 AI 代理库");
+  assert.equal(getMessage("agents.custom.createAgent", "zh"), "创建 AI 代理");
   assert.equal(getMessage("agents.settings.write", "zh"), "编写");
-  assert.equal(getMessage("agents.jobs.save", "zh"), "保存 job");
+  assert.equal(getMessage("agents.jobs.save", "zh"), "保存定时任务");
 });
 
 test("covered agents workspace component uses locale message keys instead of hard-coded core UI copy", async () => {
@@ -284,23 +284,23 @@ test("covered agents workspace component uses locale message keys instead of har
 test("getMessage returns localized tasks workspace copy for covered demo surfaces", () => {
   assert.equal(getMessage("tasks.board.title.allCabinets", "zh"), "全部 Cabinets 任务看板");
   assert.equal(getMessage("tasks.board.title.cabinet", "zh"), "{name} 任务看板");
-  assert.equal(getMessage("tasks.board.openSchedule", "zh"), "Jobs 与 Heartbeats");
+  assert.equal(getMessage("tasks.board.openSchedule", "zh"), "定时任务与心跳");
   assert.equal(getMessage("tasks.common.refresh", "zh"), "刷新");
   assert.equal(getMessage("tasks.filters.all", "zh"), "全部");
   assert.equal(getMessage("tasks.filters.manual", "zh"), "手动");
   assert.equal(getMessage("tasks.filters.jobs", "zh"), "任务");
   assert.equal(getMessage("tasks.filters.heartbeat", "zh"), "心跳");
-  assert.equal(getMessage("tasks.filters.allVisibleAgents", "zh"), "所有可见 agents");
-  assert.equal(getMessage("tasks.filters.ownAgentsOnly", "zh"), "仅本 Cabinet agents");
+  assert.equal(getMessage("tasks.filters.allVisibleAgents", "zh"), "所有可见 AI 代理");
+  assert.equal(getMessage("tasks.filters.ownAgentsOnly", "zh"), "仅本 Cabinet AI 代理");
   assert.equal(getMessage("tasks.lane.inbox.title", "zh"), "收件箱");
   assert.equal(getMessage("tasks.lane.running.empty", "zh"), "当前没有正在运行的任务。");
   assert.equal(getMessage("tasks.dialog.create.title", "zh"), "需要完成什么？");
   assert.equal(getMessage("tasks.dialog.create.addToInbox", "zh"), "加入收件箱");
   assert.equal(getMessage("tasks.dialog.assign.title", "zh"), "分配草稿");
-  assert.equal(getMessage("tasks.dialog.assign.noVisibleAgents", "zh"), "没有可见的 agents");
+  assert.equal(getMessage("tasks.dialog.assign.noVisibleAgents", "zh"), "没有可见的 AI 代理");
   assert.equal(getMessage("tasks.rowActions.stop", "zh"), "停止");
   assert.equal(getMessage("tasks.bulk.killAll", "zh"), "全部停止");
-  assert.equal(getMessage("tasks.schedule.header", "zh"), "Jobs 与 heartbeats");
+  assert.equal(getMessage("tasks.schedule.header", "zh"), "定时任务与心跳");
   assert.equal(getMessage("tasks.schedule.backToBoard", "zh"), "返回看板");
   assert.equal(getMessage("tasks.schedule.calendar", "zh"), "日历");
   assert.equal(getMessage("tasks.schedule.list", "zh"), "列表");
@@ -354,18 +354,18 @@ test("covered tasks workspace component uses locale message keys instead of hard
 });
 
 test("getMessage returns localized secondary agents, task detail, and search copy for covered follow-up surfaces", () => {
-  assert.equal(getMessage("agents.library.title", "zh"), "Agent Library");
+  assert.equal(getMessage("agents.library.title", "zh"), "AI 代理库");
   assert.equal(getMessage("agents.library.add", "zh"), "添加");
   assert.equal(getMessage("agents.library.adding", "zh"), "添加中...");
-  assert.equal(getMessage("agents.list.title", "zh"), "Agents");
+  assert.equal(getMessage("agents.list.title", "zh"), "AI 代理");
   assert.equal(getMessage("agents.list.addFromLibrary", "zh"), "从 Library 添加");
-  assert.equal(getMessage("agents.list.newAgent", "zh"), "新建 Agent");
+  assert.equal(getMessage("agents.list.newAgent", "zh"), "新建 AI 代理");
   assert.equal(getMessage("agents.general.title", "zh"), "通用");
   assert.equal(getMessage("agents.general.send", "zh"), "发送");
   assert.equal(getMessage("agents.detail.tabs.definition", "zh"), "定义");
-  assert.equal(getMessage("agents.detail.tabs.jobs", "zh"), "Jobs");
+  assert.equal(getMessage("agents.detail.tabs.jobs", "zh"), "定时任务");
   assert.equal(getMessage("agents.detail.field.department", "zh"), "部门");
-  assert.equal(getMessage("agents.detail.jobs.emptyTitle", "zh"), "尚未配置 jobs");
+  assert.equal(getMessage("agents.detail.jobs.emptyTitle", "zh"), "尚未配置定时任务");
   assert.equal(getMessage("agents.detail.sessions.empty", "zh"), "向 {name} 发送一个提示词以开始实时会话。");
   assert.equal(getMessage("tasks.detail.loadError", "zh"), "无法加载对话详情。");
   assert.equal(getMessage("search.placeholder", "zh"), "搜索页面...");
@@ -434,16 +434,16 @@ test("getMessage returns localized AI panel, conversation result, and jobs manag
   assert.equal(getMessage("conversation.context", "zh"), "上下文");
   assert.equal(getMessage("conversation.artifacts", "zh"), "产物");
   assert.equal(getMessage("conversation.noArtifacts", "zh"), "本次运行未记录任何产物。");
-  assert.equal(getMessage("jobs.title", "zh"), "Jobs");
+  assert.equal(getMessage("jobs.title", "zh"), "定时任务");
   assert.equal(getMessage("jobs.subtitle", "zh"), "按 agent 配置周期性工作");
-  assert.equal(getMessage("jobs.allAgents", "zh"), "所有 agents");
-  assert.equal(getMessage("jobs.loadingAgents", "zh"), "正在加载 agents...");
+  assert.equal(getMessage("jobs.allAgents", "zh"), "所有 AI 代理");
+  assert.equal(getMessage("jobs.loadingAgents", "zh"), "正在加载 AI 代理...");
   assert.equal(getMessage("jobs.filters.anyStatus", "zh"), "任意状态");
   assert.equal(getMessage("jobs.emptyConversations", "zh"), "还没有计划运行。");
-  assert.equal(getMessage("jobs.selectAgent", "zh"), "选择一个 agent");
-  assert.equal(getMessage("jobs.heartbeat.title", "zh"), "Heartbeat");
-  assert.equal(getMessage("jobs.jobName", "zh"), "Job 名称");
-  assert.equal(getMessage("jobs.saveJob", "zh"), "保存 job");
+  assert.equal(getMessage("jobs.selectAgent", "zh"), "选择一个 AI 代理");
+  assert.equal(getMessage("jobs.heartbeat.title", "zh"), "心跳");
+  assert.equal(getMessage("jobs.jobName", "zh"), "定时任务名称");
+  assert.equal(getMessage("jobs.saveJob", "zh"), "保存定时任务");
 });
 
 test("covered AI panel, conversation result, and jobs manager components use locale message keys instead of hard-coded core UI copy", async () => {
@@ -490,7 +490,7 @@ test("getMessage returns localized layout chrome copy for covered follow-up surf
   assert.equal(getMessage("layout.status.uncommitted", "zh"), "{count} 个未提交");
   assert.equal(getMessage("layout.status.pullLatest", "zh"), "拉取最新 GitHub 变更并刷新");
   assert.equal(getMessage("layout.status.discord", "zh"), "前往 Discord 获取支持和反馈");
-  assert.equal(getMessage("layout.update.title", "zh"), "Cabinet 更新");
+  assert.equal(getMessage("layout.update.title", "zh"), "GreatClaw 更新");
   assert.equal(getMessage("layout.update.later", "zh"), "稍后");
   assert.equal(getMessage("layout.update.releaseNotes", "zh"), "发布说明");
   assert.equal(getMessage("layout.notifications.completed", "zh"), "已完成");
@@ -531,7 +531,7 @@ test("getMessage returns localized mission-control batch copy for covered follow
   assert.equal(getMessage("mission.header.newAgent", "zh"), "新建 Agent");
   assert.equal(getMessage("mission.goals.allGoals", "zh"), "全部目标");
   assert.equal(getMessage("mission.empty.noAgents", "zh"), "尚未配置 agents");
-  assert.equal(getMessage("mission.empty.createFirstAgent", "zh"), "创建你的第一个 agent，开始使用 Cabinet Agents。");
+  assert.equal(getMessage("mission.empty.createFirstAgent", "zh"), "创建你的第一个 agent，开始使用 GreatClaw Agents。");
   assert.equal(getMessage("mission.createAgent", "zh"), "创建 Agent");
   assert.equal(getMessage("mission.workspaceGallery.title", "zh"), "工作区图库");
   assert.equal(getMessage("mission.workspaceGallery.back", "zh"), "返回 Mission Control");
@@ -657,15 +657,15 @@ test("getMessage returns localized cabinet surfaces copy for the next follow-up 
   assert.equal(getMessage("cabinets.activity.viewAll", "zh"), "查看全部");
   assert.equal(getMessage("cabinets.activity.empty", "zh"), "还没有对话。运行 heartbeat 或给 agent 发送任务即可开始。");
   assert.equal(getMessage("cabinets.activity.loadingFeed", "zh"), "正在加载动态...");
-  assert.equal(getMessage("cabinets.stats.agents", "zh"), "Agents");
+  assert.equal(getMessage("cabinets.stats.agents", "zh"), "AI 代理");
   assert.equal(formatMessage("cabinets.stats.visibleAgentsTitle", "zh", { count: 3 }), "3 个可见 agents");
   assert.equal(getMessage("cabinets.stats.noActiveAgents", "zh"), "没有 agent 处于激活状态。");
   assert.equal(formatMessage("cabinets.stats.paused", "zh", { count: 2 }), "已暂停（2）");
   assert.equal(getMessage("cabinets.stats.noPendingTasks", "zh"), "没有待处理任务。");
-  assert.equal(formatMessage("cabinets.stats.jobsTitle", "zh", { count: 4 }), "4 个 Jobs");
+  assert.equal(formatMessage("cabinets.stats.jobsTitle", "zh", { count: 4 }), "4 个任务");
   assert.equal(formatMessage("cabinets.stats.disabled", "zh", { count: 1 }), "已禁用（1）");
   assert.equal(getMessage("cabinets.stats.noJobs", "zh"), "还没有配置 jobs。");
-  assert.equal(formatMessage("cabinets.stats.heartbeatsTitle", "zh", { count: 2 }), "2 个 Heartbeats");
+  assert.equal(formatMessage("cabinets.stats.heartbeatsTitle", "zh", { count: 2 }), "2 个心跳");
   assert.equal(getMessage("cabinets.stats.noHeartbeats", "zh"), "还没有配置 heartbeats。");
   assert.equal(getMessage("cabinets.schedule.empty", "zh"), "还没有配置 jobs 或 heartbeats。");
   assert.equal(formatMessage("cabinets.schedule.heartbeatName", "zh", { name: "Ada" }), "Ada heartbeat");
@@ -738,10 +738,10 @@ test("covered cabinet components use locale message keys instead of hard-coded c
 test("getMessage returns localized cabinet home shell copy for the next follow-up batch", () => {
   assert.equal(getMessage("cabinets.home.prompt", "zh"), "今天我们要处理什么？");
   assert.equal(formatMessage("cabinets.home.headline", "zh", { greeting: "早上好", name: "jyutech.cn" }), "早上好，jyutech.cn。今天我们要处理什么？");
-  assert.equal(getMessage("cabinets.home.orgTitle", "zh"), "Cabinet 团队");
-  assert.equal(getMessage("cabinets.home.openAgentsWorkspace", "zh"), "打开 agents 工作区");
+  assert.equal(getMessage("cabinets.home.orgTitle", "zh"), "GreatClaw 团队");
+  assert.equal(getMessage("cabinets.home.openAgentsWorkspace", "zh"), "打开 AI 代理工作区");
   assert.equal(getMessage("cabinets.home.loadingBoard", "zh"), "正在加载 cabinet 看板... ");
-  assert.equal(getMessage("cabinets.home.scheduleTitle", "zh"), "Jobs 与 heartbeats");
+  assert.equal(getMessage("cabinets.home.scheduleTitle", "zh"), "任务与心跳");
   assert.equal(formatMessage("cabinets.home.scheduleSummary", "zh", { jobs: 5, heartbeats: 3 }), "5 个 jobs，3 个 heartbeats");
   assert.equal(getMessage("cabinets.home.calendar", "zh"), "日历");
   assert.equal(getMessage("cabinets.home.list", "zh"), "列表");
@@ -821,7 +821,7 @@ test("covered cabinet calendar components use locale message keys instead of har
 
 test("getMessage returns localized cabinet dialog and header chrome copy for the next follow-up batch", () => {
   assert.equal(getMessage("cabinets.header.scope", "zh"), "范围");
-  assert.equal(getMessage("cabinets.dialog.jobFallback", "zh"), "Job");
+  assert.equal(getMessage("cabinets.dialog.jobFallback", "zh"), "任务");
   assert.equal(getMessage("cabinets.dialog.runNow", "zh"), "立即运行");
   assert.equal(getMessage("cabinets.dialog.schedule", "zh"), "调度");
   assert.equal(getMessage("cabinets.dialog.prompt", "zh"), "提示词");
@@ -830,7 +830,7 @@ test("getMessage returns localized cabinet dialog and header chrome copy for the
   assert.equal(getMessage("cabinets.dialog.cancel", "zh"), "取消");
   assert.equal(getMessage("cabinets.dialog.saving", "zh"), "保存中... ");
   assert.equal(getMessage("cabinets.dialog.save", "zh"), "保存");
-  assert.equal(getMessage("cabinets.dialog.heartbeatTitle", "zh"), "Heartbeat");
+  assert.equal(getMessage("cabinets.dialog.heartbeatTitle", "zh"), "心跳");
   assert.equal(getMessage("cabinets.dialog.active", "zh"), "运行中");
 });
 
@@ -869,13 +869,13 @@ test("getMessage returns localized cabinet status card and schedules panel copy 
   assert.equal(getMessage("cabinets.status.noRecentActivity", "zh"), "还没有最近活动");
   assert.equal(formatMessage("cabinets.status.taskCount", "zh", { count: 2, suffix: "" }), "2 个任务");
   assert.equal(formatMessage("cabinets.status.sendTask", "zh", { name: "Ada" }), "给 Ada 发送任务");
-  assert.equal(getMessage("cabinets.grid.title", "zh"), "Agents");
+  assert.equal(getMessage("cabinets.grid.title", "zh"), "AI 代理");
   assert.equal(getMessage("cabinets.grid.empty", "zh"), "这个 cabinet 还没有配置 agents。");
   assert.equal(formatMessage("cabinets.grid.depth", "zh", { depth: 2 }), "深度 2");
-  assert.equal(getMessage("cabinets.schedules.title", "zh"), "Jobs 与 heartbeats");
+  assert.equal(getMessage("cabinets.schedules.title", "zh"), "任务与心跳");
   assert.equal(formatMessage("cabinets.schedules.summary", "zh", { jobs: 3, heartbeats: 2 }), "当前范围内有 3 个 scheduled jobs 和 2 个 active heartbeats。 ");
   assert.equal(getMessage("cabinets.schedules.jobsHeading", "zh"), "Scheduled jobs");
-  assert.equal(getMessage("cabinets.schedules.heartbeatsHeading", "zh"), "Heartbeats");
+  assert.equal(getMessage("cabinets.schedules.heartbeatsHeading", "zh"), "心跳");
   assert.equal(getMessage("cabinets.schedules.noJobs", "zh"), "这个 cabinet 还没有配置 jobs。");
   assert.equal(getMessage("cabinets.schedules.noHeartbeats", "zh"), "还没有配置 heartbeats。");
   assert.equal(getMessage("cabinets.schedules.enabled", "zh"), "开启");
@@ -941,7 +941,7 @@ test("getMessage returns localized layout status popup copy for covered follow-u
   assert.equal(getMessage("layout.status.popup.appServer", "zh"), "应用服务");
   assert.equal(getMessage("layout.status.popup.running", "zh"), "运行中");
   assert.equal(getMessage("layout.status.popup.down", "zh"), "已停止");
-  assert.equal(getMessage("layout.status.popup.providers", "zh"), "Agent Providers");
+  assert.equal(getMessage("layout.status.popup.providers", "zh"), "AI 代理 Providers");
   assert.equal(getMessage("layout.status.popup.checking", "zh"), "检查中... ");
   assert.equal(getMessage("layout.status.popup.available", "zh"), "可用");
   assert.equal(getMessage("layout.status.popup.noneReady", "zh"), "均未就绪");
@@ -972,7 +972,7 @@ test("covered layout status popup uses locale message keys instead of hard-coded
 
 test("getMessage returns localized layout status popup remediation copy for covered follow-up surfaces", () => {
   assert.equal(getMessage("layout.status.popup.noProvidersInstalled", "zh"), "还没有安装或登录任何 agent provider。 ");
-  assert.equal(getMessage("layout.status.popup.allFeaturesAvailable", "zh"), "Cabinet 已完全可用。所有功能均可使用。");
+  assert.equal(getMessage("layout.status.popup.allFeaturesAvailable", "zh"), "GreatClaw 已完全可用。所有功能均可使用。");
   assert.equal(getMessage("layout.status.popup.dismiss", "zh"), "关闭");
 });
 
@@ -1006,7 +1006,7 @@ test("covered layout status save and update tooltip copy uses locale message key
 });
 
 test("getMessage returns localized layout update available copy for covered follow-up surfaces", () => {
-  assert.equal(getMessage("layout.status.updateAvailableTitle", "zh"), "Cabinet {version} 可用");
+  assert.equal(getMessage("layout.status.updateAvailableTitle", "zh"), "GreatClaw {version} 可用");
   assert.equal(getMessage("layout.status.updateAvailableLabel", "zh"), "有可用更新：{version}");
 });
 
@@ -1023,10 +1023,10 @@ test("covered layout update available button uses locale message keys instead of
 
 test("getMessage returns localized conversation transcript page copy for covered follow-up surfaces", () => {
   assert.equal(getMessage("conversation.page.title", "zh"), "对话记录");
-  assert.equal(getMessage("conversation.page.backToCabinet", "zh"), "返回 Cabinet");
+  assert.equal(getMessage("conversation.page.backToCabinet", "zh"), "返回 GreatClaw");
   assert.equal(getMessage("conversation.page.started", "zh"), "开始时间");
   assert.equal(getMessage("conversation.page.completed", "zh"), "完成时间");
-  assert.equal(getMessage("conversation.page.transcriptFile", "zh"), "Transcript 文件");
+  assert.equal(getMessage("conversation.page.transcriptFile", "zh"), "转录文件");
   assert.equal(getMessage("conversation.page.requestedPrompt", "zh"), "请求提示词");
   assert.equal(getMessage("conversation.page.requestedPromptDescription", "zh"), "触发本次运行的原始任务请求。 ");
   assert.equal(getMessage("conversation.page.resultDescription", "zh"), "完成时捕获的结构化元数据。 ");
@@ -1059,7 +1059,7 @@ test("covered conversation transcript page uses locale message keys instead of h
 });
 
 test("getMessage returns localized agents settings and org chart dialog copy for the next follow-up batch", () => {
-  assert.equal(getMessage("agents.settings.runHeartbeat", "zh"), "运行 Heartbeat");
+  assert.equal(getMessage("agents.settings.runHeartbeat", "zh"), "运行心跳");
   assert.equal(getMessage("agents.settings.meta.role", "zh"), "角色");
   assert.equal(getMessage("agents.settings.meta.department", "zh"), "部门");
   assert.equal(getMessage("agents.settings.meta.type", "zh"), "类型");

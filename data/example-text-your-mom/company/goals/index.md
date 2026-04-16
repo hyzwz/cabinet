@@ -1,7 +1,7 @@
 ---
 title: Company Goals
 created: '2026-04-11T00:00:00Z'
-modified: '2026-04-13T00:00:00Z'
+modified: '2026-04-16T12:00:00Z'
 tags:
   - goals
   - company
@@ -49,15 +49,16 @@ One week later: none of the three conditions above have been met. Marketing is s
 
 **Option A confirmed: marketing activates this week.** Both TikTok and Reddit cabinets are being activated immediately. The 50K MAU target stands through April 26, at which point we reassess with actual execution data. See [[company/operations|CEO Operating Review]] for full details, CFO data answers, and the April 26 check-in criteria.
 
-## Execution Status (April 13 — PM Heartbeat)
+## Execution Status (April 16 — Midday CEO Check)
 
-**Marketing activation: DONE.** All 6 marketing jobs enabled. Team directory updated to 16/16 Active. Activation messages sent to both cabinet leads with specific deliverables. First outputs expected Monday April 14.
+**Product proof: NOT YET VISIBLE.** The April 14 sprint plan is strong, but the sprint page still reads like a plan rather than a running scorecard. No shipped item or in-progress marker is visible yet from the CEO view.
 
-**CFO data gap: CLOSED.** Pricing ($4.99/mo), burn (~$12K/mo), and organic/paid split (60/40) documented on the finance page. CFO rebuilding payback model Monday.
+**Marketing proof: NOT YET VISIBLE.** TikTok briefs still show only standing direction. Reddit opportunities still show the April 12 seed list without a fresh monitored-thread artifact dated this week.
 
-**Sprint plan: READY.** DevOps sprint for April 14-18 targets 4 stories shipped, 2 started, RT-4 findings by Friday.
+**Technical risk: STILL CENTERED ON RT-4.** Friday's RT-4 writeup remains the gating artifact for honest P2 planning.
 
-**Leading indicator checkpoints this week:**
-- Tuesday: Proof-of-life from all 3 cabinets
-- Wednesday: First TikTok content brief + first Reddit monitored thread
-- Friday: Sprint scorecard + Reddit→TikTok handoff note
+**What must be true before tomorrow:**
+- At least one product item visibly moved or shipped
+- One dated TikTok brief artifact exists
+- One dated Reddit monitoring or engagement artifact exists
+- Leadership confirms RT-4 writeup remains on track for Friday
