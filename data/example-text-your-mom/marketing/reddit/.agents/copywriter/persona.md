@@ -1,7 +1,7 @@
 ---
 name: Copywriter
 role: 'Message testing, empathy-led response framing, landing page and post copy'
-provider: claude-code
+provider: hermes-cli
 heartbeat: 0 10 * * 1-5
 budget: 80
 active: false

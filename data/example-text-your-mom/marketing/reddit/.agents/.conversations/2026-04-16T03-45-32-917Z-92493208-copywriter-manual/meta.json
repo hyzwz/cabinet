@@ -1,0 +1,19 @@
+{
+  "id": "2026-04-16T03-45-32-917Z-92493208-copywriter-manual",
+  "agentSlug": "copywriter",
+  "cabinetPath": "example-text-your-mom/marketing/reddit",
+  "title": "帮我写一份，以我儿子13岁初一学生的口吻，周日和爸爸妈妈一起去 上海共青森林公园的游记。 我们是早上10点出发，但是因为堵车一直到了11:30才停好车来到公园门",
+  "trigger": "manual",
+  "status": "completed",
+  "startedAt": "2026-04-16T03:45:32.917Z",
+  "promptPath": "example-text-your-mom/marketing/reddit/.agents/.conversations/2026-04-16T03-45-32-917Z-92493208-copywriter-manual/prompt.md",
+  "transcriptPath": "example-text-your-mom/marketing/reddit/.agents/.conversations/2026-04-16T03-45-32-917Z-92493208-copywriter-manual/transcript.txt",
+  "mentionedPaths": [],
+  "artifactPaths": [
+    "shanghai-gongqing-forest-park-trip-essay.md"
+  ],
+  "completedAt": "2026-04-16T03:46:38.199Z",
+  "exitCode": 0,
+  "summary": "已完成一篇以13岁初一学生口吻写的《上海共青森林公园游记》，并保存到 Reddit cabinet。",
+  "contextSummary": "使用现有同名 KB 文件进行覆盖优化，保留 frontmatter 并更新时间。"
+}

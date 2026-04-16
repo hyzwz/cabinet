@@ -5,8 +5,13 @@ import { markdownToHtml } from "@/lib/markdown/to-html";
 import { CopyButton } from "./copy-button";
 import { parseTranscript } from "./transcript-parser";
 import { ContentViewer, TranscriptViewer } from "./transcript-viewer";
+import { getMessage, type Locale } from "@/lib/i18n/messages";
 
 export const dynamic = "force-dynamic";
+
+function resolveLocale(searchLocale?: string): Locale {
+  return searchLocale === "en" ? "en" : "zh";
+}
 
 function formatTimestamp(value?: string): string {
   if (!value) return "Not available";
@@ -39,10 +44,12 @@ export default async function ConversationTranscriptPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ cabinetPath?: string }>;
+  searchParams: Promise<{ cabinetPath?: string; locale?: string }>;
 }) {
   const { id } = await params;
-  const { cabinetPath } = await searchParams;
+  const { cabinetPath, locale: searchLocale } = await searchParams;
+  const locale = resolveLocale(searchLocale);
+  const t = (key: Parameters<typeof getMessage>[0]) => getMessage(key, locale);
   const detail = await readConversationDetail(id, cabinetPath);
 
   if (!detail) {
@@ -83,7 +90,7 @@ export default async function ConversationTranscriptPage({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
               <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                Conversation Transcript
+                {t("conversation.page.title")}
               </p>
               <h1 className="text-2xl font-semibold tracking-tight">{detail.meta.title}</h1>
               <p className="text-sm text-muted-foreground">
@@ -94,14 +101,14 @@ export default async function ConversationTranscriptPage({
               href="/"
               className="inline-flex h-10 items-center rounded-full border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
             >
-              Back to Cabinet
+{t("conversation.page.backToCabinet")}
             </Link>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <Field label="Started" value={formatTimestamp(detail.meta.startedAt)} />
-            <Field label="Completed" value={formatTimestamp(detail.meta.completedAt)} />
-            <Field label="Transcript File" value={detail.meta.transcriptPath} />
+            <Field label={t("conversation.page.started")} value={formatTimestamp(detail.meta.startedAt)} />
+            <Field label={t("conversation.page.completed")} value={formatTimestamp(detail.meta.completedAt)} />
+            <Field label={t("conversation.page.transcriptFile")} value={detail.meta.transcriptPath} />
           </div>
         </header>
 
@@ -109,9 +116,9 @@ export default async function ConversationTranscriptPage({
           <section className="rounded-3xl border border-border bg-card/80 p-6 shadow-sm">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div className="space-y-1">
-                <h2 className="text-lg font-semibold tracking-tight">Requested Prompt</h2>
+                <h2 className="text-lg font-semibold tracking-tight">{t("conversation.page.requestedPrompt")}</h2>
                 <p className="text-sm text-muted-foreground">
-                  The original task request that started this run.
+                  {t("conversation.page.requestedPromptDescription")}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -134,23 +141,23 @@ export default async function ConversationTranscriptPage({
           <section className="space-y-6">
             <div className="rounded-3xl border border-border bg-card/80 p-6 shadow-sm">
               <div className="mb-4 space-y-1">
-                <h2 className="text-lg font-semibold tracking-tight">Result</h2>
+                <h2 className="text-lg font-semibold tracking-tight">{t("conversation.result")}</h2>
                 <p className="text-sm text-muted-foreground">
-                  Structured metadata captured at completion.
+                  {t("conversation.page.resultDescription")}
                 </p>
               </div>
               <div className="space-y-4">
-                <Field label="Summary" value={detail.meta.summary || "No summary captured."} />
-                <Field label="Context" value={detail.meta.contextSummary || "No context captured."} />
-                <Field label="Prompt File" value={detail.meta.promptPath} />
+                <Field label={t("conversation.result")} value={detail.meta.summary || t("conversation.noSummary")} />
+                <Field label={t("conversation.context")} value={detail.meta.contextSummary || t("conversation.contextMissing")} />
+                <Field label={t("conversation.page.promptFile")} value={detail.meta.promptPath} />
               </div>
             </div>
 
             <div className="rounded-3xl border border-border bg-card/80 p-6 shadow-sm">
               <div className="mb-4 space-y-1">
-                <h2 className="text-lg font-semibold tracking-tight">Artifacts</h2>
+                <h2 className="text-lg font-semibold tracking-tight">{t("conversation.artifacts")}</h2>
                 <p className="text-sm text-muted-foreground">
-                  Files the agent created or updated for this run.
+                  {t("conversation.artifactsDescription")}
                 </p>
               </div>
               {detail.artifacts.length > 0 ? (
@@ -160,13 +167,13 @@ export default async function ConversationTranscriptPage({
                       key={artifact.path}
                       className="rounded-2xl border border-border bg-muted/20 px-4 py-3"
                     >
-                      <Field label={artifact.label || "Artifact"} value={artifact.path} />
+                      <Field label={artifact.label || t("conversation.artifact")} value={artifact.path} />
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
-                  No artifacts were recorded for this run.
+                  {t("conversation.noArtifacts")}
                 </div>
               )}
             </div>

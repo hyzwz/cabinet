@@ -1,7 +1,7 @@
 ---
 title: Intelligence Hub
 created: '2026-04-13T00:00:00Z'
-modified: '2026-04-13T00:00:00Z'
+modified: '2026-04-16T02:47:13Z'
 tags:
   - intelligence
   - research
@@ -29,6 +29,13 @@ Daily signal collection from X (Twitter), news feeds, and industry sources. The 
 ## Daily Brief Archive
 
 The most recent brief is always at [[daily-brief]]. Previous briefs are appended below as new sections.
+
+---
+
+## Ad Hoc Research Notes
+
+- [[ukraine-war-update-2026-04-16]] — April 16, 2026 brief on the latest Russia-Ukraine war developments, including missile strikes, drone warfare, and European support.
+- [[us-iran-talks-2026-04-15]] — Quick brief on the April 15, 2026 US-Iran talks, mediation status, and next watchpoints.
 
 ---
 

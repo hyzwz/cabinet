@@ -125,7 +125,7 @@ export function AgentStatusGrid({
         </h2>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/55">
-            Scope
+            {t("cabinets.grid.scope")}
           </span>
           {CABINET_VISIBILITY_OPTIONS.map((option) => (
             <button

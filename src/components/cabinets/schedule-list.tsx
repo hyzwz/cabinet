@@ -55,7 +55,7 @@ export function ScheduleList({ agents, jobs, onJobClick, onHeartbeatClick }: Sch
         schedule: job.schedule,
         enabled: job.enabled,
         agentEmoji: owner?.emoji || "🤖",
-        agentName: owner?.name || job.ownerAgent || "Unknown",
+        agentName: owner?.name || job.ownerAgent || t("cabinets.schedule.unknownAgent"),
         agentSlug: owner?.slug || "",
         jobRef: job,
         agentRef: owner,
@@ -78,7 +78,7 @@ export function ScheduleList({ agents, jobs, onJobClick, onHeartbeatClick }: Sch
     }
 
     return result;
-  }, [agents, jobs, agentMap, format]);
+  }, [agents, jobs, agentMap, format, t]);
 
   if (items.length === 0) {
     return (

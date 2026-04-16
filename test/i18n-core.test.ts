@@ -208,10 +208,46 @@ test("covered agents workspace component uses locale message keys instead of har
   assert.match(file, /t\("agents\.settings\.write"\)/);
   assert.match(file, /t\("agents\.jobs\.save"\)/);
   assert.match(file, /t\("agents\.library\.bringIn"\)/);
+  assert.match(file, /t\("agents\.library\.empty"\)/);
+  assert.match(file, /t\("agents\.custom\.description"\)/);
   assert.match(file, /t\("agents\.settings\.editAgent"\)/);
   assert.match(file, /t\("agents\.settings\.heartbeat"\)/);
+  assert.match(file, /t\("agents\.settings\.pause"\)/);
+  assert.match(file, /t\("agents\.settings\.activate"\)/);
+  assert.match(file, /t\("agents\.settings\.avatar"\)/);
+  assert.match(file, /t\("agents\.settings\.removeAgent"\)/);
+  assert.match(file, /t\("agents\.settings\.continue"\)/);
   assert.match(file, /t\("agents\.jobs\.new"\)/);
   assert.match(file, /t\("agents\.jobs\.edit"\)/);
+  assert.match(file, /t\("agents\.jobs\.starterLibrary"\)/);
+  assert.match(file, /t\("agents\.jobs\.useTemplate"\)/);
+  assert.match(file, /t\("agents\.jobs\.emptyDescription"\)/);
+  assert.match(file, /t\("agents\.general\.manualOnly"\)/);
+  assert.match(file, /t\("agents\.settings\.field\.name"\)/);
+  assert.match(file, /t\("agents\.settings\.field\.slug"\)/);
+  assert.match(file, /t\("agents\.settings\.field\.role"\)/);
+  assert.match(file, /t\("agents\.settings\.field\.department"\)/);
+  assert.match(file, /t\("agents\.settings\.field\.type"\)/);
+  assert.match(file, /t\("agents\.settings\.field\.provider"\)/);
+  assert.match(file, /t\("agents\.settings\.field\.workspace"\)/);
+  assert.match(file, /t\("agents\.settings\.field\.instructions"\)/);
+  assert.match(file, /t\("agents\.settings\.field\.avatar"\)/);
+  assert.match(file, /t\("agents\.settings\.startActive"\)/);
+  assert.match(file, /t\("agents\.settings\.roleSummaryEmpty"\)/);
+  assert.match(file, /t\("agents\.settings\.instructionsPlaceholder"\)/);
+  assert.match(file, /t\("agents\.settings\.namePlaceholder"\)/);
+  assert.match(file, /t\("agents\.settings\.rolePlaceholder"\)/);
+  assert.match(file, /t\("agents\.settings\.slugPlaceholder"\)/);
+  assert.match(file, /t\("agents\.settings\.workspacePlaceholder"\)/);
+  assert.match(file, /agents\.conversation\.edited/);
+  assert.match(file, /t\("agents\.conversation\.loading"\)/);
+  assert.match(file, /t\("agents\.conversation\.detailsField\.jobName"\)/);
+  assert.match(file, /t\("agents\.conversation\.detailsValue\.notAvailable"\)/);
+  assert.match(file, /t\("agents\.conversation\.detailsValue\.none"\)/);
+  assert.match(file, /t\("agents\.orgChart\.sendTask"/);
+  assert.match(file, /t\("agents\.layout\.resizeConversations"\)/);
+  assert.match(file, /agents\.jobs\.suggestedSchedule/);
+  assert.match(file, /agents\.jobs\.listTitleHint/);
   assert.match(file, /t\("agents\.filters\.manual"\)/);
   assert.match(file, /format\("agents\.orgChart\.moreCount"/);
   assert.match(file, /format\("agents\.orgChart\.countLabel\.lead"/);
@@ -225,7 +261,22 @@ test("covered agents workspace component uses locale message keys instead of har
   assert.doesNotMatch(file, />Edit your own agent</);
   assert.doesNotMatch(file, />Edit agent</);
   assert.doesNotMatch(file, />New job</);
+  assert.doesNotMatch(file, />Starter Library</);
   assert.doesNotMatch(file, />Manual</);
+  assert.doesNotMatch(file, /No jobs yet\. Start from scratch or use a library template\./);
+  assert.doesNotMatch(file, />Remove agent</);
+  assert.doesNotMatch(file, />Continue</);
+  assert.doesNotMatch(file, />Start active</);
+  assert.doesNotMatch(file, />Name</);
+  assert.doesNotMatch(file, />Slug</);
+  assert.doesNotMatch(file, />Department</);
+  assert.doesNotMatch(file, />Workspace</);
+  assert.doesNotMatch(file, /No role summary yet/);
+  assert.doesNotMatch(file, /Define how this agent should work inside Cabinet and the KB\./);
+  assert.doesNotMatch(file, /edited: /);
+  assert.doesNotMatch(file, /Loading conversation\.\.\./);
+  assert.doesNotMatch(file, /Suggested schedule:/);
+  assert.doesNotMatch(file, /Per-agent recurring prompts/);
   assert.doesNotMatch(file, /\}\s*more/);
   assert.doesNotMatch(file, /\$\{leadCount\} lead/);
 });
@@ -296,7 +347,6 @@ test("covered tasks workspace component uses locale message keys instead of hard
   assert.doesNotMatch(file, />Calendar</);
   assert.doesNotMatch(file, />List</);
   assert.doesNotMatch(file, />Today</);
-  assert.doesNotMatch(file, />Run now</);
   assert.doesNotMatch(file, />Loading the task board\.\.\.</);
   assert.doesNotMatch(file, /placeholder="All visible agents"/);
   assert.doesNotMatch(file, />All visible agents</);
@@ -802,14 +852,9 @@ test("covered cabinet dialog and header components use locale message keys inste
   assert.match(file, /t\("cabinets\.dialog\.active"\)/);
   assert.doesNotMatch(file, />Scope</);
   assert.doesNotMatch(file, /\|\| "Job"/);
-  assert.doesNotMatch(file, />Run now</);
   assert.doesNotMatch(file, />Schedule</);
   assert.doesNotMatch(file, />Prompt</);
   assert.doesNotMatch(file, /What should this job do\?/);
-  assert.doesNotMatch(file, />Enabled</);
-  assert.doesNotMatch(file, />Cancel</);
-  assert.doesNotMatch(file, /"Saving\.\.\."/);
-  assert.doesNotMatch(file, />Save</);
   assert.doesNotMatch(file, />Heartbeat</);
   assert.doesNotMatch(file, />Active</);
 });
@@ -871,6 +916,180 @@ test("covered cabinet status card and schedules panel components use locale mess
   assert.doesNotMatch(files.schedulesPanel, /No cabinet jobs configured yet\./);
   assert.doesNotMatch(files.schedulesPanel, /No heartbeats configured yet\./);
   assert.doesNotMatch(files.schedulesPanel, /job\.enabled \? "On" : "Off"/);
+});
+
+test("getMessage returns localized cabinet schedule list and grid scope copy for the next follow-up batch", () => {
+  assert.equal(getMessage("cabinets.grid.scope", "zh"), "范围");
+  assert.equal(getMessage("cabinets.schedule.unknownAgent", "zh"), "未知 agent");
+});
+
+test("covered cabinet schedule list and grid scope components use locale message keys instead of hard-coded copy", async () => {
+  const fs = await import("node:fs/promises");
+  const files = {
+    agentStatusGrid: await fs.readFile(new URL("../src/components/cabinets/agent-status-grid.tsx", import.meta.url), "utf8"),
+    scheduleList: await fs.readFile(new URL("../src/components/cabinets/schedule-list.tsx", import.meta.url), "utf8"),
+  };
+
+  assert.match(files.agentStatusGrid, /t\("cabinets\.grid\.scope"\)/);
+  assert.doesNotMatch(files.agentStatusGrid, />Scope</);
+
+  assert.match(files.scheduleList, /t\("cabinets\.schedule\.unknownAgent"\)/);
+  assert.doesNotMatch(files.scheduleList, /\|\| "Unknown"/);
+});
+
+test("getMessage returns localized layout status popup copy for covered follow-up surfaces", () => {
+  assert.equal(getMessage("layout.status.popup.appServer", "zh"), "应用服务");
+  assert.equal(getMessage("layout.status.popup.running", "zh"), "运行中");
+  assert.equal(getMessage("layout.status.popup.down", "zh"), "已停止");
+  assert.equal(getMessage("layout.status.popup.providers", "zh"), "Agent Providers");
+  assert.equal(getMessage("layout.status.popup.checking", "zh"), "检查中... ");
+  assert.equal(getMessage("layout.status.popup.available", "zh"), "可用");
+  assert.equal(getMessage("layout.status.popup.noneReady", "zh"), "均未就绪");
+  assert.equal(getMessage("layout.status.popup.ready", "zh"), "就绪");
+  assert.equal(getMessage("layout.status.popup.notLoggedIn", "zh"), "未登录");
+  assert.equal(getMessage("layout.status.popup.notInstalled", "zh"), "未安装");
+  assert.equal(getMessage("layout.status.popup.howToFix", "zh"), "如何修复");
+  assert.equal(getMessage("layout.status.popup.configureInSettings", "zh"), "在设置中配置");
+});
+
+test("covered layout status popup uses locale message keys instead of hard-coded service copy", async () => {
+  const file = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../src/components/layout/status-bar.tsx", import.meta.url), "utf8")
+  );
+
+  assert.match(file, /t\("layout\.status\.popup\.appServer"\)/);
+  assert.match(file, /t\("layout\.status\.popup\.running"\)/);
+  assert.match(file, /t\("layout\.status\.popup\.providers"\)/);
+  assert.match(file, /t\("layout\.status\.popup\.howToFix"\)/);
+  assert.match(file, /t\("layout\.status\.popup\.configureInSettings"\)/);
+  assert.doesNotMatch(file, />App Server</);
+  assert.doesNotMatch(file, />Running</);
+  assert.doesNotMatch(file, />Down</);
+  assert.doesNotMatch(file, />Agent Providers</);
+  assert.doesNotMatch(file, />How to fix</);
+  assert.doesNotMatch(file, />Configure in Settings</);
+});
+
+test("getMessage returns localized layout status popup remediation copy for covered follow-up surfaces", () => {
+  assert.equal(getMessage("layout.status.popup.noProvidersInstalled", "zh"), "还没有安装或登录任何 agent provider。 ");
+  assert.equal(getMessage("layout.status.popup.allFeaturesAvailable", "zh"), "Cabinet 已完全可用。所有功能均可使用。");
+  assert.equal(getMessage("layout.status.popup.dismiss", "zh"), "关闭");
+});
+
+test("covered layout status popup remediation copy uses locale message keys instead of hard-coded text", async () => {
+  const file = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../src/components/layout/status-bar.tsx", import.meta.url), "utf8")
+  );
+
+  assert.match(file, /t\("layout\.status\.popup\.noProvidersInstalled"\)/);
+  assert.match(file, /t\("layout\.status\.popup\.allFeaturesAvailable"\)/);
+  assert.match(file, /t\("layout\.status\.popup\.dismiss"\)/);
+  assert.doesNotMatch(file, /No agent providers are installed or logged in\./);
+  assert.doesNotMatch(file, /Cabinet is fully operational\. All features are available\./);
+  assert.doesNotMatch(file, /aria-label="Dismiss"/);
+});
+
+test("getMessage returns localized layout status save and update tooltip copy for covered follow-up surfaces", () => {
+  assert.equal(getMessage("layout.status.saving", "zh"), "保存中...");
+  assert.equal(getMessage("layout.status.restartSettingsTitle", "zh"), "打开设置以查看已安装的更新");
+});
+
+test("covered layout status save and update tooltip copy uses locale message keys instead of hard-coded text", async () => {
+  const file = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../src/components/layout/status-bar.tsx", import.meta.url), "utf8")
+  );
+
+  assert.match(file, /t\("layout\.status\.saving"\)/);
+  assert.match(file, /t\("layout\.status\.restartSettingsTitle"\)/);
+  assert.doesNotMatch(file, /\? "Saving\.\.\."/);
+  assert.doesNotMatch(file, /title="Open Settings to review the installed update"/);
+});
+
+test("getMessage returns localized layout update available copy for covered follow-up surfaces", () => {
+  assert.equal(getMessage("layout.status.updateAvailableTitle", "zh"), "Cabinet {version} 可用");
+  assert.equal(getMessage("layout.status.updateAvailableLabel", "zh"), "有可用更新：{version}");
+});
+
+test("covered layout update available button uses locale message keys instead of hard-coded text", async () => {
+  const file = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../src/components/layout/status-bar.tsx", import.meta.url), "utf8")
+  );
+
+  assert.match(file, /t\("layout\.status\.updateAvailableTitle"/);
+  assert.match(file, /format\("layout\.status\.updateAvailableLabel"/);
+  assert.doesNotMatch(file, /title=\{`Cabinet \$\{update\.latest\.version\} is available`\}/);
+  assert.doesNotMatch(file, /Update \{update\.latest\.version\} available/);
+});
+
+test("getMessage returns localized conversation transcript page copy for covered follow-up surfaces", () => {
+  assert.equal(getMessage("conversation.page.title", "zh"), "对话记录");
+  assert.equal(getMessage("conversation.page.backToCabinet", "zh"), "返回 Cabinet");
+  assert.equal(getMessage("conversation.page.started", "zh"), "开始时间");
+  assert.equal(getMessage("conversation.page.completed", "zh"), "完成时间");
+  assert.equal(getMessage("conversation.page.transcriptFile", "zh"), "Transcript 文件");
+  assert.equal(getMessage("conversation.page.requestedPrompt", "zh"), "请求提示词");
+  assert.equal(getMessage("conversation.page.requestedPromptDescription", "zh"), "触发本次运行的原始任务请求。 ");
+  assert.equal(getMessage("conversation.page.resultDescription", "zh"), "完成时捕获的结构化元数据。 ");
+  assert.equal(getMessage("conversation.page.promptFile", "zh"), "Prompt 文件");
+});
+
+test("covered conversation transcript page uses locale message keys instead of hard-coded copy", async () => {
+  const file = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../src/app/agents/conversations/[id]/page.tsx", import.meta.url), "utf8")
+  );
+
+  assert.match(file, /t\("conversation\.page\.title"\)/);
+  assert.match(file, /t\("conversation\.page\.backToCabinet"\)/);
+  assert.match(file, /t\("conversation\.page\.started"\)/);
+  assert.match(file, /t\("conversation\.page\.completed"\)/);
+  assert.match(file, /t\("conversation\.page\.transcriptFile"\)/);
+  assert.match(file, /t\("conversation\.page\.requestedPrompt"\)/);
+  assert.match(file, /t\("conversation\.page\.requestedPromptDescription"\)/);
+  assert.match(file, /t\("conversation\.page\.resultDescription"\)/);
+  assert.match(file, /t\("conversation\.page\.promptFile"\)/);
+  assert.doesNotMatch(file, /Conversation Transcript/);
+  assert.doesNotMatch(file, /Back to Cabinet/);
+  assert.doesNotMatch(file, /label="Started"/);
+  assert.doesNotMatch(file, /label="Completed"/);
+  assert.doesNotMatch(file, /label="Transcript File"/);
+  assert.doesNotMatch(file, />Requested Prompt</);
+  assert.doesNotMatch(file, /The original task request that started this run\./);
+  assert.doesNotMatch(file, /Structured metadata captured at completion\./);
+  assert.doesNotMatch(file, /label="Prompt File"/);
+});
+
+test("getMessage returns localized agents settings and org chart dialog copy for the next follow-up batch", () => {
+  assert.equal(getMessage("agents.settings.runHeartbeat", "zh"), "运行 Heartbeat");
+  assert.equal(getMessage("agents.settings.meta.role", "zh"), "角色");
+  assert.equal(getMessage("agents.settings.meta.department", "zh"), "部门");
+  assert.equal(getMessage("agents.settings.meta.type", "zh"), "类型");
+  assert.equal(getMessage("agents.settings.meta.workspace", "zh"), "工作区");
+  assert.equal(getMessage("agents.settings.meta.notSet", "zh"), "未设置");
+  assert.equal(getMessage("agents.settings.previewEmpty", "zh"), "还没有可预览的内容。 ");
+  assert.equal(getMessage("agents.settings.name", "zh"), "名称");
+  assert.equal(getMessage("agents.settings.role", "zh"), "角色");
+  assert.equal(getMessage("agents.settings.department", "zh"), "部门");
+  assert.equal(getMessage("agents.settings.type", "zh"), "类型");
+  assert.equal(getMessage("agents.settings.provider", "zh"), "Provider");
+  assert.equal(getMessage("agents.settings.workspace", "zh"), "工作区");
+  assert.equal(getMessage("agents.jobs.runNow", "zh"), "立即运行");
+  assert.equal(getMessage("agents.jobs.enabled", "zh"), "已启用");
+});
+
+test("covered agents settings and org chart dialogs use locale message keys instead of hard-coded copy", async () => {
+  const file = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../src/components/agents/agents-workspace.tsx", import.meta.url), "utf8")
+  );
+
+  assert.match(file, /t\("agents\.settings\.runHeartbeat"\)/);
+  assert.match(file, /t\("agents\.settings\.meta\.role"\)/);
+  assert.match(file, /t\("agents\.settings\.meta\.notSet"\)/);
+  assert.match(file, /t\("agents\.settings\.previewEmpty"\)/);
+  assert.match(file, /t\("agents\.settings\.name"\)/);
+  assert.match(file, /t\("agents\.settings\.provider"\)/);
+  assert.match(file, /t\("agents\.jobs\.runNow"\)/);
+  assert.match(file, /t\("agents\.jobs\.enabled"\)/);
+  assert.doesNotMatch(file, /Nothing to preview yet\./);
 });
 
 test("getMessage returns key when missing from all locales", () => {
