@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Clock3, HeartPulse } from "lucide-react";
 import { cronToHuman } from "@/lib/agents/cron-utils";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { getAgentColor } from "@/lib/agents/cron-compute";
 import type { CabinetAgentSummary, CabinetJobSummary } from "@/types/cabinets";
 
@@ -28,6 +29,7 @@ interface ListItem {
 }
 
 export function ScheduleList({ agents, jobs, onJobClick, onHeartbeatClick }: ScheduleListProps) {
+  const { t, format } = useLocale();
   const agentMap = useMemo(() => {
     const map = new Map<string, CabinetAgentSummary>();
     for (const a of agents) {
@@ -65,7 +67,7 @@ export function ScheduleList({ agents, jobs, onJobClick, onHeartbeatClick }: Sch
       result.push({
         type: "heartbeat",
         id: `hb-${agent.scopedId}`,
-        name: `${agent.name} heartbeat`,
+        name: format("cabinets.schedule.heartbeatName", { name: agent.name }),
         schedule: agent.heartbeat,
         enabled: agent.active,
         agentEmoji: agent.emoji || "🤖",
@@ -76,12 +78,12 @@ export function ScheduleList({ agents, jobs, onJobClick, onHeartbeatClick }: Sch
     }
 
     return result;
-  }, [agents, jobs, agentMap]);
+  }, [agents, jobs, agentMap, format]);
 
   if (items.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        No jobs or heartbeats configured yet.
+        {t("cabinets.schedule.empty")}
       </p>
     );
   }
@@ -135,7 +137,7 @@ export function ScheduleList({ agents, jobs, onJobClick, onHeartbeatClick }: Sch
                   : "bg-muted text-muted-foreground"
               )}
             >
-              {item.enabled ? "On" : "Off"}
+              {item.enabled ? t("cabinets.schedule.enabled") : t("cabinets.schedule.disabled")}
             </span>
           </button>
         );

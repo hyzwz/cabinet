@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SchedulePicker } from "./schedule-picker";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 import { Plus, X } from "lucide-react";
 import type { ProviderInfo } from "@/types/agents";
@@ -45,6 +46,7 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
   const [heartbeat, setHeartbeat] = useState("0 */4 * * *");
   const [provider, setProvider] = useState("claude-code");
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const { t } = useLocale();
   const [defaultProvider, setDefaultProvider] = useState("claude-code");
   const [goals, setGoals] = useState<GoalInput[]>([]);
   const [creating, setCreating] = useState(false);
@@ -150,7 +152,7 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
 
             {/* Emoji picker */}
             <div className="space-y-1">
-              <label className="text-[12px] font-medium">Avatar</label>
+              <label className="text-[12px] font-medium">{t("mission.dialog.avatar")}</label>
               <div className="flex flex-wrap gap-1">
                 {EMOJI_OPTIONS.map((e) => (
                   <button
@@ -172,7 +174,7 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
 
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <label className="text-[12px] font-medium">Name</label>
+                <label className="text-[12px] font-medium">{t("mission.dialog.name")}</label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -181,7 +183,7 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[12px] font-medium">Role</label>
+                <label className="text-[12px] font-medium">{t("mission.dialog.role")}</label>
                 <Input
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
@@ -200,13 +202,13 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
 
           {/* Department & Type */}
           <div className="space-y-3">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground/60">
-              Organization
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground/60">
+                {t("mission.dialog.organization")}
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <label className="text-[12px] font-medium">Department</label>
+                <label className="text-[12px] font-medium">{t("mission.dialog.department")}</label>
                 <select
                   value={department}
                   onChange={(e) => setDepartment(e.target.value)}
@@ -220,7 +222,7 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-[12px] font-medium">Type</label>
+                <label className="text-[12px] font-medium">{t("mission.dialog.type")}</label>
                 <div className="flex gap-1">
                   <button
                     type="button"
@@ -232,7 +234,7 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
                         : "border-border text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    Specialist
+                    {t("mission.detail.specialist")}
                   </button>
                   <button
                     type="button"
@@ -244,14 +246,14 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
                         : "border-border text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    Lead
+                    {t("mission.detail.departmentLead")}
                   </button>
                 </div>
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="text-[12px] font-medium">Provider</label>
+              <label className="text-[12px] font-medium">{t("mission.dialog.provider")}</label>
               <select
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
@@ -262,7 +264,7 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
                   : [{ id: defaultProvider, name: defaultProvider, type: "cli", available: true } as ProviderInfo]
                 ).map((entry) => (
                   <option key={entry.id} value={entry.id}>
-                    {entry.name}{entry.available ? "" : " (not installed)"}
+                    {entry.name}{entry.available ? "" : ` ${t("mission.dialog.notInstalled")}`}
                   </option>
                 ))}
               </select>
@@ -272,7 +274,7 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
           {/* Schedule */}
           <div className="space-y-3">
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground/60">
-              Heartbeat Schedule
+              {t("mission.dialog.heartbeatSchedule")}
             </div>
             <SchedulePicker
               value={heartbeat}
@@ -292,12 +294,12 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
                 className="text-[10px] text-primary hover:text-primary/80 flex items-center gap-0.5 transition-colors"
               >
                 <Plus className="h-3 w-3" />
-                Add Goal
+                {t("mission.dialog.addGoal")}
               </button>
             </div>
             {goals.length === 0 ? (
               <p className="text-[11px] text-muted-foreground/40">
-                Goals define what success looks like. Agents track progress toward these metrics.
+                {t("mission.dialog.goalHelp")}
               </p>
             ) : (
               <div className="space-y-2">
@@ -354,7 +356,7 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
             disabled={!name.trim() || creating}
             className="text-[12px]"
           >
-            {creating ? "Creating..." : "Create Agent"}
+            {creating ? t("mission.dialog.creating") : t("mission.createAgent")}
           </Button>
         </DialogFooter>
       </DialogContent>

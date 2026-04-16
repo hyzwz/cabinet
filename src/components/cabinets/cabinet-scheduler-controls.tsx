@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Loader2, Play, RefreshCw, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type { CabinetAgentSummary } from "@/types/cabinets";
 
 export function CabinetSchedulerControls({
@@ -21,6 +22,7 @@ export function CabinetSchedulerControls({
   const activeOwn = ownAgents.filter((a) => a.active);
   const anyActive = activeOwn.length > 0;
   const allActive = activeOwn.length === ownAgents.length && ownAgents.length > 0;
+  const { t, format } = useLocale();
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -84,7 +86,7 @@ export function CabinetSchedulerControls({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
           </span>
-          Live
+          {t("cabinets.scheduler.live")}
         </span>
       )}
 
@@ -96,8 +98,8 @@ export function CabinetSchedulerControls({
           onClick={() => void schedulerAction(anyActive ? "stop-all" : "start-all")}
           title={
             anyActive
-              ? `Stop all ${activeOwn.length} active agent(s) — pauses their heartbeats and cron jobs. Only this cabinet, not sub-cabinets.`
-              : `Activate all ${ownAgents.length} agent(s) — starts their heartbeats and cron jobs on schedule. Only this cabinet, not sub-cabinets.`
+              ? format("cabinets.scheduler.stopAllTitle", { count: activeOwn.length })
+              : format("cabinets.scheduler.startAllTitle", { count: ownAgents.length })
           }
           className={cn(splitBase, "gap-2 rounded-l-md border-r-0 px-3 py-1.5 text-sm font-medium")}
         >
@@ -108,7 +110,7 @@ export function CabinetSchedulerControls({
           ) : (
             <Play className="h-3.5 w-3.5" />
           )}
-          {anyActive ? "Stop All" : "Start All"}
+          {anyActive ? t("cabinets.scheduler.stopAll") : t("cabinets.scheduler.startAll")}
         </button>
 
         {/* Dropdown toggle */}
@@ -135,8 +137,8 @@ export function CabinetSchedulerControls({
               >
                 <Play className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">Start all agents</p>
-                  <p className="text-[11px] text-muted-foreground">Activate heartbeats and cron jobs</p>
+                  <p className="text-sm font-medium text-foreground">{t("cabinets.scheduler.menu.startAll")}</p>
+                  <p className="text-[11px] text-muted-foreground">{t("cabinets.scheduler.menu.startDescription")}</p>
                 </div>
               </button>
             ) : null}
@@ -149,8 +151,8 @@ export function CabinetSchedulerControls({
               >
                 <Square className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">Stop all agents</p>
-                  <p className="text-[11px] text-muted-foreground">Pause heartbeats and cron jobs</p>
+                  <p className="text-sm font-medium text-foreground">{t("cabinets.scheduler.menu.stopAll")}</p>
+                  <p className="text-[11px] text-muted-foreground">{t("cabinets.scheduler.menu.stopDescription")}</p>
                 </div>
               </button>
             ) : null}
@@ -162,15 +164,14 @@ export function CabinetSchedulerControls({
             >
               <RefreshCw className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium text-foreground">Restart all agents</p>
-                <p className="text-[11px] text-muted-foreground">Stop then re-activate all schedules</p>
+                <p className="text-sm font-medium text-foreground">{t("cabinets.scheduler.menu.restartAll")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("cabinets.scheduler.menu.restartDescription")}</p>
               </div>
             </button>
           </div>
           <div className="border-t border-border/60 px-3 py-2.5">
             <p className="text-[10px] leading-relaxed text-muted-foreground">
-              {activeOwn.length}/{ownAgents.length} own agents active.
-              Only this cabinet — sub-cabinet agents are not affected.
+              {format("cabinets.scheduler.summary", { active: activeOwn.length, total: ownAgents.length })}
             </p>
           </div>
         </div>

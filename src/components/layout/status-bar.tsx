@@ -7,6 +7,7 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useTreeStore } from "@/stores/tree-store";
 import { useAppStore } from "@/stores/app-store";
 import { useAIPanelStore } from "@/stores/ai-panel-store";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const DISCORD_SUPPORT_URL = "https://discord.gg/hJa5TRTbTH";
 const GITHUB_REPO_URL = "https://github.com/hilash/cabinet";
@@ -140,6 +141,7 @@ export function StatusBar() {
   >([]);
   const [providersLoaded, setProvidersLoaded] = useState(false);
   const { update } = useCabinetUpdate();
+  const { t, format } = useLocale();
 
   const anyProviderReady = useMemo(
     () => !providersLoaded || providerStatuses.some((p) => p.available && p.authenticated),
@@ -328,7 +330,7 @@ export function StatusBar() {
                   void handleAISubmit();
                 }
               }}
-              placeholder="How to edit this page?"
+              placeholder={t("layout.status.aiPlaceholder")}
               className="flex-1 bg-transparent text-[11px] text-foreground placeholder:text-muted-foreground/40 outline-none min-w-0"
             />
             <button
@@ -359,14 +361,14 @@ export function StatusBar() {
             }`}
             title={
               appAlive && daemonAlive && anyProviderReady
-                ? "All systems running"
+                ? t("layout.status.health.allRunning")
                 : !appAlive
-                ? "App server is not responding"
+                ? t("layout.status.health.appDown")
                 : !daemonAlive && !anyProviderReady
-                ? "Daemon is not responding; no agent providers available"
+                ? `${t("layout.status.health.daemonDown")}; ${t("layout.status.health.noProviders")}`
                 : !daemonAlive
-                ? "Daemon is not responding"
-                : "No agent providers available"
+                ? t("layout.status.health.daemonDown")
+                : t("layout.status.health.noProviders")
             }
             aria-label="Server status — click for details"
           >
@@ -381,10 +383,10 @@ export function StatusBar() {
             />
             <span>
               {appAlive && daemonAlive && anyProviderReady
-                ? "Online"
+                ? t("layout.status.online")
                 : !appAlive
-                ? "Offline"
-                : "Degraded"}
+                ? t("layout.status.offline")
+                : t("layout.status.degraded")}
             </span>
           </button>
           {showServerPopup && (
@@ -405,8 +407,8 @@ export function StatusBar() {
                       : "text-amber-500"
                   }`}>
                     {appAlive && daemonAlive && anyProviderReady
-                      ? "All Systems Running"
-                      : "Service Disruption"}
+                      ? t("layout.status.popup.allRunning")
+                      : t("layout.status.popup.disruption")}
                   </p>
 
                   {/* App Server */}
@@ -547,33 +549,33 @@ export function StatusBar() {
             {saveStatus === "saving"
               ? "Saving..."
               : saveStatus === "saved"
-              ? "Saved"
+              ? t("layout.status.saved")
               : saveStatus === "error"
-              ? "Save failed"
-              : "Ready"}
+              ? t("layout.status.saveFailed")
+              : t("layout.status.ready")}
           </span>
         )}
         {pullStatus === "pulling" && (
           <span className="flex items-center gap-1 text-blue-400">
             <CloudDownload className="h-3 w-3 animate-pulse" />
-            Pulling...
+            {t("layout.status.pull.pulling")}
           </span>
         )}
         {pullStatus === "pulled" && (
           <span className="flex items-center gap-1 text-green-400">
             <Check className="h-3 w-3" />
-            Updated from remote
+            {t("layout.status.pull.updated")}
           </span>
         )}
         {pullStatus === "up-to-date" && (
           <span className="flex items-center gap-1 text-muted-foreground/60">
             <Check className="h-3 w-3" />
-            Up to date
+            {t("layout.status.pull.upToDate")}
           </span>
         )}
         {pullStatus === "error" && (
           <span className="flex items-center gap-1 text-red-400">
-            Pull failed
+            {t("layout.status.pull.failed")}
           </span>
         )}
         {update?.updateStatus.state === "restart-required" && (
@@ -583,7 +585,7 @@ export function StatusBar() {
             title="Open Settings to review the installed update"
           >
             <CloudDownload className="h-3 w-3" />
-            Restart to finish update
+            {t("layout.status.restartCta")}
           </button>
         )}
         {update?.updateAvailable && update?.updateStatus.state !== "restart-required" && update.latest && (
@@ -598,17 +600,17 @@ export function StatusBar() {
         )}
         <span className="flex items-center gap-1">
           <GitBranch className="h-3 w-3" />
-          {uncommitted > 0 ? `${uncommitted} uncommitted` : "All committed"}
+          {uncommitted > 0 ? format("layout.status.uncommitted", { count: uncommitted }) : t("layout.status.allCommitted")}
         </span>
         <button
           onClick={pullAndRefresh}
           disabled={pulling}
-          aria-label="Pull latest changes from GitHub and refresh"
+          aria-label={t("layout.status.pullLatest")}
           className="flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1"
-          title="Pull latest from GitHub & refresh"
+          title={t("layout.status.pullLatestTitle")}
         >
           <RefreshCw className={`h-3 w-3 ${pulling ? "animate-spin" : ""}`} />
-          Sync
+          {t("layout.status.sync")}
         </button>
       </div>
       <div className="flex items-center gap-1.5">
@@ -616,26 +618,26 @@ export function StatusBar() {
           href={DISCORD_SUPPORT_URL}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Open Discord for support and feedback"
-          title="Support and feedback on Discord"
+          aria-label={t("layout.status.discord")}
+          title={t("layout.status.discord")}
           className="inline-flex items-center gap-1.5 rounded-full border border-[#5865F2]/20 bg-[#5865F2]/10 px-2.5 py-1 text-[#5865F2] transition-all hover:-translate-y-px hover:border-[#5865F2]/35 hover:bg-[#5865F2]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1"
         >
           <DiscordIcon className="h-3.5 w-3.5" />
           <span className="text-[10px] font-semibold tracking-[0.04em] text-foreground">
-            Chat
+            {t("layout.status.chat")}
           </span>
         </a>
         <a
           href={GITHUB_REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Open the Cabinet GitHub repository to contribute"
-          title="Contribute on GitHub"
+          aria-label={t("layout.status.github")}
+          title={t("layout.status.github")}
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/55 px-2.5 py-1 transition-all hover:-translate-y-px hover:border-foreground/15 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1"
         >
           <GitHubIcon className="h-3.5 w-3.5" />
           <span className="text-[10px] font-semibold tracking-[0.04em] text-foreground">
-            Contribute
+            {t("layout.status.contribute")}
           </span>
         </a>
         <a

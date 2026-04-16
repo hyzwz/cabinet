@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Bot,
   Clock3,
   HeartPulse,
   ListTodo,
@@ -11,6 +10,7 @@ import {
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type { CabinetAgentSummary, CabinetJobSummary } from "@/types/cabinets";
 import { cronToShortLabel } from "@/lib/agents/cron-utils";
 
@@ -183,6 +183,7 @@ export function InteractiveStatStrip({
   const enabledJobs = jobs.filter((j) => j.enabled);
   const disabledJobs = jobs.filter((j) => !j.enabled);
   const heartbeatAgents = agents.filter((a) => Boolean(a.heartbeat));
+  const { t, format } = useLocale();
 
   // Group agents by task count for the tasks popover
   const agentsByTasks = [...agents]
@@ -195,7 +196,7 @@ export function InteractiveStatStrip({
         {/* Agents */}
         <MetricCard
           icon={Users}
-          label="Agents"
+          label={t("cabinets.stats.agents")}
           value={visibleCount}
           active={openPopover === "agents"}
           onClick={() => toggle("agents")}
@@ -204,7 +205,7 @@ export function InteractiveStatStrip({
         {/* Active */}
         <MetricCard
           icon={Zap}
-          label="Active"
+          label={t("cabinets.stats.active")}
           value={activeCount}
           status={activeCount > 0 ? "ok" : "neutral"}
           active={openPopover === "active"}
@@ -214,7 +215,7 @@ export function InteractiveStatStrip({
         {/* Tasks */}
         <MetricCard
           icon={ListTodo}
-          label="Tasks"
+          label={t("cabinets.stats.tasks")}
           value={taskCount}
           active={openPopover === "tasks"}
           onClick={() => toggle("tasks")}
@@ -223,7 +224,7 @@ export function InteractiveStatStrip({
         {/* Jobs */}
         <MetricCard
           icon={Clock3}
-          label="Jobs"
+          label={t("cabinets.stats.jobs")}
           value={jobCount}
           active={openPopover === "jobs"}
           onClick={() => toggle("jobs")}
@@ -232,7 +233,7 @@ export function InteractiveStatStrip({
         {/* Heartbeats */}
         <MetricCard
           icon={HeartPulse}
-          label="Heartbeats"
+          label={t("cabinets.stats.heartbeats")}
           value={heartbeatCount}
           active={openPopover === "heartbeats"}
           onClick={() => toggle("heartbeats")}
@@ -242,7 +243,7 @@ export function InteractiveStatStrip({
       {/* ─── Popovers ─── */}
 
       {openPopover === "agents" && (
-        <StatPopover title={`${visibleCount} Visible Agents`} icon={Users} onClose={close}>
+        <StatPopover title={format("cabinets.stats.visibleAgentsTitle", { count: visibleCount })} icon={Users} onClose={close}>
           {agents.length > 0 ? (
             <div className="space-y-0.5">
               {agents.map((a) => (
@@ -250,13 +251,13 @@ export function InteractiveStatStrip({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">No agents configured.</p>
+            <p className="text-xs text-muted-foreground">{t("cabinets.stats.noAgents")}</p>
           )}
         </StatPopover>
       )}
 
       {openPopover === "active" && (
-        <StatPopover title={`${activeCount} Active`} icon={Zap} onClose={close}>
+        <StatPopover title={format("cabinets.stats.activeTitle", { count: activeCount })} icon={Zap} onClose={close}>
           {activeAgents.length > 0 ? (
             <div className="space-y-0.5">
               {activeAgents.map((a) => (
@@ -264,12 +265,12 @@ export function InteractiveStatStrip({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">No agents are active.</p>
+            <p className="text-xs text-muted-foreground">{t("cabinets.stats.noActiveAgents")}</p>
           )}
           {inactiveAgents.length > 0 && (
             <div className="mt-2 border-t border-border/50 pt-2">
               <p className="mb-1 text-[10px] font-medium text-muted-foreground/60">
-                Paused ({inactiveAgents.length})
+                {format("cabinets.stats.paused", { count: inactiveAgents.length })}
               </p>
               {inactiveAgents.map((a) => (
                 <AgentRow key={a.scopedId} agent={a} onClick={() => onAgentClick?.(a)} />
@@ -280,7 +281,7 @@ export function InteractiveStatStrip({
       )}
 
       {openPopover === "tasks" && (
-        <StatPopover title={`${taskCount} Tasks`} icon={ListTodo} onClose={close}>
+        <StatPopover title={format("cabinets.stats.tasksTitle", { count: taskCount })} icon={ListTodo} onClose={close}>
           {agentsByTasks.length > 0 ? (
             <div className="space-y-1">
               {agentsByTasks.map((a) => (
@@ -301,13 +302,13 @@ export function InteractiveStatStrip({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">No pending tasks.</p>
+            <p className="text-xs text-muted-foreground">{t("cabinets.stats.noPendingTasks")}</p>
           )}
         </StatPopover>
       )}
 
       {openPopover === "jobs" && (
-        <StatPopover title={`${jobCount} Jobs`} icon={Clock3} onClose={close}>
+        <StatPopover title={format("cabinets.stats.jobsTitle", { count: jobCount })} icon={Clock3} onClose={close}>
           {enabledJobs.length > 0 && (
             <div className="space-y-1">
               {enabledJobs.map((j) => (
@@ -326,7 +327,7 @@ export function InteractiveStatStrip({
           {disabledJobs.length > 0 && (
             <div className={cn(enabledJobs.length > 0 && "mt-2 border-t border-border/50 pt-2")}>
               <p className="mb-1 text-[10px] font-medium text-muted-foreground/60">
-                Disabled ({disabledJobs.length})
+                {format("cabinets.stats.disabled", { count: disabledJobs.length })}
               </p>
               {disabledJobs.map((j) => (
                 <div key={j.scopedId} className="flex items-center gap-2 px-1.5 py-1 opacity-60">
@@ -339,13 +340,13 @@ export function InteractiveStatStrip({
             </div>
           )}
           {jobs.length === 0 && (
-            <p className="text-xs text-muted-foreground">No jobs configured.</p>
+            <p className="text-xs text-muted-foreground">{t("cabinets.stats.noJobs")}</p>
           )}
         </StatPopover>
       )}
 
       {openPopover === "heartbeats" && (
-        <StatPopover title={`${heartbeatCount} Heartbeats`} icon={HeartPulse} onClose={close}>
+        <StatPopover title={format("cabinets.stats.heartbeatsTitle", { count: heartbeatCount })} icon={HeartPulse} onClose={close}>
           {heartbeatAgents.length > 0 ? (
             <div className="space-y-1">
               {heartbeatAgents.map((a) => (
@@ -366,7 +367,7 @@ export function InteractiveStatStrip({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">No heartbeats configured.</p>
+            <p className="text-xs text-muted-foreground">{t("cabinets.stats.noHeartbeats")}</p>
           )}
         </StatPopover>
       )}

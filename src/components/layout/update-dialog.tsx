@@ -3,6 +3,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { UpdateSummary } from "@/components/system/update-summary";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type { UpdateCheckResult } from "@/types";
 
 interface UpdateDialogProps {
@@ -36,6 +37,7 @@ export function UpdateDialog({
   onOpenDataDir,
   onLater,
 }: UpdateDialogProps) {
+  const { t, format } = useLocale();
   if (!update) return null;
 
   const latestVersion = update.latest?.version;
@@ -46,13 +48,13 @@ export function UpdateDialog({
         <DialogHeader className="gap-2">
           <DialogTitle>
             {update.updateStatus.state === "restart-required"
-              ? "Restart Cabinet to finish updating"
+              ? t("layout.update.restartTitle")
               : latestVersion && update.updateAvailable
-                ? `Cabinet ${latestVersion} is available`
-                : "Cabinet updates"}
+                ? format("layout.update.availableTitle", { version: latestVersion })
+                : t("layout.update.title")}
           </DialogTitle>
           <DialogDescription>
-            Cabinet checks for releases automatically. While the product is still experimental, keep a copy of your data before installing updates.
+            {t("layout.update.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -71,7 +73,7 @@ export function UpdateDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onLater}>
-            Later
+            {t("layout.update.later")}
           </Button>
           {update.latestReleaseNotesUrl && (
             <Button
@@ -84,7 +86,7 @@ export function UpdateDialog({
                 />
               }
             >
-              Release notes
+              {t("layout.update.releaseNotes")}
             </Button>
           )}
         </DialogFooter>

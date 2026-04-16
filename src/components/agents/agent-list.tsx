@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { useAppStore } from "@/stores/app-store";
 import { cn } from "@/lib/utils";
 import type { AgentListItem } from "@/types/agents";
@@ -27,10 +28,28 @@ interface LibraryTemplate {
 function AgentCardItem({
   agent,
   onClick,
+  t,
+  format,
 }: {
   agent: AgentListItem;
   onClick: () => void;
+  t: (key: import("@/lib/i18n/messages").MessageKey) => string;
+  format: (
+    key: import("@/lib/i18n/messages").MessageKey,
+    values: Record<string, string | number>
+  ) => string;
 }) {
+  const statusLabel =
+    agent.status === "running"
+      ? t("agents.list.status.running")
+      : agent.active
+        ? t("agents.list.status.active")
+        : t("agents.list.status.idle");
+  const jobCountLabel = format(
+    agent.jobCount === 1 ? "agents.list.jobCount.one" : "agents.list.jobCount.other",
+    { count: agent.jobCount ?? 0 }
+  );
+
   return (
     <button
       onClick={onClick}
@@ -58,11 +77,7 @@ function AgentCardItem({
                   : "bg-muted-foreground/40"
             )}
           />
-          {agent.status === "running"
-            ? "Running"
-            : agent.active
-              ? "Active"
-              : "Idle"}
+          {statusLabel}
         </div>
       </div>
       <h3 className="text-[13px] font-semibold mt-2">{agent.name}</h3>
@@ -71,7 +86,7 @@ function AgentCardItem({
       </p>
       <p className="text-[11px] text-muted-foreground mt-1">{agent.role}</p>
       <p className="text-[10px] text-muted-foreground mt-2">
-        {agent.jobCount} {agent.jobCount === 1 ? "job" : "jobs"}
+        {jobCountLabel}
       </p>
     </button>
   );
@@ -86,6 +101,7 @@ function LibraryDialog({
 }) {
   const [templates, setTemplates] = useState<LibraryTemplate[]>([]);
   const [adding, setAdding] = useState<string | null>(null);
+  const { t } = useLocale();
 
   useEffect(() => {
     fetch("/api/agents/library")
@@ -125,7 +141,7 @@ function LibraryDialog({
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             <Library className="h-4 w-4" />
-            <h2 className="text-[15px] font-semibold">Agent Library</h2>
+            <h2 className="text-[15px] font-semibold">{t("agents.library.title")}</h2>
           </div>
           <Button variant="ghost" size="icon-sm" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -139,30 +155,30 @@ function LibraryDialog({
                   {dept}
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
-                  {items.map((t) => (
+                  {items.map((template) => (
                     <div
-                      key={t.slug}
+                      key={template.slug}
                       className="bg-card border border-border rounded-lg p-3"
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <span className="text-lg">{t.emoji}</span>
+                          <span className="text-lg">{template.emoji}</span>
                           <h4 className="text-[13px] font-medium mt-1">
-                            {t.name}
+                            {template.name}
                           </h4>
                           <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {t.role}
+                            {template.role}
                           </p>
                         </div>
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-7 text-xs gap-1"
-                          onClick={() => handleAdd(t.slug)}
-                          disabled={adding === t.slug}
+                          onClick={() => handleAdd(template.slug)}
+                          disabled={adding === template.slug}
                         >
                           <Plus className="h-3 w-3" />
-                          {adding === t.slug ? "Adding..." : "Add"}
+                          {adding === template.slug ? t("agents.library.adding") : t("agents.library.add")}
                         </Button>
                       </div>
                     </div>
@@ -182,6 +198,7 @@ export function AgentList() {
   const [loading, setLoading] = useState(true);
   const [showLibrary, setShowLibrary] = useState(false);
   const setSection = useAppStore((s) => s.setSection);
+  const { t, format } = useLocale();
 
   const refresh = useCallback(async () => {
     try {
@@ -236,7 +253,7 @@ export function AgentList() {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-        Loading...
+        {t("agents.list.loading")}
       </div>
     );
   }
@@ -247,7 +264,7 @@ export function AgentList() {
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4" />
           <h2 className="text-[15px] font-semibold tracking-[-0.02em]">
-            Agents
+            {t("agents.list.title")}
           </h2>
         </div>
         <div className="flex items-center gap-2">
@@ -258,7 +275,7 @@ export function AgentList() {
             onClick={() => setShowLibrary(true)}
           >
             <Library className="h-3.5 w-3.5" />
-            Add from Library
+            {t("agents.list.addFromLibrary")}
           </Button>
           <Button
             variant="ghost"
@@ -278,6 +295,8 @@ export function AgentList() {
                 key={agent.slug}
                 agent={agent}
                 onClick={() => handleAgentClick(agent.slug)}
+                t={t}
+                format={format}
               />
             ))}
             {/* New Agent card */}
@@ -286,7 +305,7 @@ export function AgentList() {
               className="border border-dashed border-border rounded-lg p-4 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-accent/20 transition-colors cursor-pointer min-h-[140px]"
             >
               <Plus className="h-6 w-6" />
-              <span className="text-[13px] font-medium">New Agent</span>
+              <span className="text-[13px] font-medium">{t("agents.list.newAgent")}</span>
             </button>
           </div>
         </div>

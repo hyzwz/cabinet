@@ -303,6 +303,437 @@ test("covered tasks workspace component uses locale message keys instead of hard
   assert.doesNotMatch(file, />Heartbeat</);
 });
 
+test("getMessage returns localized secondary agents, task detail, and search copy for covered follow-up surfaces", () => {
+  assert.equal(getMessage("agents.library.title", "zh"), "Agent Library");
+  assert.equal(getMessage("agents.library.add", "zh"), "添加");
+  assert.equal(getMessage("agents.library.adding", "zh"), "添加中...");
+  assert.equal(getMessage("agents.list.title", "zh"), "Agents");
+  assert.equal(getMessage("agents.list.addFromLibrary", "zh"), "从 Library 添加");
+  assert.equal(getMessage("agents.list.newAgent", "zh"), "新建 Agent");
+  assert.equal(getMessage("agents.general.title", "zh"), "通用");
+  assert.equal(getMessage("agents.general.send", "zh"), "发送");
+  assert.equal(getMessage("agents.detail.tabs.definition", "zh"), "定义");
+  assert.equal(getMessage("agents.detail.tabs.jobs", "zh"), "Jobs");
+  assert.equal(getMessage("agents.detail.field.department", "zh"), "部门");
+  assert.equal(getMessage("agents.detail.jobs.emptyTitle", "zh"), "尚未配置 jobs");
+  assert.equal(getMessage("agents.detail.sessions.empty", "zh"), "向 {name} 发送一个提示词以开始实时会话。");
+  assert.equal(getMessage("tasks.detail.loadError", "zh"), "无法加载对话详情。");
+  assert.equal(getMessage("search.placeholder", "zh"), "搜索页面...");
+  assert.equal(getMessage("search.noResults", "zh"), "未找到结果");
+  assert.equal(getMessage("search.askAi", "zh"), "询问 AI");
+  assert.equal(getMessage("search.aiSearching", "zh"), "AI 搜索中...");
+});
+
+test("covered follow-up components use locale message keys instead of hard-coded core UI copy", async () => {
+  const fs = await import("node:fs/promises");
+  const files = {
+    agentList: await fs.readFile(new URL("../src/components/agents/agent-list.tsx", import.meta.url), "utf8"),
+    agentDetail: await fs.readFile(new URL("../src/components/agents/agent-detail.tsx", import.meta.url), "utf8"),
+    generalAgentView: await fs.readFile(new URL("../src/components/agents/general-agent-view.tsx", import.meta.url), "utf8"),
+    taskDetailPanel: await fs.readFile(new URL("../src/components/tasks/task-detail-panel.tsx", import.meta.url), "utf8"),
+    searchDialog: await fs.readFile(new URL("../src/components/search/search-dialog.tsx", import.meta.url), "utf8"),
+  };
+
+  assert.match(files.agentList, /useLocale\(\)/);
+  assert.match(files.agentList, /t\("agents\.library\.title"\)/);
+  assert.match(files.agentList, /t\("agents\.list\.addFromLibrary"\)/);
+  assert.match(files.agentList, /t\("agents\.list\.newAgent"\)/);
+  assert.doesNotMatch(files.agentList, />Agent Library</);
+  assert.doesNotMatch(files.agentList, />Add from Library</);
+  assert.doesNotMatch(files.agentList, />New Agent</);
+
+  assert.match(files.agentDetail, /useLocale\(\)/);
+  assert.match(files.agentDetail, /t\("agents\.detail\.tabs\.definition"\)/);
+  assert.match(files.agentDetail, /t\("agents\.detail\.jobs\.loading"\)/);
+  assert.match(files.agentDetail, /format\("agents\.detail\.sessions\.empty", \{ name: persona\.name \}\)/);
+  assert.doesNotMatch(files.agentDetail, />Definition</);
+  assert.doesNotMatch(files.agentDetail, />Loading jobs\.\.\.</);
+  assert.doesNotMatch(files.agentDetail, />No jobs configured</);
+
+  assert.match(files.generalAgentView, /useLocale\(\)/);
+  assert.match(files.generalAgentView, /t\("agents\.general\.title"\)/);
+  assert.match(files.generalAgentView, /t\("agents\.general\.send"\)/);
+  assert.doesNotMatch(files.generalAgentView, />General</);
+  assert.doesNotMatch(files.generalAgentView, />Send</);
+
+  assert.match(files.taskDetailPanel, /useLocale\(\)/);
+  assert.match(files.taskDetailPanel, /formatRelative\(conversation\.startedAt, t\)/);
+  assert.match(files.taskDetailPanel, /t\("tasks\.detail\.loadError"\)/);
+  assert.doesNotMatch(files.taskDetailPanel, />Loading\.\.\.</);
+  assert.doesNotMatch(files.taskDetailPanel, /Could not load conversation detail\./);
+
+  assert.match(files.searchDialog, /useLocale\(\)/);
+  assert.match(files.searchDialog, /t\("search\.placeholder"\)/);
+  assert.match(files.searchDialog, /t\("search\.noResults"\)/);
+  assert.match(files.searchDialog, /t\("search\.askAi"\)/);
+  assert.doesNotMatch(files.searchDialog, /placeholder="Search pages\.\.\."/);
+  assert.doesNotMatch(files.searchDialog, />No results found</);
+  assert.doesNotMatch(files.searchDialog, />Ask AI</);
+});
+
+test("getMessage returns localized AI panel, conversation result, and jobs manager copy for covered follow-up surfaces", () => {
+  assert.equal(getMessage("aiPanel.title", "zh"), "AI 编辑器");
+  assert.equal(getMessage("aiPanel.emptyPrompt", "zh"), "告诉我你想如何编辑这个页面。");
+  assert.equal(getMessage("aiPanel.liveSessions", "zh"), "实时会话");
+  assert.equal(getMessage("aiPanel.openPage", "zh"), "打开页面");
+  assert.equal(getMessage("aiPanel.pendingFailed", "zh"), "无法启动");
+  assert.equal(getMessage("conversation.prompt", "zh"), "提示词");
+  assert.equal(getMessage("conversation.openTranscript", "zh"), "打开 transcript");
+  assert.equal(getMessage("conversation.result", "zh"), "结果");
+  assert.equal(getMessage("conversation.noSummary", "zh"), "未捕获到摘要。");
+  assert.equal(getMessage("conversation.context", "zh"), "上下文");
+  assert.equal(getMessage("conversation.artifacts", "zh"), "产物");
+  assert.equal(getMessage("conversation.noArtifacts", "zh"), "本次运行未记录任何产物。");
+  assert.equal(getMessage("jobs.title", "zh"), "Jobs");
+  assert.equal(getMessage("jobs.subtitle", "zh"), "按 agent 配置周期性工作");
+  assert.equal(getMessage("jobs.allAgents", "zh"), "所有 agents");
+  assert.equal(getMessage("jobs.loadingAgents", "zh"), "正在加载 agents...");
+  assert.equal(getMessage("jobs.filters.anyStatus", "zh"), "任意状态");
+  assert.equal(getMessage("jobs.emptyConversations", "zh"), "还没有计划运行。");
+  assert.equal(getMessage("jobs.selectAgent", "zh"), "选择一个 agent");
+  assert.equal(getMessage("jobs.heartbeat.title", "zh"), "Heartbeat");
+  assert.equal(getMessage("jobs.jobName", "zh"), "Job 名称");
+  assert.equal(getMessage("jobs.saveJob", "zh"), "保存 job");
+});
+
+test("covered AI panel, conversation result, and jobs manager components use locale message keys instead of hard-coded core UI copy", async () => {
+  const fs = await import("node:fs/promises");
+  const files = {
+    aiPanel: await fs.readFile(new URL("../src/components/ai-panel/ai-panel.tsx", import.meta.url), "utf8"),
+    conversationResult: await fs.readFile(new URL("../src/components/agents/conversation-result-view.tsx", import.meta.url), "utf8"),
+    jobsManager: await fs.readFile(new URL("../src/components/jobs/jobs-manager.tsx", import.meta.url), "utf8"),
+  };
+
+  assert.match(files.aiPanel, /useLocale\(\)/);
+  assert.match(files.aiPanel, /t\("aiPanel\.title"\)/);
+  assert.match(files.aiPanel, /t\("aiPanel\.openPage"\)/);
+  assert.match(files.aiPanel, /t\("aiPanel\.pendingStartingTitle"\)/);
+  assert.doesNotMatch(files.aiPanel, />AI Editor</);
+  assert.doesNotMatch(files.aiPanel, />Open Page</);
+  assert.doesNotMatch(files.aiPanel, /Starting the live editor stream/);
+
+  assert.match(files.conversationResult, /useLocale\(\)/);
+  assert.match(files.conversationResult, /t\("conversation\.prompt"\)/);
+  assert.match(files.conversationResult, /t\("conversation\.openTranscript"\)/);
+  assert.match(files.conversationResult, /t\("conversation\.artifacts"\)/);
+  assert.doesNotMatch(files.conversationResult, />Prompt</);
+  assert.doesNotMatch(files.conversationResult, />Result</);
+  assert.doesNotMatch(files.conversationResult, />Artifacts</);
+
+  assert.match(files.jobsManager, /useLocale\(\)/);
+  assert.match(files.jobsManager, /t\("jobs\.title"\)/);
+  assert.match(files.jobsManager, /format\("jobs\.scheduledRunsForAgent", \{ name: selectedAgent\.name \}\)/);
+  assert.match(files.jobsManager, /t\("jobs\.filters\.anyStatus"\)/);
+  assert.match(files.jobsManager, /t\("jobs\.selectAgent"\)/);
+  assert.doesNotMatch(files.jobsManager, />Jobs</);
+  assert.doesNotMatch(files.jobsManager, />All agents</);
+  assert.doesNotMatch(files.jobsManager, />Loading agents\.\.\.</);
+});
+
+test("getMessage returns localized layout chrome copy for covered follow-up surfaces", () => {
+  assert.equal(getMessage("layout.status.aiPlaceholder", "zh"), "如何编辑这个页面？");
+  assert.equal(getMessage("layout.status.health.allRunning", "zh"), "所有系统运行正常");
+  assert.equal(getMessage("layout.status.health.appDown", "zh"), "应用服务未响应");
+  assert.equal(getMessage("layout.status.health.degraded", "zh"), "已降级");
+  assert.equal(getMessage("layout.status.saved", "zh"), "已保存");
+  assert.equal(getMessage("layout.status.ready", "zh"), "就绪");
+  assert.equal(getMessage("layout.status.uncommitted", "zh"), "{count} 个未提交");
+  assert.equal(getMessage("layout.status.pullLatest", "zh"), "拉取最新 GitHub 变更并刷新");
+  assert.equal(getMessage("layout.status.discord", "zh"), "前往 Discord 获取支持和反馈");
+  assert.equal(getMessage("layout.update.title", "zh"), "Cabinet 更新");
+  assert.equal(getMessage("layout.update.later", "zh"), "稍后");
+  assert.equal(getMessage("layout.update.releaseNotes", "zh"), "发布说明");
+  assert.equal(getMessage("layout.notifications.completed", "zh"), "已完成");
+  assert.equal(getMessage("layout.notifications.failed", "zh"), "失败");
+});
+
+test("covered layout components use locale message keys instead of hard-coded core UI copy", async () => {
+  const fs = await import("node:fs/promises");
+  const files = {
+    statusBar: await fs.readFile(new URL("../src/components/layout/status-bar.tsx", import.meta.url), "utf8"),
+    updateDialog: await fs.readFile(new URL("../src/components/layout/update-dialog.tsx", import.meta.url), "utf8"),
+    notificationToasts: await fs.readFile(new URL("../src/components/layout/notification-toasts.tsx", import.meta.url), "utf8"),
+  };
+
+  assert.match(files.statusBar, /useLocale\(\)/);
+  assert.match(files.statusBar, /t\("layout\.status\.aiPlaceholder"\)/);
+  assert.match(files.statusBar, /t\("layout\.status\.saved"\)/);
+  assert.match(files.statusBar, /format\("layout\.status\.uncommitted", \{ count: uncommitted \}\)/);
+  assert.doesNotMatch(files.statusBar, /placeholder="How to edit this page\?"/);
+  assert.doesNotMatch(files.statusBar, />All systems running</);
+
+  assert.match(files.updateDialog, /useLocale\(\)/);
+  assert.match(files.updateDialog, /t\("layout\.update\.title"\)/);
+  assert.match(files.updateDialog, /t\("layout\.update\.later"\)/);
+  assert.doesNotMatch(files.updateDialog, />Later</);
+
+  assert.match(files.notificationToasts, /useLocale\(\)/);
+  assert.match(files.notificationToasts, /t\("layout\.notifications\.completed"\)/);
+  assert.match(files.notificationToasts, /t\("layout\.notifications\.failed"\)/);
+  assert.doesNotMatch(files.notificationToasts, />Completed</);
+  assert.doesNotMatch(files.notificationToasts, />Failed</);
+});
+
+test("getMessage returns localized mission-control batch copy for covered follow-up surfaces", () => {
+  assert.equal(getMessage("mission.header.companyOs", "zh"), "Company OS");
+  assert.equal(getMessage("mission.header.yourCompanyOs", "zh"), "你的 Company OS");
+  assert.equal(getMessage("mission.header.startTeam", "zh"), "启动团队");
+  assert.equal(getMessage("mission.header.newAgent", "zh"), "新建 Agent");
+  assert.equal(getMessage("mission.goals.allGoals", "zh"), "全部目标");
+  assert.equal(getMessage("mission.empty.noAgents", "zh"), "尚未配置 agents");
+  assert.equal(getMessage("mission.empty.createFirstAgent", "zh"), "创建你的第一个 agent，开始使用 Cabinet Agents。");
+  assert.equal(getMessage("mission.createAgent", "zh"), "创建 Agent");
+  assert.equal(getMessage("mission.workspaceGallery.title", "zh"), "工作区图库");
+  assert.equal(getMessage("mission.workspaceGallery.back", "zh"), "返回 Mission Control");
+  assert.equal(getMessage("mission.workspaceGallery.loading", "zh"), "正在扫描工作区...");
+  assert.equal(getMessage("mission.pulse.agents", "zh"), "Agents");
+  assert.equal(getMessage("mission.pulse.runningPlays", "zh"), "运行中的 Plays");
+  assert.equal(getMessage("mission.pulse.costBreakdown", "zh"), "成本明细");
+  assert.equal(getMessage("mission.schedule.showCron", "zh"), "显示 cron 表达式");
+});
+
+test("covered mission-control components use locale message keys instead of hard-coded core UI copy", async () => {
+  const fs = await import("node:fs/promises");
+  const files = {
+    missionControl: await fs.readFile(new URL("../src/components/mission-control/mission-control.tsx", import.meta.url), "utf8"),
+    workspaceGallery: await fs.readFile(new URL("../src/components/mission-control/workspace-gallery.tsx", import.meta.url), "utf8"),
+    pulseStrip: await fs.readFile(new URL("../src/components/mission-control/pulse-strip.tsx", import.meta.url), "utf8"),
+    schedulePicker: await fs.readFile(new URL("../src/components/mission-control/schedule-picker.tsx", import.meta.url), "utf8"),
+  };
+
+  assert.match(files.missionControl, /useLocale\(\)/);
+  assert.match(files.missionControl, /t\("mission\.header\.startTeam"\)/);
+  assert.match(files.missionControl, /t\("mission\.createAgent"\)/);
+  assert.doesNotMatch(files.missionControl, />Start Team</);
+  assert.doesNotMatch(files.missionControl, />Create Agent</);
+
+  assert.match(files.workspaceGallery, /useLocale\(\)/);
+  assert.match(files.workspaceGallery, /t\("mission\.workspaceGallery\.title"\)/);
+  assert.match(files.workspaceGallery, /t\("mission\.workspaceGallery\.loading"\)/);
+  assert.doesNotMatch(files.workspaceGallery, />Workspace Gallery</);
+
+  assert.match(files.pulseStrip, /useLocale\(\)/);
+  assert.match(files.pulseStrip, /t\("mission\.pulse\.agents"\)/);
+  assert.match(files.pulseStrip, /t\("mission\.pulse\.runningPlays"\)/);
+  assert.doesNotMatch(files.pulseStrip, /label="Agents"/);
+
+  assert.match(files.schedulePicker, /useLocale\(\)/);
+  assert.match(files.schedulePicker, /t\("mission\.schedule\.showCron"\)/);
+  assert.doesNotMatch(files.schedulePicker, /Show cron expression/);
+});
+
+test("getMessage returns localized mission-control dialog and detail copy for covered follow-up surfaces", () => {
+  assert.equal(getMessage("mission.detail.live", "zh"), "运行中");
+  assert.equal(getMessage("mission.detail.paused", "zh"), "已暂停");
+  assert.equal(getMessage("mission.detail.departmentLead", "zh"), "部门负责人");
+  assert.equal(getMessage("mission.detail.goals", "zh"), "目标");
+  assert.equal(getMessage("mission.detail.workspaceEmpty", "zh"), "还没有工作区文件。agent 运行后会在这里创建文件。");
+  assert.equal(getMessage("mission.detail.taskInbox", "zh"), "任务收件箱");
+  assert.equal(getMessage("mission.detail.runHeartbeat", "zh"), "运行 Heartbeat");
+  assert.equal(getMessage("mission.slack.thread", "zh"), "线程");
+  assert.equal(getMessage("mission.slack.noReplies", "zh"), "这个线程里还没有回复。");
+  assert.equal(getMessage("mission.slack.you", "zh"), "你");
+  assert.equal(getMessage("mission.slack.reply", "zh"), "回复");
+  assert.equal(getMessage("mission.slack.thinking", "zh"), "思考中");
+  assert.equal(getMessage("mission.slack.title", "zh"), "Agent Slack");
+  assert.equal(formatMessage("mission.slack.emptyChannel", "zh", { channel: "general" }), "#general 里还没有消息。agents 运行后会在这里发消息。");
+  assert.equal(getMessage("mission.dialog.avatar", "zh"), "头像");
+  assert.equal(getMessage("mission.dialog.name", "zh"), "名称");
+  assert.equal(getMessage("mission.dialog.role", "zh"), "角色");
+  assert.equal(getMessage("mission.dialog.provider", "zh"), "Provider");
+  assert.equal(getMessage("mission.dialog.addGoal", "zh"), "添加目标");
+  assert.equal(getMessage("mission.dialog.creating", "zh"), "创建中...");
+  assert.equal(getMessage("mission.dialog.saveChanges", "zh"), "保存更改");
+});
+
+test("covered mission-control detail/dialog components use locale message keys instead of hard-coded core UI copy", async () => {
+  const fs = await import("node:fs/promises");
+  const files = {
+    agentDetailPanel: await fs.readFile(new URL("../src/components/mission-control/agent-detail-panel.tsx", import.meta.url), "utf8"),
+    slackPanel: await fs.readFile(new URL("../src/components/mission-control/slack-panel.tsx", import.meta.url), "utf8"),
+    createAgentDialog: await fs.readFile(new URL("../src/components/mission-control/create-agent-dialog.tsx", import.meta.url), "utf8"),
+    editAgentDialog: await fs.readFile(new URL("../src/components/mission-control/edit-agent-dialog.tsx", import.meta.url), "utf8"),
+  };
+
+  assert.match(files.agentDetailPanel, /useLocale\(\)/);
+  assert.match(files.agentDetailPanel, /t\("mission\.detail\.live"\)/);
+  assert.match(files.agentDetailPanel, /t\("mission\.detail\.goals"\)/);
+  assert.doesNotMatch(files.agentDetailPanel, />Live</);
+  assert.doesNotMatch(files.agentDetailPanel, /title="Edit agent configuration"/);
+
+  assert.match(files.slackPanel, /useLocale\(\)/);
+  assert.match(files.slackPanel, /t\("mission\.slack\.thread"\)/);
+  assert.match(files.slackPanel, /t\("mission\.slack\.reply"\)/);
+  assert.match(files.slackPanel, /t\("mission\.slack\.title"\)/);
+  assert.match(files.slackPanel, /t\("mission\.slack\.emptyChannel"/);
+  assert.doesNotMatch(files.slackPanel, />Thread</);
+  assert.doesNotMatch(files.slackPanel, />Reply</);
+  assert.doesNotMatch(files.slackPanel, />Agent Slack</);
+  assert.doesNotMatch(files.slackPanel, /No messages in #\$\{activeChannel\} yet/);
+
+  assert.match(files.createAgentDialog, /useLocale\(\)/);
+  assert.match(files.createAgentDialog, /t\("mission\.dialog\.avatar"\)/);
+  assert.match(files.createAgentDialog, /t\("mission\.dialog\.addGoal"\)/);
+  assert.doesNotMatch(files.createAgentDialog, />Avatar</);
+  assert.doesNotMatch(files.createAgentDialog, /\{creating \? "Creating\.\.\." : "Create Agent"\}/);
+
+  assert.match(files.editAgentDialog, /useLocale\(\)/);
+  assert.match(files.editAgentDialog, /t\("mission\.dialog\.name"\)/);
+  assert.match(files.editAgentDialog, /t\("mission\.dialog\.saveChanges"\)/);
+  assert.doesNotMatch(files.editAgentDialog, />Save Changes</);
+});
+
+test("getMessage returns localized cabinet surfaces copy for the next follow-up batch", () => {
+  assert.equal(getMessage("cabinets.org.empty", "zh"), "这个 cabinet 还没有配置 agents。");
+  assert.equal(formatMessage("cabinets.org.visibleAgents", "zh", { count: 3, suffix: "s" }), "3 个可见 agents");
+  assert.equal(formatMessage("cabinets.org.openChat", "zh", { name: "Ada" }), "与 Ada 打开对话");
+  assert.equal(formatMessage("cabinets.org.depth", "zh", { depth: 2 }), "深度 2");
+  assert.equal(formatMessage("cabinets.composer.placeholderSelected", "zh", { name: "Ada" }), "Ada 应该处理什么？");
+  assert.equal(getMessage("cabinets.composer.placeholderNoAgent", "zh"), "选择一个 agent，并描述下一个任务。");
+  assert.equal(getMessage("cabinets.composer.noMentionResults", "zh"), "没有匹配的 agents 或页面。");
+  assert.equal(getMessage("cabinets.composer.startConversation", "zh"), "开始对话");
+  assert.equal(getMessage("cabinets.composer.mentionHint", "zh"), "使用 @ 来提及");
+  assert.equal(getMessage("cabinets.composer.newLine", "zh"), "换行");
+  assert.equal(getMessage("cabinets.composer.noVisibleAgents", "zh"), "没有可见 agents");
+  assert.equal(getMessage("cabinets.scheduler.live", "zh"), "运行中");
+  assert.equal(getMessage("cabinets.scheduler.stopAll", "zh"), "全部停止");
+  assert.equal(getMessage("cabinets.scheduler.menu.restartAll", "zh"), "重启全部 agents");
+  assert.equal(getMessage("cabinets.scheduler.menu.startDescription", "zh"), "启用心跳与 cron 任务");
+  assert.equal(formatMessage("cabinets.scheduler.summary", "zh", { active: 2, total: 5 }), "2/5 个本 cabinet agents 处于激活状态。仅影响此 cabinet，不影响子 cabinet agents。");
+  assert.equal(getMessage("cabinets.activity.title", "zh"), "动态");
+  assert.equal(getMessage("cabinets.activity.loading", "zh"), "加载中...");
+  assert.equal(formatMessage("cabinets.activity.recent", "zh", { count: 4 }), "4 条最近记录");
+  assert.equal(formatMessage("cabinets.activity.running", "zh", { count: 2 }), "2 个运行中");
+  assert.equal(getMessage("cabinets.activity.viewAll", "zh"), "查看全部");
+  assert.equal(getMessage("cabinets.activity.empty", "zh"), "还没有对话。运行 heartbeat 或给 agent 发送任务即可开始。");
+  assert.equal(getMessage("cabinets.activity.loadingFeed", "zh"), "正在加载动态...");
+  assert.equal(getMessage("cabinets.stats.agents", "zh"), "Agents");
+  assert.equal(formatMessage("cabinets.stats.visibleAgentsTitle", "zh", { count: 3 }), "3 个可见 agents");
+  assert.equal(getMessage("cabinets.stats.noActiveAgents", "zh"), "没有 agent 处于激活状态。");
+  assert.equal(formatMessage("cabinets.stats.paused", "zh", { count: 2 }), "已暂停（2）");
+  assert.equal(getMessage("cabinets.stats.noPendingTasks", "zh"), "没有待处理任务。");
+  assert.equal(formatMessage("cabinets.stats.jobsTitle", "zh", { count: 4 }), "4 个 Jobs");
+  assert.equal(formatMessage("cabinets.stats.disabled", "zh", { count: 1 }), "已禁用（1）");
+  assert.equal(getMessage("cabinets.stats.noJobs", "zh"), "还没有配置 jobs。");
+  assert.equal(formatMessage("cabinets.stats.heartbeatsTitle", "zh", { count: 2 }), "2 个 Heartbeats");
+  assert.equal(getMessage("cabinets.stats.noHeartbeats", "zh"), "还没有配置 heartbeats。");
+  assert.equal(getMessage("cabinets.schedule.empty", "zh"), "还没有配置 jobs 或 heartbeats。");
+  assert.equal(formatMessage("cabinets.schedule.heartbeatName", "zh", { name: "Ada" }), "Ada heartbeat");
+  assert.equal(getMessage("cabinets.schedule.enabled", "zh"), "开启");
+  assert.equal(getMessage("cabinets.schedule.disabled", "zh"), "关闭");
+});
+
+test("covered cabinet components use locale message keys instead of hard-coded core UI copy", async () => {
+  const fs = await import("node:fs/promises");
+  const files = {
+    cabinetView: await fs.readFile(new URL("../src/components/cabinets/cabinet-view.tsx", import.meta.url), "utf8"),
+    cabinetTaskComposer: await fs.readFile(new URL("../src/components/cabinets/cabinet-task-composer.tsx", import.meta.url), "utf8"),
+    cabinetSchedulerControls: await fs.readFile(new URL("../src/components/cabinets/cabinet-scheduler-controls.tsx", import.meta.url), "utf8"),
+    activityFeed: await fs.readFile(new URL("../src/components/cabinets/activity-feed.tsx", import.meta.url), "utf8"),
+    interactiveStatStrip: await fs.readFile(new URL("../src/components/cabinets/interactive-stat-strip.tsx", import.meta.url), "utf8"),
+    scheduleList: await fs.readFile(new URL("../src/components/cabinets/schedule-list.tsx", import.meta.url), "utf8"),
+  };
+
+  assert.match(files.cabinetView, /useLocale\(\)/);
+  assert.match(files.cabinetView, /t\("cabinets\.org\.empty"\)/);
+  assert.match(files.cabinetView, /format\("cabinets\.org\.visibleAgents"/);
+  assert.match(files.cabinetView, /format\("cabinets\.org\.openChat"/);
+  assert.match(files.cabinetView, /format\("cabinets\.org\.depth"/);
+  assert.doesNotMatch(files.cabinetView, /No agents configured for this cabinet yet\./);
+  assert.doesNotMatch(files.cabinetView, /visible agent\{agents\.length === 1 \? "" : "s"\}/);
+  assert.doesNotMatch(files.cabinetView, /Open chat with \$\{agent\.name\}/);
+  assert.doesNotMatch(files.cabinetView, /depth \$\{child\.cabinetDepth \?\? 1\}/);
+
+  assert.match(files.cabinetTaskComposer, /useLocale\(\)/);
+  assert.match(files.cabinetTaskComposer, /format\("cabinets\.composer\.placeholderSelected"/);
+  assert.match(files.cabinetTaskComposer, /t\("cabinets\.composer\.placeholderNoAgent"\)/);
+  assert.match(files.cabinetTaskComposer, /t\("cabinets\.composer\.noVisibleAgents"\)/);
+  assert.doesNotMatch(files.cabinetTaskComposer, /What should \$\{selectedAgent\.name\} work on\?/);
+  assert.doesNotMatch(files.cabinetTaskComposer, /Choose an agent and describe the next task\./);
+  assert.doesNotMatch(files.cabinetTaskComposer, /No agents or pages match\./);
+  assert.doesNotMatch(files.cabinetTaskComposer, /aria-label="Start conversation"/);
+
+  assert.match(files.cabinetSchedulerControls, /useLocale\(\)/);
+  assert.match(files.cabinetSchedulerControls, /t\("cabinets\.scheduler\.live"\)/);
+  assert.match(files.cabinetSchedulerControls, /format\("cabinets\.scheduler\.startAllTitle"/);
+  assert.match(files.cabinetSchedulerControls, /format\("cabinets\.scheduler\.summary"/);
+  assert.doesNotMatch(files.cabinetSchedulerControls, />Live</);
+  assert.doesNotMatch(files.cabinetSchedulerControls, />Stop All</);
+  assert.doesNotMatch(files.cabinetSchedulerControls, />Restart all agents</);
+
+  assert.match(files.activityFeed, /useLocale\(\)/);
+  assert.match(files.activityFeed, /t\("cabinets\.activity\.title"\)/);
+  assert.match(files.activityFeed, /format\("cabinets\.activity\.recent"/);
+  assert.match(files.activityFeed, /format\("cabinets\.activity\.running"/);
+  assert.doesNotMatch(files.activityFeed, />Activity</);
+  assert.doesNotMatch(files.activityFeed, /Loading activity\.\.\./);
+  assert.doesNotMatch(files.activityFeed, /No conversations yet\./);
+
+  assert.match(files.interactiveStatStrip, /useLocale\(\)/);
+  assert.match(files.interactiveStatStrip, /t\("cabinets\.stats\.agents"\)/);
+  assert.match(files.interactiveStatStrip, /format\("cabinets\.stats\.visibleAgentsTitle"/);
+  assert.match(files.interactiveStatStrip, /format\("cabinets\.stats\.jobsTitle"/);
+  assert.doesNotMatch(files.interactiveStatStrip, /Visible Agents/);
+  assert.doesNotMatch(files.interactiveStatStrip, /No agents configured\./);
+  assert.doesNotMatch(files.interactiveStatStrip, /No pending tasks\./);
+
+  assert.match(files.scheduleList, /useLocale\(\)/);
+  assert.match(files.scheduleList, /t\("cabinets\.schedule\.empty"\)/);
+  assert.match(files.scheduleList, /format\("cabinets\.schedule\.heartbeatName"/);
+  assert.match(files.scheduleList, /t\("cabinets\.schedule\.enabled"\)/);
+  assert.doesNotMatch(files.scheduleList, /No jobs or heartbeats configured yet\./);
+  assert.doesNotMatch(files.scheduleList, /item\.enabled \? "On" : "Off"/);
+});
+
+test("getMessage returns localized cabinet home shell copy for the next follow-up batch", () => {
+  assert.equal(getMessage("cabinets.home.prompt", "zh"), "今天我们要处理什么？");
+  assert.equal(formatMessage("cabinets.home.headline", "zh", { greeting: "早上好", name: "jyutech.cn" }), "早上好，jyutech.cn。今天我们要处理什么？");
+  assert.equal(getMessage("cabinets.home.orgTitle", "zh"), "Cabinet 团队");
+  assert.equal(getMessage("cabinets.home.openAgentsWorkspace", "zh"), "打开 agents 工作区");
+  assert.equal(getMessage("cabinets.home.loadingBoard", "zh"), "正在加载 cabinet 看板... ");
+  assert.equal(getMessage("cabinets.home.scheduleTitle", "zh"), "Jobs 与 heartbeats");
+  assert.equal(formatMessage("cabinets.home.scheduleSummary", "zh", { jobs: 5, heartbeats: 3 }), "5 个 jobs，3 个 heartbeats");
+  assert.equal(getMessage("cabinets.home.calendar", "zh"), "日历");
+  assert.equal(getMessage("cabinets.home.list", "zh"), "列表");
+  assert.equal(getMessage("cabinets.home.today", "zh"), "今天");
+  assert.equal(getMessage("cabinets.home.fullScreen", "zh"), "全屏");
+  assert.equal(getMessage("cabinets.home.exitFullScreen", "zh"), "退出全屏");
+  assert.equal(getMessage("cabinets.home.boardDescriptionFallback", "zh"), "面向 agents、jobs 与知识的便携软件层。 ");
+});
+
+test("covered cabinet home components use locale message keys instead of hard-coded shell copy", async () => {
+  const fs = await import("node:fs/promises");
+  const files = {
+    cabinetView: await fs.readFile(new URL("../src/components/cabinets/cabinet-view.tsx", import.meta.url), "utf8"),
+    cabinetTaskComposer: await fs.readFile(new URL("../src/components/cabinets/cabinet-task-composer.tsx", import.meta.url), "utf8"),
+  };
+
+  assert.match(files.cabinetTaskComposer, /t\("cabinets\.home\.prompt"\)/);
+  assert.match(files.cabinetTaskComposer, /format\("cabinets\.home\.headline"/);
+  assert.match(files.cabinetTaskComposer, /t\("cabinets\.home\.boardDescriptionFallback"\)/);
+  assert.doesNotMatch(files.cabinetTaskComposer, /What are we working on today\?/);
+
+  assert.match(files.cabinetView, /t\("cabinets\.home\.orgTitle"\)/);
+  assert.match(files.cabinetView, /t\("cabinets\.home\.openAgentsWorkspace"\)/);
+  assert.match(files.cabinetView, /t\("cabinets\.home\.loadingBoard"\)/);
+  assert.match(files.cabinetView, /t\("cabinets\.home\.scheduleTitle"\)/);
+  assert.match(files.cabinetView, /format\("cabinets\.home\.scheduleSummary"/);
+  assert.match(files.cabinetView, /t\("cabinets\.home\.calendar"\)/);
+  assert.match(files.cabinetView, /t\("cabinets\.home\.list"\)/);
+  assert.match(files.cabinetView, /t\("cabinets\.home\.today"\)/);
+  assert.match(files.cabinetView, /t\("cabinets\.home\.fullScreen"\)/);
+  assert.match(files.cabinetView, /t\("cabinets\.home\.exitFullScreen"\)/);
+  assert.doesNotMatch(files.cabinetView, />Cabinet team</);
+  assert.doesNotMatch(files.cabinetView, />Open agents workspace</);
+  assert.doesNotMatch(files.cabinetView, /Loading mission board\.\.\./);
+  assert.doesNotMatch(files.cabinetView, />Jobs & heartbeats</);
+  assert.doesNotMatch(files.cabinetView, />Calendar</);
+  assert.doesNotMatch(files.cabinetView, />List</);
+  assert.doesNotMatch(files.cabinetView, />Today</);
+  assert.doesNotMatch(files.cabinetView, /Exit full screen/);
+  assert.doesNotMatch(files.cabinetView, /Portable software layer for agents, jobs, and knowledge\./);
+});
+
 test("getMessage returns key when missing from all locales", () => {
   assert.equal(getMessage("missing.key" as never, "zh" satisfies Locale), "missing.key");
 });

@@ -23,6 +23,7 @@ import type { AgentListItem } from "@/types/agents";
 import { flattenTree } from "@/lib/tree-utils";
 import { ComposerInput } from "@/components/composer/composer-input";
 import { useComposer, type MentionableItem } from "@/hooks/use-composer";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 interface PastSession {
   id: string;
@@ -94,6 +95,7 @@ export function AIPanel() {
   const [selectedLiveSessionId, setSelectedLiveSessionId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const previousCurrentPathRef = useRef<string | null>(null);
+  const { t, format } = useLocale();
 
   // Build mentionable items from tree + agents
   const mentionItems: MentionableItem[] = [
@@ -357,7 +359,7 @@ export function AIPanel() {
         setSelectedLiveSessionId(conversation.id);
       } catch (error) {
         const message =
-          error instanceof Error && error.message ? error.message : "Failed to start conversation";
+          error instanceof Error && error.message ? error.message : t("aiPanel.pendingFailed");
         setPendingSessions((prev) =>
           prev.map((session) =>
             session.id === pendingId
@@ -455,6 +457,9 @@ export function AIPanel() {
     removeSession(session.sessionId);
   };
 
+  const mentionHint = format("aiPanel.emptyMentionHint", { mention: "@" });
+  const [mentionHintBefore, mentionHintAfter] = mentionHint.split("@");
+
   return (
     <div className="w-[480px] min-w-[420px] border-l border-border bg-background flex flex-col">
       {/* Header */}
@@ -462,7 +467,7 @@ export function AIPanel() {
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <span className="text-[13px] font-semibold tracking-[-0.02em]">
-            AI Editor
+            {t("aiPanel.title")}
           </span>
           {currentPath && (
             <span className="text-[11px] text-muted-foreground">
@@ -476,7 +481,7 @@ export function AIPanel() {
               variant="ghost"
               size="icon"
               className="h-7 w-7 text-muted-foreground hover:text-foreground"
-              title="Clear all sessions"
+              title={t("aiPanel.clearAll")}
               onClick={() => {
                 clearAllSessions();
                 setPendingSessions([]);
@@ -505,15 +510,15 @@ export function AIPanel() {
             <div className="text-center py-8 space-y-2">
               <Sparkles className="h-8 w-8 mx-auto text-muted-foreground/40" />
               <p className="text-[13px] text-muted-foreground">
-                Tell me how you&apos;d like to edit this page.
+                {t("aiPanel.emptyPrompt")}
               </p>
               <p className="text-xs text-muted-foreground/60">
-                Use{" "}
+                {mentionHintBefore}
                 <span className="font-mono bg-muted px-1 rounded">@</span> to
-                reference other pages as context.
+                {mentionHintAfter}
               </p>
               <p className="text-xs text-muted-foreground/60">
-                Sessions persist across pages and show in Editor Agent.
+                {t("aiPanel.emptyPersistHint")}
               </p>
             </div>
           )}
@@ -522,10 +527,10 @@ export function AIPanel() {
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
-                  Live Sessions
+                  {t("aiPanel.liveSessions")}
                 </div>
                 <span className="text-[10px] text-muted-foreground/50">
-                  {liveSessions.length} active
+                  {format("aiPanel.activeCount", { count: liveSessions.length })}
                 </span>
               </div>
 
@@ -534,7 +539,7 @@ export function AIPanel() {
                   const isSelected = selectedLiveSessionId === session.id;
                   const isCurrentPage = session.pagePath === currentPath;
                   const agentLabel =
-                    session.agentSlug === "editor" ? "Editor" : startCase(session.agentSlug);
+                    session.agentSlug === "editor" ? t("aiPanel.agent.editor") : startCase(session.agentSlug);
 
                   return (
                     <button
@@ -563,7 +568,7 @@ export function AIPanel() {
                             </span>
                             {isCurrentPage ? (
                               <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-primary">
-                                Here
+                                {t("aiPanel.here")}
                               </span>
                             ) : null}
                           </div>
@@ -571,10 +576,10 @@ export function AIPanel() {
                             <span className="truncate">{session.pagePath}</span>
                             <span className="shrink-0">
                               {session.kind === "pending" && session.status === "failed"
-                                ? "Failed"
+                                    ? t("aiPanel.status.failed")
                                 : session.kind === "pending"
-                                  ? "Starting"
-                                  : "Streaming"}
+                                      ? t("aiPanel.status.starting")
+                                      : t("aiPanel.status.streaming")}
                             </span>
                           </div>
                         </div>
@@ -593,7 +598,7 @@ export function AIPanel() {
                             }
                           }}
                           className="shrink-0 p-1 text-muted-foreground/40 transition-colors hover:text-destructive"
-                          title="Dismiss"
+                          title={t("aiPanel.dismiss")}
                         >
                           <X className="h-3.5 w-3.5" />
                         </span>
@@ -611,9 +616,9 @@ export function AIPanel() {
                         <Loader2 className="h-3 w-3 animate-spin text-primary" />
                         {selectedLiveSession.kind === "pending"
                           ? selectedLiveSession.status === "failed"
-                            ? "Unable to start"
-                            : "Starting live session..."
-                          : "Live stream"}
+                                ? t("aiPanel.pendingFailed")
+                                : t("aiPanel.pendingStarting")
+                              : t("aiPanel.liveStream")}
                       </div>
                       <div className="mt-1.5 text-foreground">
                         {selectedLiveSession.userMessage}
@@ -638,7 +643,7 @@ export function AIPanel() {
                           void loadPage(selectedLiveSession.pagePath);
                         }}
                       >
-                        Open Page
+                        {t("aiPanel.openPage")}
                       </Button>
                     ) : null}
                   </div>
@@ -651,10 +656,10 @@ export function AIPanel() {
                             <X className="h-8 w-8 text-destructive" />
                             <div className="space-y-1">
                               <p className="text-[13px] font-medium text-foreground">
-                                The session did not start.
+                                    {t("aiPanel.pendingFailedTitle")}
                               </p>
                               <p className="text-[11px] text-muted-foreground">
-                                {selectedLiveSession.error || "Try sending the request again."}
+                                    {selectedLiveSession.error || t("aiPanel.pendingFailedHint")}
                               </p>
                             </div>
                           </>
@@ -663,10 +668,10 @@ export function AIPanel() {
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                             <div className="space-y-1">
                               <p className="text-[13px] font-medium text-foreground">
-                                Starting the live editor stream...
+                                    {t("aiPanel.pendingStartingTitle")}
                               </p>
                               <p className="text-[11px] text-muted-foreground">
-                                The panel will switch to terminal output as soon as the daemon session is ready.
+                                    {t("aiPanel.pendingStartingHint")}
                               </p>
                             </div>
                           </>

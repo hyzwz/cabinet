@@ -6,7 +6,6 @@ import {
   Pause,
   Play,
   Target,
-  Zap,
   FolderOpen,
   Brain,
   Clock,
@@ -34,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { GoalBar } from "./goal-bar";
 import { EditAgentDialog } from "./edit-agent-dialog";
 import { cronToHuman } from "@/lib/agents/cron-utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type { GoalMetric, SlackMessage } from "@/types/agents";
 
 interface AgentDetail {
@@ -163,6 +163,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
   const [activeTab, setActiveTab] = useState<"all" | "heartbeats" | "messages">("all");
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [sessionOutputs, setSessionOutputs] = useState<Record<string, string>>({});
+  const { t } = useLocale();
 
   const loadAll = useCallback(async () => {
     try {
@@ -320,7 +321,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
     <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/30 shrink-0" />
   );
 
-  const statusText = agent?.active ? "Live" : "Paused";
+  const statusText = agent?.active ? t("mission.detail.live") : t("mission.detail.paused");
 
   // Compute health from recent heartbeat history
   const recentHistory = history.slice(0, 10);
@@ -372,7 +373,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                       {agent.department !== "general" && (
                         <span className="capitalize">{agent.department} &middot; </span>
                       )}
-                      {agent.type === "lead" ? "Department Lead" : "Specialist"}
+                      {agent.type === "lead" ? t("mission.detail.departmentLead") : t("mission.detail.specialist")}
                     </p>
                   </div>
                 </div>
@@ -382,10 +383,10 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                     size="sm"
                     className="h-7 text-[11px] gap-1"
                     onClick={() => setEditDialogOpen(true)}
-                    title="Edit agent configuration"
+                    title={t("mission.detail.edit")}
                   >
                     <Pencil className="h-3 w-3" />
-                    Edit
+                    {t("mission.detail.edit")}
                   </Button>
                   <Button
                     variant="ghost"
@@ -405,10 +406,10 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                         URL.revokeObjectURL(url);
                       } catch { /* ignore */ }
                     }}
-                    title="Export agent bundle"
+                    title={t("mission.detail.export")}
                   >
                     <Download className="h-3 w-3" />
-                    Export
+                    {t("mission.detail.export")}
                   </Button>
                   <Button
                     variant="ghost"
@@ -417,7 +418,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                     onClick={onNavigateToAgent ? () => onNavigateToAgent(slug) : undefined}
                   >
                     <ExternalLink className="h-3 w-3" />
-                    Full View
+                    {t("mission.detail.fullView")}
                   </Button>
                   <Button
                     variant="ghost"
@@ -474,7 +475,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                         healthStatus === "warning" && "bg-amber-500",
                         healthStatus === "critical" && "bg-red-500"
                       )} />
-                      {healthStatus === "healthy" ? "Healthy" : healthStatus === "warning" ? "Degraded" : "Unhealthy"}
+                      {healthStatus === "healthy" ? t("mission.detail.healthy") : healthStatus === "warning" ? t("mission.detail.degraded") : t("mission.detail.unhealthy")}
                     </span>
                   </>
                 )}
@@ -485,7 +486,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
             <div className="flex-1 overflow-y-auto">
               {/* GOALS */}
               {agent.goals.length > 0 && (
-                <Section icon={Target} title="Goals" action={
+                <Section icon={Target} title={t("mission.detail.goals")} action={
                   <span className="text-[10px] text-muted-foreground/50 font-medium tabular-nums">
                     Period: {currentPeriodLabel()}
                   </span>
@@ -512,7 +513,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
               )}
 
               {/* WORKSPACE */}
-              <Section icon={FolderOpen} title="Workspace" action={
+              <Section icon={FolderOpen} title={t("mission.detail.workspace")} action={
                 workspace.length > 0 ? (
                   <button
                     className="text-[10px] text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
@@ -525,7 +526,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
               }>
                 {workspace.length === 0 ? (
                   <p className="text-[12px] text-muted-foreground/50">
-                    No workspace files yet. Agent will create files here when it runs.
+                    {t("mission.detail.workspaceEmpty")}
                   </p>
                 ) : (
                   <div className="space-y-0.5">
@@ -550,10 +551,10 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
               </Section>
 
               {/* TASK INBOX */}
-              <Section icon={Inbox} title={`Task Inbox${tasks.length > 0 ? ` (${tasks.filter(t => t.status === "pending" || t.status === "in_progress").length})` : ""}`}>
+              <Section icon={Inbox} title={`${t("mission.detail.taskInbox")}${tasks.length > 0 ? ` (${tasks.filter(t => t.status === "pending" || t.status === "in_progress").length})` : ""}`}>
                 {tasks.length === 0 ? (
                   <p className="text-[12px] text-muted-foreground/50">
-                    No tasks. Other agents can assign tasks via TASK_CREATE.
+                    {t("mission.detail.noTasks")}
                   </p>
                 ) : (
                   <div className="space-y-1.5">
@@ -622,7 +623,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                                 loadAll();
                               }}
                             >
-                              Start
+                              {t("mission.detail.start")}
                             </Button>
                           )}
                         </div>
@@ -633,7 +634,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
               </Section>
 
               {/* LIVE TERMINAL */}
-              <Section icon={Terminal} title="Live Terminal" action={
+              <Section icon={Terminal} title={t("mission.detail.liveTerminal")} action={
                 <div className="flex items-center gap-2">
                   {history.length > 0 && !runningHeartbeat && (
                     <span className="text-[10px] text-muted-foreground/50 tabular-nums">
@@ -651,7 +652,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                         setRunningHeartbeat(false);
                       }}
                     >
-                      Kill
+                      {t("mission.detail.kill")}
                     </Button>
                   ) : (
                     <Button
@@ -662,7 +663,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                       disabled={runningHeartbeat}
                     >
                       <Play className="h-2.5 w-2.5 mr-1" />
-                      Run
+                      {t("mission.detail.run")}
                     </Button>
                   )}
                 </div>
@@ -671,7 +672,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                   <div className="rounded-lg bg-[#0a0a0a] border border-emerald-500/20 p-3 font-mono text-[11px] leading-relaxed">
                     <div className="flex items-center gap-2 text-emerald-400 mb-2">
                       <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="font-medium">Running heartbeat...</span>
+                      <span className="font-medium">{t("mission.detail.runningHeartbeat")}</span>
                     </div>
                     <div className="text-[#e5e5e5]/50 space-y-1">
                       <p>$ Loading persona &amp; memory...</p>
@@ -688,20 +689,20 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                           "h-1.5 w-1.5 rounded-full",
                           history[0].status === "completed" ? "bg-emerald-500" : "bg-red-500"
                         )} />
-                        <span>{history[0].status === "completed" ? "Completed" : "Failed"}</span>
+                        <span>{history[0].status === "completed" ? t("mission.detail.completed") : t("mission.detail.failed")}</span>
                         <span>&middot;</span>
                         <span>{timeAgo(history[0].timestamp)}</span>
                       </div>
                     </div>
                     <pre className="whitespace-pre-wrap text-[#e5e5e5]/80 break-words">
-                      {sessionOutputs[`hb-${history[0].timestamp}`] || history[0].summary || "No output captured."}
+                      {sessionOutputs[`hb-${history[0].timestamp}`] || history[0].summary || t("mission.detail.noOutput")}
                     </pre>
                   </div>
                 ) : (
                   <div className="rounded-lg bg-[#0a0a0a] border border-border/30 p-4 text-center">
                     <Terminal className="h-5 w-5 mx-auto text-muted-foreground/20 mb-2" />
                     <p className="text-[12px] text-muted-foreground/40 mb-3">
-                      No output yet. Run a heartbeat to see agent activity.
+                      {t("mission.detail.noOutputYet")}
                     </p>
                     <Button
                       variant="outline"
@@ -710,19 +711,19 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                       onClick={handleRunHeartbeat}
                     >
                       <Play className="h-3 w-3" />
-                      Run Heartbeat
+                      {t("mission.detail.runHeartbeat")}
                     </Button>
                   </div>
                 )}
               </Section>
 
               {/* MEMORY */}
-              <Section icon={Brain} title="Memory" action={
+              <Section icon={Brain} title={t("mission.detail.memory")} action={
                 <button
                   className="text-[10px] text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
                   onClick={() => onOpenFile?.(`/data/.agents/${slug}/.memory`)}
                 >
-                  View All
+                  {t("mission.detail.viewAll")}
                   <ExternalLink className="h-2.5 w-2.5" />
                 </button>
               }>
@@ -749,7 +750,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                     <div className="text-[12px] text-foreground/80 leading-relaxed whitespace-pre-wrap max-h-[200px] overflow-y-auto rounded-md bg-muted/20 p-2">
                       {memoryFiles[activeMemoryTab]
                         ? memoryFiles[activeMemoryTab].slice(0, 1000) + (memoryFiles[activeMemoryTab].length > 1000 ? "\n..." : "")
-                        : "(empty)"}
+                        : t("mission.detail.empty")}
                     </div>
                   </div>
                 ) : memory ? (
@@ -759,13 +760,13 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                   </div>
                 ) : (
                   <p className="text-[12px] text-muted-foreground/50">
-                    No memory yet. Agent will build memory over time.
+                    {t("mission.detail.noMemory")}
                   </p>
                 )}
               </Section>
 
               {/* RECENT ACTIVITY (interleaved heartbeats + slack messages) */}
-              <Section icon={Clock} title="Recent Activity" action={
+              <Section icon={Clock} title={t("mission.detail.recentActivity")} action={
                 <div className="flex items-center gap-1">
                   {(["all", "heartbeats", "messages"] as const).map((tab) => (
                     <button
@@ -803,7 +804,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                   if (visible.length === 0) {
                     return (
                       <p className="text-[12px] text-muted-foreground/50">
-                        No activity yet.
+                        {t("mission.detail.noActivity")}
                       </p>
                     );
                   }

@@ -5,6 +5,7 @@ import { Search, FileText, Tag, X, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { useTreeStore } from "@/stores/tree-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ export function SearchDialog() {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const { selectPage } = useTreeStore();
   const { loadPage } = useEditorStore();
+  const { t } = useLocale();
 
   // Cmd+K to open
   useEffect(() => {
@@ -126,7 +128,7 @@ export function SearchDialog() {
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search pages..."
+            placeholder={t("search.placeholder")}
             className="border-0 bg-transparent shadow-none focus-visible:ring-0 text-[13px] h-11"
             autoFocus
           />
@@ -149,7 +151,7 @@ export function SearchDialog() {
           <div className="max-h-[300px] overflow-y-auto py-1">
             {loading && results.length === 0 && (
               <div className="px-4 py-3 text-[13px] text-muted-foreground">
-                Searching...
+                {t("search.loading")}
               </div>
             )}
             {results.map((result, i) => (
@@ -214,7 +216,7 @@ export function SearchDialog() {
 
         {query && !loading && results.length === 0 && (
           <div className="px-4 py-6 text-center text-[13px] text-muted-foreground space-y-3">
-            <p>No results found</p>
+            <p>{t("search.noResults")}</p>
             {!aiSearching && !aiResult && (
               <Button
                 variant="outline"
@@ -232,23 +234,23 @@ export function SearchDialog() {
                     });
                     if (res.ok) {
                       const data = await res.json();
-                      setAiResult(data.output || "No relevant content found.");
+                      setAiResult(data.output || t("search.aiNoResults"));
                     }
                   } catch {
-                    setAiResult("AI search failed.");
+                    setAiResult(t("search.aiFailed"));
                   } finally {
                     setAiSearching(false);
                   }
                 }}
               >
                 <Sparkles className="h-3 w-3" />
-                Ask AI
+                {t("search.askAi")}
               </Button>
             )}
             {aiSearching && (
               <div className="flex items-center justify-center gap-2 text-xs">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                Searching with AI...
+                {t("search.aiSearching")}
               </div>
             )}
             {aiResult && (
@@ -260,8 +262,8 @@ export function SearchDialog() {
         )}
 
         <div className="flex items-center justify-between px-3 py-2 border-t border-border text-[10px] text-muted-foreground/50">
-          <span>Navigate with arrow keys</span>
-          <span>Enter to select</span>
+          <span>{t("search.navigateHint")}</span>
+          <span>{t("search.selectHint")}</span>
         </div>
       </DialogContent>
     </Dialog>

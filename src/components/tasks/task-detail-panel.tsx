@@ -6,6 +6,7 @@ import { useAppStore } from "@/stores/app-store";
 import { WebTerminal } from "@/components/terminal/web-terminal";
 import { ConversationResultView } from "@/components/agents/conversation-result-view";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type { ConversationDetail, ConversationStatus } from "@/types/conversations";
 import { openArtifactPath } from "@/lib/navigation/open-artifact-path";
 
@@ -22,15 +23,15 @@ function StatusDot({ status }: { status: ConversationStatus }) {
   return <span className="inline-flex h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40" />;
 }
 
-function formatRelative(iso?: string): string {
-  if (!iso) return "just now";
+function formatRelative(iso: string | undefined, t: (key: import("@/lib/i18n/messages").MessageKey) => string): string {
+  if (!iso) return t("time.justNow");
   const delta = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(delta / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t("time.justNow");
+  if (minutes < 60) return t("time.minutesAgo").replace("{count}", String(minutes));
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 24) return t("time.hoursAgo").replace("{count}", String(hours));
+  return t("time.daysAgo").replace("{count}", String(Math.floor(hours / 24)));
 }
 
 function startCase(value: string | undefined, fallback = "General"): string {
@@ -46,6 +47,7 @@ export function TaskDetailPanel() {
 
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
   const [loading, setLoading] = useState(false);
+  const { t } = useLocale();
 
   // Fetch full detail when a completed/failed conversation is selected
   useEffect(() => {
@@ -91,7 +93,7 @@ export function TaskDetailPanel() {
           <p className="mt-0.5 truncate pl-4 text-[11px] text-muted-foreground">
             {startCase(conversation.agentSlug)}
             {" · "}
-            {formatRelative(conversation.startedAt)}
+            {formatRelative(conversation.startedAt, t)}
           </p>
         </div>
         <Button
@@ -118,7 +120,7 @@ export function TaskDetailPanel() {
         ) : loading ? (
           <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
-            Loading...
+            {t("tasks.detail.loading")}
           </div>
         ) : detail ? (
           <ConversationResultView
@@ -129,7 +131,7 @@ export function TaskDetailPanel() {
           />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            Could not load conversation detail.
+            {t("tasks.detail.loadError")}
           </div>
         )}
       </div>

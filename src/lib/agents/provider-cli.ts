@@ -9,6 +9,7 @@ export const RUNTIME_PATH = [
   ...(nvmBin ? [nvmBin] : []),
   `${process.env.HOME || ""}/.local/bin`,
   `${process.env.HOME || ""}/.bun/bin`,
+  `${process.env.HOME || ""}/.hermes/bin`,
   "/usr/local/bin",
   "/opt/homebrew/bin",
   process.env.PATH || "",

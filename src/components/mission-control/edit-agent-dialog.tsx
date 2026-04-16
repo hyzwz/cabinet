@@ -12,8 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SchedulePicker } from "./schedule-picker";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { cn } from "@/lib/utils";
-import { Plus, X, Save, Trash2 } from "lucide-react";
+import { Plus, Save, Trash2 } from "lucide-react";
 import type { GoalMetric, ProviderInfo } from "@/types/agents";
 
 interface GoalInput {
@@ -48,6 +49,7 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
   const [heartbeat, setHeartbeat] = useState("0 */4 * * *");
   const [provider, setProvider] = useState("claude-code");
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const { t } = useLocale();
   const [defaultProvider, setDefaultProvider] = useState("claude-code");
   const [goals, setGoals] = useState<GoalInput[]>([]);
   const [channels, setChannels] = useState<string[]>([]);
@@ -197,7 +199,7 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
 
             {/* Emoji picker */}
             <div className="space-y-1">
-              <label className="text-[12px] font-medium">Avatar</label>
+              <label className="text-[12px] font-medium">{t("mission.dialog.avatar")}</label>
               <div className="flex flex-wrap gap-1">
                 {EMOJI_OPTIONS.map((e) => (
                   <button
@@ -219,7 +221,7 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
 
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <label className="text-[12px] font-medium">Name</label>
+                <label className="text-[12px] font-medium">{t("mission.dialog.name")}</label>
                 <Input
                   value={name}
                   onChange={(e) => { setName(e.target.value); markDirty(); }}
@@ -228,7 +230,7 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[12px] font-medium">Role</label>
+                <label className="text-[12px] font-medium">{t("mission.dialog.role")}</label>
                 <Input
                   value={role}
                   onChange={(e) => { setRole(e.target.value); markDirty(); }}
@@ -242,12 +244,12 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
           {/* Configuration */}
           <div className="space-y-3">
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground/60 font-medium">
-              Configuration
+              {t("mission.dialog.organization")}
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <label className="text-[12px] font-medium">Department</label>
+                <label className="text-[12px] font-medium">{t("mission.dialog.department")}</label>
                 <select
                   value={department}
                   onChange={(e) => { setDepartment(e.target.value); markDirty(); }}
@@ -261,20 +263,20 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-[12px] font-medium">Type</label>
+                <label className="text-[12px] font-medium">{t("mission.dialog.type")}</label>
                 <select
                   value={type}
                   onChange={(e) => { setType(e.target.value as "specialist" | "lead"); markDirty(); }}
                   className="w-full h-8 text-[12px] rounded-md border border-input bg-background px-2"
                 >
-                  <option value="specialist">Specialist</option>
-                  <option value="lead">Department Lead</option>
+                  <option value="specialist">{t("mission.detail.specialist")}</option>
+                  <option value="lead">{t("mission.detail.departmentLead")}</option>
                 </select>
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="text-[12px] font-medium">Provider</label>
+              <label className="text-[12px] font-medium">{t("mission.dialog.provider")}</label>
               <select
                 value={provider}
                 onChange={(e) => { setProvider(e.target.value); markDirty(); }}
@@ -285,7 +287,7 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
                   : [{ id: defaultProvider, name: defaultProvider, type: "cli", available: true } as ProviderInfo]
                 ).map((entry) => (
                   <option key={entry.id} value={entry.id}>
-                    {entry.name}{entry.available ? "" : " (not installed)"}
+                    {entry.name}{entry.available ? "" : ` ${t("mission.dialog.notInstalled")}`}
                   </option>
                 ))}
               </select>
@@ -295,7 +297,7 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
           {/* Schedule */}
           <div className="space-y-3">
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground/60 font-medium">
-              Heartbeat Schedule
+              {t("mission.dialog.heartbeatSchedule")}
             </div>
             <SchedulePicker
               value={heartbeat}
@@ -316,13 +318,13 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
                 onClick={addGoal}
               >
                 <Plus className="h-3 w-3" />
-                Add Goal
+                {t("mission.dialog.addGoal")}
               </Button>
             </div>
 
             {goals.length === 0 && (
               <p className="text-[12px] text-muted-foreground/50">
-                No goals defined. Goals drive autonomous agent behavior.
+                {t("mission.dialog.goalHelp")}
               </p>
             )}
 
@@ -429,7 +431,7 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
             disabled={saving || !dirty}
           >
             <Save className="h-3 w-3" />
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? t("agents.jobs.saving") : t("mission.dialog.saveChanges")}
           </Button>
         </DialogFooter>
       </DialogContent>

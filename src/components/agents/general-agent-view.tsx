@@ -4,11 +4,13 @@ import { useState } from "react";
 import { Terminal, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export function GeneralAgentView() {
   const [prompt, setPrompt] = useState("");
   const [sending, setSending] = useState(false);
   const [output, setOutput] = useState<string | null>(null);
+  const { t } = useLocale();
 
   const handleSend = async () => {
     if (!prompt.trim()) return;
@@ -21,7 +23,7 @@ export function GeneralAgentView() {
       });
       if (res.ok) {
         const data = await res.json();
-        setOutput(data.output || "No output");
+        setOutput(data.output || t("agents.general.noOutput"));
       }
     } catch { /* ignore */ }
     setSending(false);
@@ -33,8 +35,8 @@ export function GeneralAgentView() {
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
         <Terminal className="h-5 w-5 text-blue-400" />
         <div>
-          <h2 className="text-[15px] font-semibold tracking-[-0.02em]">General</h2>
-          <p className="text-[11px] text-muted-foreground">Manual sessions with the default provider — no persona, no heartbeat</p>
+          <h2 className="text-[15px] font-semibold tracking-[-0.02em]">{t("agents.general.title")}</h2>
+          <p className="text-[11px] text-muted-foreground">{t("agents.general.description")}</p>
         </div>
       </div>
 
@@ -46,7 +48,7 @@ export function GeneralAgentView() {
             </pre>
           ) : (
             <p className="text-muted-foreground text-[13px]">
-              Send a prompt below to run the default provider in headless mode, or use the terminal (Cmd+`) for interactive sessions.
+              {t("agents.general.empty")}
             </p>
           )}
         </div>
@@ -63,13 +65,13 @@ export function GeneralAgentView() {
                 handleSend();
               }
             }}
-            placeholder="Ask the default provider something..."
+            placeholder={t("agents.general.placeholder")}
             className="flex-1 px-3 py-1.5 text-[13px] rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
             disabled={sending}
           />
           <Button size="sm" className="h-8 gap-1" onClick={handleSend} disabled={sending || !prompt.trim()}>
             <Send className="h-3.5 w-3.5" />
-            {sending ? "..." : "Send"}
+            {sending ? "..." : t("agents.general.send")}
           </Button>
         </div>
       </div>

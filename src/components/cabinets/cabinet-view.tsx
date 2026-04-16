@@ -20,7 +20,8 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useTreeStore } from "@/stores/tree-store";
 import { useAppStore } from "@/stores/app-store";
 import { cn } from "@/lib/utils";
-import { sortOrgAgents, startCase, rankAgentType } from "./cabinet-utils";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { sortOrgAgents, startCase } from "./cabinet-utils";
 import { CabinetTaskComposer } from "./cabinet-task-composer";
 import { CabinetSchedulerControls } from "./cabinet-scheduler-controls";
 import { InteractiveStatStrip } from "./interactive-stat-strip";
@@ -41,18 +42,22 @@ function CompactOrgChart({
   cabinetName,
   agents,
   jobs,
-  children,
+  cabinetChildren,
   onAgentClick,
   onAgentSend,
   onChildCabinetClick,
+  t,
+  format,
 }: {
   cabinetName: string;
   agents: CabinetAgentSummary[];
   jobs: CabinetJobSummary[];
-  children: CabinetOverview["children"];
+  cabinetChildren: CabinetOverview["children"];
   onAgentClick?: (agent: CabinetAgentSummary) => void;
   onAgentSend?: (agent: CabinetAgentSummary) => void;
   onChildCabinetClick?: (cabinet: CabinetOverview["children"][number]) => void;
+  t: ReturnType<typeof useLocale>["t"];
+  format: ReturnType<typeof useLocale>["format"];
 }) {
   const allAgents = [...agents].sort(sortOrgAgents);
   const grouped = Object.entries(
@@ -136,7 +141,7 @@ function CompactOrgChart({
   return (
     <div className="overflow-x-auto pb-2">
       {allAgents.length === 0 ? (
-        <p className="py-8 text-sm text-muted-foreground">No agents configured for this cabinet yet.</p>
+        <p className="py-8 text-sm text-muted-foreground">{t("cabinets.org.empty")}</p>
       ) : (
         <div className="min-w-[720px] px-2">
           <div className="flex justify-center">
@@ -148,7 +153,10 @@ function CompactOrgChart({
               <div>
                 <p className="text-sm font-semibold text-foreground">{cabinetName}</p>
                 <p className="text-[10px] text-muted-foreground">
-                  {agents.length} visible agent{agents.length === 1 ? "" : "s"}
+                  {format("cabinets.org.visibleAgents", {
+                    count: agents.length,
+                    suffix: t(agents.length === 1 ? "cabinets.org.visibleAgentsSuffix.one" : "cabinets.org.visibleAgentsSuffix.other"),
+                  })}
                 </p>
               </div>
             </div>
@@ -215,8 +223,8 @@ function CompactOrgChart({
                                   onClick={() => onAgentSend(agent)}
                                   className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-background text-foreground transition-colors hover:bg-muted/30"
                                   style={{ borderColor: "rgba(139, 94, 60, 0.14)" }}
-                                  aria-label={`Open chat with ${agent.name}`}
-                                  title={`Open chat with ${agent.name}`}
+                                  aria-label={format("cabinets.org.openChat", { name: agent.name })}
+                                  title={format("cabinets.org.openChat", { name: agent.name })}
                                 >
                                   <Send className="h-3.5 w-3.5" />
                                 </button>
@@ -254,10 +262,10 @@ function CompactOrgChart({
             </div>
           ))}
 
-          {children.length > 0 ? (
+          {cabinetChildren.length > 0 ? (
             <div className="mt-8">
               <div className="flex flex-wrap gap-3">
-                {children.map((child) => (
+                {cabinetChildren.map((child) => (
                   <button
                     key={child.path}
                     type="button"
@@ -272,7 +280,7 @@ function CompactOrgChart({
                     <div>
                       <p className="text-[12px] font-medium text-foreground">{child.name}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        depth {child.cabinetDepth ?? 1}
+                        {format("cabinets.org.depth", { depth: child.cabinetDepth ?? 1 })}
                       </p>
                     </div>
                   </button>
@@ -321,6 +329,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
   const cabinetVisibilityModes = useAppStore((state) => state.cabinetVisibilityModes);
   const setCabinetVisibilityMode = useAppStore((state) => state.setCabinetVisibilityMode);
   const cabinetVisibilityMode = cabinetVisibilityModes[cabinetPath] || "own";
+  const { t, format } = useLocale();
 
   const openCabinet = useCallback(
     (path: string) => {
@@ -430,7 +439,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
     "Cabinet";
   const cabinetDescription =
     overview?.cabinet.description ||
-    "Portable software layer for agents, jobs, and knowledge.";
+    t("cabinets.home.boardDescriptionFallback");
   const ownAgents = useMemo(
     () => (overview?.agents || []).filter((a) => a.cabinetDepth === 0),
     [overview?.agents]
@@ -695,7 +704,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
             >
               <div className="mb-5 flex items-end justify-between gap-4">
                 <h2 className="text-[1.65rem] font-semibold tracking-tight text-foreground">
-                  Cabinet team
+                  {t("cabinets.home.orgTitle")}
                 </h2>
                 <Button
                   variant="ghost"
@@ -704,21 +713,23 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                   onClick={openCabinetAgentsWorkspace}
                 >
                   <Users className="h-3.5 w-3.5" />
-                  Open agents workspace
+                  {t("cabinets.home.openAgentsWorkspace")}
                 </Button>
               </div>
 
               {loading && !overview ? (
                 <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading mission board...
+                  {t("cabinets.home.loadingBoard")}
                 </div>
               ) : overview ? (
                 <CompactOrgChart
                   cabinetName={cabinetName}
                   agents={overview.agents}
                   jobs={overview.jobs}
-                  children={overview.children}
+                  cabinetChildren={overview.children}
+                  t={t}
+                  format={format}
                   onAgentClick={openCabinetAgent}
                   onAgentSend={primeTaskComposer}
                   onChildCabinetClick={(child) => openCabinet(child.path)}
@@ -758,10 +769,10 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
               <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <h2 className="text-[1.65rem] font-semibold tracking-tight text-foreground">
-                    Jobs & heartbeats
+                    {t("cabinets.home.scheduleTitle")}
                   </h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {overview?.jobs.length ?? 0} jobs, {overview?.agents.filter((a) => a.heartbeat).length ?? 0} heartbeats
+                    {format("cabinets.home.scheduleSummary", { jobs: overview?.jobs.length ?? 0, heartbeats: overview?.agents.filter((a) => a.heartbeat).length ?? 0 })}
                   </p>
                 </div>
 
@@ -778,7 +789,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                       )}
                     >
                       <Calendar className="h-3.5 w-3.5" />
-                      Calendar
+                      {t("cabinets.home.calendar")}
                     </button>
                     <button
                       onClick={() => setScheduleView("list")}
@@ -790,7 +801,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                       )}
                     >
                       <LayoutList className="h-3.5 w-3.5" />
-                      List
+                      {t("cabinets.home.list")}
                     </button>
                   </div>
 
@@ -825,7 +836,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                           onClick={() => navigateCalendar(0)}
                           className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                         >
-                          Today
+                          {t("cabinets.home.today")}
                         </button>
                         <button
                           onClick={() => navigateCalendar(1)}
@@ -842,7 +853,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                       <button
                         onClick={() => setCalendarFullscreen((v) => !v)}
                         className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-                        title={calendarFullscreen ? "Exit full screen" : "Full screen"}
+                        title={calendarFullscreen ? t("cabinets.home.exitFullScreen") : t("cabinets.home.fullScreen")}
                       >
                         {calendarFullscreen ? (
                           <Minimize2 className="h-3.5 w-3.5" />

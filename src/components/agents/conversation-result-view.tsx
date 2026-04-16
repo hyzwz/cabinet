@@ -5,9 +5,11 @@ import { ExternalLink, FileText, Files, PackageOpen, Sparkles, CheckCircle, XCir
 import type { ConversationDetail } from "@/types/conversations";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { appendConversationCabinetPath } from "@/lib/agents/conversation-identity";
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useLocale();
   const isCompleted = status === "completed";
   const isFailed = status === "failed";
   const Icon = isCompleted ? CheckCircle : isFailed ? XCircle : Clock;
@@ -20,7 +22,11 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${color}`}>
       <Icon className="h-3 w-3" />
-      {status}
+      {status === "completed"
+        ? t("conversation.status.completed")
+        : status === "failed"
+          ? t("conversation.status.failed")
+          : t("conversation.status.running")}
     </span>
   );
 }
@@ -38,6 +44,7 @@ export function ConversationResultView({
   );
   const promptText = detail.request || detail.meta.title;
   const [promptHtml, setPromptHtml] = useState("");
+  const { t } = useLocale();
 
   useEffect(() => {
     if (!promptText) return;
@@ -65,7 +72,7 @@ export function ConversationResultView({
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
-              <h4 className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Prompt</h4>
+              <h4 className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">{t("conversation.prompt")}</h4>
             </div>
             <Button
               variant="outline"
@@ -74,7 +81,7 @@ export function ConversationResultView({
               onClick={() => window.open(transcriptUrl, "_blank", "noopener,noreferrer")}
             >
               <Files className="h-3.5 w-3.5" />
-              Open transcript
+              {t("conversation.openTranscript")}
               <ExternalLink className="h-3 w-3" />
             </Button>
           </div>
@@ -95,7 +102,7 @@ export function ConversationResultView({
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              <h4 className="text-[13px] font-semibold">Result</h4>
+              <h4 className="text-[13px] font-semibold">{t("conversation.result")}</h4>
             </div>
             <StatusBadge status={detail.meta.status} />
           </div>
@@ -105,13 +112,13 @@ export function ConversationResultView({
               {detail.meta.summary}
             </p>
           ) : (
-            <p className="text-[13px] text-muted-foreground">No summary captured.</p>
+            <p className="text-[13px] text-muted-foreground">{t("conversation.noSummary")}</p>
           )}
 
           {detail.meta.contextSummary ? (
             <div className="mt-4 rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
               <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                Context
+                {t("conversation.context")}
               </div>
               <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
                 {detail.meta.contextSummary}
@@ -126,7 +133,7 @@ export function ConversationResultView({
             <div className="flex items-center gap-2">
               <PackageOpen className="h-4 w-4 text-primary" />
               <h4 className="text-[13px] font-semibold">
-                Artifacts
+                {t("conversation.artifacts")}
                 {detail.artifacts.length > 0 && (
                   <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
                     ({detail.artifacts.length})
@@ -141,7 +148,7 @@ export function ConversationResultView({
               onClick={() => window.open(transcriptUrl, "_blank", "noopener,noreferrer")}
             >
               <Files className="h-3.5 w-3.5" />
-              Open transcript
+              {t("conversation.openTranscript")}
               <ExternalLink className="h-3 w-3" />
             </Button>
           </div>
@@ -166,7 +173,7 @@ export function ConversationResultView({
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-border px-4 py-5 text-center text-[12px] text-muted-foreground">
-              No artifacts were recorded for this run.
+              {t("conversation.noArtifacts")}
             </div>
           )}
         </section>

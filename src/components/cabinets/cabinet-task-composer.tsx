@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { getGreeting } from "./cabinet-utils";
 import { useTreeStore } from "@/stores/tree-store";
 import type { TreeNode } from "@/types";
@@ -62,6 +63,7 @@ export function CabinetTaskComposer({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const treeNodes = useTreeStore((s) => s.nodes);
   const pages = useMemo(() => flattenTree(treeNodes), [treeNodes]);
+  const { t, format } = useLocale();
 
   // Auto-select first active own-cabinet agent on load
   useEffect(() => {
@@ -194,9 +196,11 @@ export function CabinetTaskComposer({
     }
   }
 
+  const homePrompt = t("cabinets.home.prompt");
+  const defaultCabinetDescription = t("cabinets.home.boardDescriptionFallback");
   const placeholder = selectedAgent
-    ? `What should ${selectedAgent.name} work on?`
-    : "Choose an agent and describe the next task.";
+    ? format("cabinets.composer.placeholderSelected", { name: selectedAgent.name })
+    : t("cabinets.composer.placeholderNoAgent");
 
   return (
     <div ref={rootRef} className="space-y-5">
@@ -207,12 +211,12 @@ export function CabinetTaskComposer({
               {cabinetName}
             </h1>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              {cabinetDescription || `${greeting}, ${displayName}. What are we working on today?`}
+              {cabinetDescription || defaultCabinetDescription || format("cabinets.home.headline", { greeting, name: displayName || homePrompt })}
             </p>
           </>
         ) : (
           <h1 className="font-body-serif text-[1.45rem] leading-tight tracking-tight text-foreground sm:text-[1.85rem]">
-            {greeting}, {displayName}. What are we working on today?
+            {format("cabinets.home.headline", { greeting, name: displayName || homePrompt })}
           </h1>
         )}
       </div>
@@ -310,7 +314,7 @@ export function CabinetTaskComposer({
                 </div>
               ) : (
                 <p className="px-3 py-2 text-xs text-muted-foreground">
-                  No agents or pages match.
+                  {t("cabinets.composer.noMentionResults")}
                 </p>
               )}
             </div>
@@ -327,7 +331,7 @@ export function CabinetTaskComposer({
                   ? "bg-primary text-primary-foreground hover:bg-primary/90"
                   : "bg-muted text-muted-foreground"
               )}
-              aria-label="Start conversation"
+              aria-label={t("cabinets.composer.startConversation")}
             >
               {submitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -361,13 +365,13 @@ export function CabinetTaskComposer({
 
         <div className="flex flex-wrap items-center justify-between gap-2 px-1">
           <span className="text-[11px] text-muted-foreground/50">
-            use <kbd className="rounded border border-border/50 bg-muted/50 px-1 py-0.5 font-mono text-[10px]">@</kbd> to mention
+            {t("cabinets.composer.mentionHint")} <kbd className="rounded border border-border/50 bg-muted/50 px-1 py-0.5 font-mono text-[10px]">@</kbd>
           </span>
           <div className="hidden sm:flex items-center gap-1 text-[11px] text-muted-foreground/50">
             <kbd className="rounded border border-border/50 bg-muted/50 px-1 py-0.5 font-mono text-[10px]">Shift</kbd>
             <span>+</span>
             <kbd className="rounded border border-border/50 bg-muted/50 px-1 py-0.5 font-mono text-[10px]">↵</kbd>
-            <span className="ml-0.5">new line</span>
+            <span className="ml-0.5">{t("cabinets.composer.newLine")}</span>
           </div>
         </div>
 
@@ -385,7 +389,7 @@ export function CabinetTaskComposer({
             disabled={assignableAgents.length === 0}
           >
             <SelectTrigger className="min-w-[220px] rounded-full bg-background px-3">
-              <SelectValue placeholder="No visible agents" />
+              <SelectValue placeholder={t("cabinets.composer.noVisibleAgents")} />
             </SelectTrigger>
             <SelectContent align="start">
               <SelectGroup>

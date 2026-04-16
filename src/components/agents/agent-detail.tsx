@@ -22,20 +22,16 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { useAppStore } from "@/stores/app-store";
 import { WebTerminal } from "@/components/terminal/web-terminal";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type { AgentPersona, HeartbeatRecord } from "@/lib/agents/persona-manager";
 import { cronToHuman } from "@/lib/agents/cron-utils";
 import { SchedulePicker } from "@/components/mission-control/schedule-picker";
 
 type TabId = "definition" | "jobs" | "sessions";
-const TABS: { id: TabId; label: string; icon: typeof FileText }[] = [
-  { id: "definition", label: "Definition", icon: FileText },
-  { id: "jobs", label: "Jobs", icon: Briefcase },
-  { id: "sessions", label: "Sessions", icon: Clock },
-];
-
 
 /* ─── Editable Field ─── */
 function EditableField({
@@ -43,14 +39,17 @@ function EditableField({
   value,
   mono,
   onSave,
+  emptyLabel,
 }: {
-  label: string;
+  label: MessageKey;
   value: string;
   mono?: boolean;
   onSave: (val: string) => void;
+  emptyLabel: MessageKey;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  const { t } = useLocale();
 
   const handleSave = () => {
     if (draft.trim() !== value) onSave(draft.trim());
@@ -82,7 +81,7 @@ function EditableField({
         </div>
       ) : (
         <p className={cn("text-[13px] font-medium mt-0.5", mono && "font-mono")}>
-          {value || "—"}
+          {value || t(emptyLabel)}
         </p>
       )}
     </div>
@@ -93,11 +92,14 @@ function EditableField({
 function HeartbeatField({
   value,
   onSave,
+  label,
 }: {
   value: string;
   onSave: (val: string) => void;
+  label: MessageKey;
 }) {
   const [editing, setEditing] = useState(false);
+  const { t } = useLocale();
 
   return (
     <div
@@ -105,7 +107,7 @@ function HeartbeatField({
       onClick={() => { if (!editing) setEditing(true); }}
     >
       <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center justify-between mb-1">
-        Heartbeat
+        {t(label)}
         {!editing && <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-50 transition-opacity" />}
       </p>
       {editing ? (
@@ -139,6 +141,7 @@ function DefinitionTab({
   const [editingBody, setEditingBody] = useState(false);
   const [saving, setSaving] = useState(false);
   const [bodyHtml, setBodyHtml] = useState("");
+  const { t } = useLocale();
 
   // Render markdown to HTML for display
   useEffect(() => {
@@ -178,31 +181,35 @@ function DefinitionTab({
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <EditableField
-          label="Department"
+          label="agents.detail.field.department"
           value={persona.department}
           onSave={(v) => saveField("department", v)}
+          emptyLabel="agents.detail.value.empty"
         />
         <EditableField
-          label="Type"
+          label="agents.detail.field.type"
           value={persona.type}
           onSave={(v) => saveField("type", v)}
+          emptyLabel="agents.detail.value.empty"
         />
         <HeartbeatField
           value={persona.heartbeat}
           onSave={(v) => saveField("heartbeat", v)}
+          label="agents.detail.field.heartbeat"
         />
         <EditableField
-          label="Workspace"
+          label="agents.detail.field.workspace"
           value={persona.workspace || "/"}
           mono
           onSave={(v) => saveField("workspace", v)}
+          emptyLabel="agents.detail.value.empty"
         />
       </div>
 
       {persona.tags.length > 0 && (
         <div>
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">
-            Tags
+            {t("agents.detail.field.tags")}
           </p>
           <div className="flex gap-1 flex-wrap">
             {persona.tags.map((tag) => (
@@ -220,7 +227,7 @@ function DefinitionTab({
       <div>
         <div className="flex items-center justify-between mb-2">
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-            Persona Instructions
+            {t("agents.detail.field.instructions")}
           </p>
           {editingBody ? (
             <div className="flex gap-1">
@@ -230,7 +237,7 @@ function DefinitionTab({
                 className="h-6 text-[10px]"
                 onClick={() => setEditingBody(false)}
               >
-                Cancel
+                {t("agents.detail.cancel")}
               </Button>
               <Button
                 size="sm"
@@ -239,7 +246,7 @@ function DefinitionTab({
                 disabled={saving}
               >
                 <Save className="h-3 w-3" />
-                {saving ? "Saving..." : "Save"}
+                {saving ? t("agents.jobs.saving") : t("agents.detail.save")}
               </Button>
             </div>
           ) : (
@@ -250,7 +257,7 @@ function DefinitionTab({
               onClick={() => { setBodyEdit(persona.body); setEditingBody(true); }}
             >
               <Pencil className="h-3 w-3" />
-              Edit
+              {t("agents.detail.edit")}
             </Button>
           )}
         </div>
@@ -304,6 +311,7 @@ function JobsTab({ slug }: { slug: string }) {
   const [editCron, setEditCron] = useState("");
   const [editPrompt, setEditPrompt] = useState("");
   const [running, setRunning] = useState<string | null>(null);
+  const { t } = useLocale();
 
   const refresh = useCallback(async () => {
     try {
@@ -381,14 +389,14 @@ function JobsTab({ slug }: { slug: string }) {
   };
 
   if (loading) {
-    return <p className="text-[13px] text-muted-foreground">Loading jobs...</p>;
+    return <p className="text-[13px] text-muted-foreground">{t("agents.detail.jobs.loading")}</p>;
   }
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
-          Scheduled Jobs
+          {t("agents.detail.jobs.scheduledTitle")}
         </p>
         <Button
           variant="outline"
@@ -397,7 +405,7 @@ function JobsTab({ slug }: { slug: string }) {
           onClick={() => setAdding(true)}
         >
           <Plus className="h-3 w-3" />
-          Add Job
+          {t("agents.detail.jobs.add")}
         </Button>
       </div>
 
@@ -407,29 +415,29 @@ function JobsTab({ slug }: { slug: string }) {
             autoFocus
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="Job name..."
+            placeholder={t("agents.detail.jobs.namePlaceholder")}
             className="w-full bg-background border border-border rounded px-2 py-1.5 text-[12px] focus:outline-none focus:ring-1 focus:ring-primary/50"
             onKeyDown={(e) => { if (e.key === "Escape") setAdding(false); }}
           />
           <div>
-            <p className="text-[10px] text-muted-foreground mb-1.5">Schedule</p>
+            <p className="text-[10px] text-muted-foreground mb-1.5">{t("agents.detail.jobs.schedule")}</p>
             <SchedulePicker value={newCron} onChange={setNewCron} />
           </div>
           <div>
-            <p className="text-[10px] text-muted-foreground mb-1.5">Prompt</p>
+            <p className="text-[10px] text-muted-foreground mb-1.5">{t("agents.detail.jobs.prompt")}</p>
             <textarea
               value={newPrompt}
               onChange={(e) => setNewPrompt(e.target.value)}
-              placeholder="What should this job do? This prompt is sent to the selected provider..."
+              placeholder={t("agents.detail.jobs.createPlaceholder")}
               className="w-full bg-background border border-border rounded px-2 py-1.5 text-[12px] focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none min-h-[80px]"
             />
           </div>
           <div className="flex gap-1 justify-end">
             <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setAdding(false)}>
-              Cancel
+              {t("agents.detail.cancel")}
             </Button>
             <Button size="sm" className="h-6 text-[10px]" onClick={handleAdd} disabled={!newName.trim() || !newPrompt.trim()}>
-              Create
+              {t("agents.detail.jobs.create")}
             </Button>
           </div>
         </div>
@@ -439,10 +447,10 @@ function JobsTab({ slug }: { slug: string }) {
         <div className="text-center py-8">
           <Briefcase className="h-8 w-8 mx-auto text-muted-foreground/30" />
           <p className="text-[13px] text-muted-foreground mt-2">
-            No jobs configured
+            {t("agents.detail.jobs.emptyTitle")}
           </p>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Jobs are recurring scheduled tasks the agent runs automatically.
+            {t("agents.detail.jobs.emptyDescription")}
           </p>
         </div>
       )}
@@ -473,7 +481,7 @@ function JobsTab({ slug }: { slug: string }) {
                 disabled={running === job.id}
               >
                 {running === job.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-                Run
+                {t("agents.detail.jobs.run")}
               </Button>
               <button
                 onClick={() => { setEditingJob(editingJob === job.id ? null : job.id); setEditCron(job.schedule); setEditPrompt(job.prompt); }}
@@ -501,28 +509,28 @@ function JobsTab({ slug }: { slug: string }) {
           {editingJob === job.id && (
             <div className="mt-2 pt-2 border-t border-border space-y-3">
               <div>
-                <p className="text-[10px] text-muted-foreground mb-1.5">Schedule</p>
+                <p className="text-[10px] text-muted-foreground mb-1.5">{t("agents.detail.jobs.schedule")}</p>
                 <SchedulePicker
                   value={editCron}
                   onChange={(v) => setEditCron(v)}
                 />
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground mb-1.5">Prompt</p>
+                <p className="text-[10px] text-muted-foreground mb-1.5">{t("agents.detail.jobs.prompt")}</p>
                 <textarea
                   value={editPrompt}
                   onChange={(e) => setEditPrompt(e.target.value)}
-                  placeholder="What should this job do?"
+                  placeholder={t("agents.detail.jobs.editPlaceholder")}
                   className="w-full bg-background border border-border rounded px-2 py-1.5 text-[12px] focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none min-h-[80px]"
                 />
               </div>
               <div className="flex gap-1 justify-end">
                 <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setEditingJob(null)}>
-                  Cancel
+                  {t("agents.detail.cancel")}
                 </Button>
                 <Button size="sm" className="h-6 text-[10px] gap-1" onClick={() => handleUpdateJob(job.id)}>
                   <Save className="h-3 w-3" />
-                  Save
+                  {t("agents.detail.save")}
                 </Button>
               </div>
             </div>
@@ -552,6 +560,7 @@ function SessionsTab({
     userMessage: string;
     providerId: string;
   } | null>(null);
+  const { t, format } = useLocale();
 
   const selectedSession = selectedIndex !== null ? history[selectedIndex] : null;
 
@@ -732,7 +741,7 @@ function SessionsTab({
             >
               <div className="p-4">
                 <pre className="text-[12px] font-mono whitespace-pre-wrap leading-relaxed text-foreground/90">
-                  {selectedSession.summary || "No output captured for this session."}
+                  {selectedSession.summary || t("agents.detail.sessions.noOutput")}
                 </pre>
               </div>
             </ScrollArea>
@@ -747,7 +756,7 @@ function SessionsTab({
                       handleSendPrompt();
                     }
                   }}
-                  placeholder={`Ask ${persona.name} something...`}
+                  placeholder={format("agents.detail.sessions.placeholder", { name: persona.name })}
                   className="flex-1 px-3 py-1.5 text-[13px] rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
                 />
                 <Button
@@ -767,10 +776,10 @@ function SessionsTab({
             <div className="text-center mb-6">
               <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground/20 mb-3" />
               <h3 className="text-[14px] font-medium text-foreground/80">
-                New Session
+                {t("agents.detail.sessions.emptyTitle")}
               </h3>
               <p className="text-[12px] text-muted-foreground mt-1 max-w-sm">
-                Send a prompt to {persona.name} to start a live session.
+                {format("agents.detail.sessions.empty", { name: persona.name })}
               </p>
             </div>
             <div className="w-full max-w-lg">
@@ -784,7 +793,7 @@ function SessionsTab({
                       handleSendPrompt();
                     }
                   }}
-                  placeholder={`Ask ${persona.name} something...`}
+                  placeholder={format("agents.detail.sessions.placeholder", { name: persona.name })}
                   className="flex-1 px-3 py-2 text-[13px] rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
                   autoFocus
                 />
@@ -795,7 +804,7 @@ function SessionsTab({
                   disabled={!prompt.trim()}
                 >
                   <Send className="h-3.5 w-3.5" />
-                  Send
+                  {t("agents.general.send")}
                 </Button>
               </div>
             </div>
@@ -815,6 +824,12 @@ export function AgentDetail({ slug }: { slug: string }) {
   const [running, setRunning] = useState(false);
   const [toggling, setToggling] = useState(false);
   const setSection = useAppStore((s) => s.setSection);
+  const { t } = useLocale();
+  const tabs: { id: TabId; label: string; icon: typeof FileText }[] = [
+    { id: "definition", label: t("agents.detail.tabs.definition"), icon: FileText },
+    { id: "jobs", label: t("agents.detail.tabs.jobs"), icon: Briefcase },
+    { id: "sessions", label: t("agents.detail.tabs.sessions"), icon: Clock },
+  ];
 
   const refresh = useCallback(async () => {
     try {
@@ -862,7 +877,7 @@ export function AgentDetail({ slug }: { slug: string }) {
   if (loading || !persona) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-        Loading...
+        {t("agents.detail.loading")}
       </div>
     );
   }
@@ -896,7 +911,7 @@ export function AgentDetail({ slug }: { slug: string }) {
             disabled={running}
           >
             <Zap className="h-3 w-3" />
-            {running ? "Running..." : "Run"}
+            {running ? t("agents.detail.running") : t("agents.detail.run")}
           </Button>
           <Button
             variant="ghost"
@@ -910,7 +925,7 @@ export function AgentDetail({ slug }: { slug: string }) {
             ) : (
               <Play className="h-3 w-3" />
             )}
-            {persona.active ? "Pause" : "Activate"}
+            {persona.active ? t("agents.detail.pause") : t("agents.detail.activate")}
           </Button>
           <Button variant="ghost" size="icon-sm" onClick={refresh}>
             <RefreshCw className="h-3.5 w-3.5" />
@@ -922,7 +937,7 @@ export function AgentDetail({ slug }: { slug: string }) {
       <div className="flex-1 flex overflow-hidden">
         {/* Vertical tab sidebar */}
         <div className="w-[160px] min-w-[160px] border-r border-border flex flex-col bg-muted/5 py-2">
-          {TABS.map((tab) => {
+          {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button

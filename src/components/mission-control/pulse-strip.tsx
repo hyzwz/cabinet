@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 import {
   Bot,
   Play,
@@ -167,6 +168,7 @@ export function PulseStrip({ metrics, onAlertClick, onGoalClick, onPlaybookClick
   const [runningAgents, setRunningAgents] = useState<RunningAgent[]>([]);
   const [costBreakdown, setCostBreakdown] = useState<CostEntry[]>([]);
   const [loadingPanel, setLoadingPanel] = useState(false);
+  const { t } = useLocale();
 
   const loadTicker = useCallback(async () => {
     try {
@@ -272,7 +274,7 @@ export function PulseStrip({ metrics, onAlertClick, onGoalClick, onPlaybookClick
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2 px-3 sm:px-4 py-2">
         <MetricCard
           icon={Bot}
-          label="Agents"
+          label={t("mission.pulse.agents")}
           value={metrics.totalAgents}
           subValue={`${metrics.activeAgents} active`}
           status={
@@ -283,7 +285,7 @@ export function PulseStrip({ metrics, onAlertClick, onGoalClick, onPlaybookClick
         />
         <MetricCard
           icon={Play}
-          label="Running"
+          label={t("mission.pulse.running")}
           value={metrics.runningPlays}
           subValue="running now"
           onClick={handleRunningClick}
@@ -291,7 +293,7 @@ export function PulseStrip({ metrics, onAlertClick, onGoalClick, onPlaybookClick
         />
         <MetricCard
           icon={Target}
-          label="Goals"
+          label={t("mission.pulse.goals")}
           value={`${metrics.goalsOnTrack}/${metrics.totalGoals}`}
           subValue="goals on track"
           status={goalStatus}
@@ -299,7 +301,7 @@ export function PulseStrip({ metrics, onAlertClick, onGoalClick, onPlaybookClick
         />
         <MetricCard
           icon={AlertTriangle}
-          label="Alerts"
+          label={t("mission.pulse.alerts")}
           value={metrics.alerts}
           subValue="pending alerts"
           status={metrics.alerts >= 3 ? "critical" : metrics.alerts > 0 ? "warning" : "ok"}
@@ -307,7 +309,7 @@ export function PulseStrip({ metrics, onAlertClick, onGoalClick, onPlaybookClick
         />
         <MetricCard
           icon={DollarSign}
-          label="Cost"
+          label={t("mission.pulse.cost")}
           value={metrics.estimatedCost !== undefined && metrics.estimatedCost > 0
             ? `$${metrics.estimatedCost.toFixed(2)}`
             : "$0"}
@@ -318,13 +320,13 @@ export function PulseStrip({ metrics, onAlertClick, onGoalClick, onPlaybookClick
 
       {/* Running plays popover */}
       {showRunning && (
-        <PulsePopover title="Running Plays" icon={Play} onClose={() => setShowRunning(false)}>
+        <PulsePopover title={t("mission.pulse.runningPlays")} icon={Play} onClose={() => setShowRunning(false)}>
           {loadingPanel ? (
             <div className="flex items-center justify-center py-4">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/40" />
             </div>
           ) : runningAgents.length === 0 ? (
-            <p className="text-[12px] text-muted-foreground/50 py-2">No agents currently running.</p>
+            <p className="text-[12px] text-muted-foreground/50 py-2">{t("mission.pulse.noRunningAgents")}</p>
           ) : (
             <div className="space-y-2">
               {runningAgents.map((a) => (
@@ -350,14 +352,14 @@ export function PulseStrip({ metrics, onAlertClick, onGoalClick, onPlaybookClick
 
       {/* Cost breakdown popover */}
       {showCost && (
-        <PulsePopover title="Cost Breakdown" icon={DollarSign} onClose={() => setShowCost(false)}>
+        <PulsePopover title={t("mission.pulse.costBreakdown")} icon={DollarSign} onClose={() => setShowCost(false)}>
           {loadingPanel ? (
             <div className="flex items-center justify-center py-4">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/40" />
             </div>
           ) : costBreakdown.length === 0 ? (
             <div className="py-2">
-              <p className="text-[12px] text-muted-foreground/50">No API usage yet.</p>
+              <p className="text-[12px] text-muted-foreground/50">{t("mission.pulse.noApiUsage")}</p>
               <p className="text-[10px] text-muted-foreground/40 mt-1">
                 Cost is estimated at ~$0.15 per heartbeat/play execution.
               </p>

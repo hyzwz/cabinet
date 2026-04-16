@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Clock, ChevronDown } from "lucide-react";
 import { cronToHuman } from "@/lib/agents/cron-utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 interface SchedulePickerProps {
   value: string; // cron expression
@@ -63,6 +64,7 @@ function getNextRuns(cron: string, count = 3): string[] {
 export function SchedulePicker({ value, onChange, onDone, label }: SchedulePickerProps) {
   const [showCron, setShowCron] = useState(false);
   const [customInput, setCustomInput] = useState("");
+  const { t } = useLocale();
 
   const humanReadable = cronToHuman(value);
   const nextRuns = getNextRuns(value);
@@ -101,7 +103,7 @@ export function SchedulePicker({ value, onChange, onDone, label }: SchedulePicke
         <span className="text-foreground font-medium">{humanReadable}</span>
         {nextRuns.length > 0 && (
           <span className="text-muted-foreground/50 ml-auto">
-            Next: {nextRuns.join(", ")}
+            {t("mission.schedule.next")}: {nextRuns.join(", ")}
           </span>
         )}
       </div>
@@ -118,14 +120,14 @@ export function SchedulePicker({ value, onChange, onDone, label }: SchedulePicke
             showCron && "rotate-180"
           )}
         />
-        {showCron ? "Hide" : "Show"} cron expression
+        {showCron ? t("mission.schedule.hideCron") : t("mission.schedule.showCron")}
       </button>
 
       {showCron && (
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="* * * * *"
+          placeholder={t("mission.schedule.cronPlaceholder")}
           className="w-full text-[12px] font-mono bg-muted/30 border border-border/50 rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
         />
       )}

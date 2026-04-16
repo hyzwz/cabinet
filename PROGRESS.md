@@ -327,3 +327,18 @@
 [2026-04-16] Fixed agent session stuck bug: the daemon's 1500ms fallback timer was submitting prompts before Claude Code TUI initialized (~11s). Changed to skip the fallback for readyStrategy="claude" and rely on claudePromptReady() detection. Also fixed detection to match "shift+tabtocycle" (ANSI-stripped, spaceless variant). Added 30s safety fallback. Fixed Codex CLI detection: added ~/.bun/bin to RUNTIME_PATH and commandCandidates, and reordered PATH to put nvm before /usr/local/bin (which had Node v25.1.0 that broke codex native deps). Both providers now detected and functional.
 
 [2026-04-16] Fixed Codex CLI PTY spawn PATH ordering: moved nvm bin to first position in enrichedPath (cabinet-daemon.ts) so the PTY environment uses Node v22.16.0 instead of v25.1.0. Added ~/.bun/bin to enrichedPath. Codex now launches correctly — remaining issue is auth token expiry (user needs to re-login with codex in terminal).
+
+[2026-04-16] Localized the next demo-adjacent UI batch by wiring zh/en message keys into secondary Agents views, the task detail side panel, and the search dialog, then added regression coverage to guard those surfaces against new hard-coded copy.
+
+[2026-04-16] Localized the next follow-up batch by routing AI panel status/empty states, conversation result chrome, and the jobs manager workspace through the shared zh/en message catalog, with added regression coverage for those surfaces.
+
+[2026-04-16] Localized the layout follow-up batch by wiring the status bar, update dialog, and notification toasts into the shared zh/en catalog, and added regression tests to keep those chrome surfaces free of new hard-coded copy.
+
+[2026-04-16] Localized the first mission-control follow-up batch by routing the main mission header/empty states, workspace gallery, pulse strip metric labels, and schedule picker chrome through the shared zh/en message catalog, with regression tests protecting those visible surfaces.
+
+[2026-04-16] Localized the next mission-control batch by wiring agent detail, slack thread chrome, and create/edit agent dialog copy through the shared zh/en catalog, and added regression tests to keep those surfaces from reintroducing hard-coded strings.
+[2026-04-16] Fixed the pre-existing mission-control Slack panel lint blockers by deferring its initial async loaders out of effect bodies, removed two unused dialog/detail imports, and localized the remaining Slack panel header/empty-state copy with regression coverage.
+[2026-04-16] Localized the next cabinets demo batch across the cabinet org chart, task composer, scheduler controls, activity feed, stat strip, and schedule list, and added regression coverage for those surfaces in the core i18n tests.
+[2026-04-16] Localized the remaining cabinet home shell copy covering the headline, board description fallback, org chart heading, agents workspace CTA, loading state, and schedule toolbar labels, with regression coverage added to the core i18n test suite.
+
+[2026-04-16] Integrated Hermes Agent as third provider engine (alongside Claude Code and Codex CLI). New file hermes-cli.ts implements AgentProvider with one-shot CLI PTY mode (hermes chat --yolo -Q -q). Health check parses hermes status for API key presence and hermes --version for version. Added hermes venv paths to RUNTIME_PATH and enrichedPath. All three providers now detected: claude-code, codex-cli, hermes-cli.

@@ -13,6 +13,7 @@ import {
   Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { useAppStore } from "@/stores/app-store";
 import { useTreeStore } from "@/stores/tree-store";
 
@@ -63,6 +64,7 @@ export function WorkspaceGallery({ onClose }: { onClose: () => void }) {
   const [filterAgent, setFilterAgent] = useState<string | null>(null);
   const setSection = useAppStore((s) => s.setSection);
   const selectPage = useTreeStore((s) => s.selectPage);
+  const { t } = useLocale();
 
   useEffect(() => {
     fetch("/api/agents/gallery")
@@ -92,7 +94,7 @@ export function WorkspaceGallery({ onClose }: { onClose: () => void }) {
       <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
           <FolderOpen className="h-4 w-4 text-primary" />
-          <h2 className="text-[14px] font-semibold">Workspace Gallery</h2>
+          <h2 className="text-[14px] font-semibold">{t("mission.workspaceGallery.title")}</h2>
           <span className="text-[11px] text-muted-foreground/60">
             {filtered.length} item{filtered.length !== 1 ? "s" : ""} across {agents.length} agent{agents.length !== 1 ? "s" : ""}
           </span>
@@ -101,7 +103,7 @@ export function WorkspaceGallery({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           className="text-[11px] text-muted-foreground/50 hover:text-foreground transition-colors"
         >
-          Back to Mission Control
+          {t("mission.workspaceGallery.back")}
         </button>
       </div>
 
@@ -158,15 +160,15 @@ export function WorkspaceGallery({ onClose }: { onClose: () => void }) {
       <div className="flex-1 overflow-y-auto p-4 min-h-0">
         {loading ? (
           <div className="text-center py-12 text-[12px] text-muted-foreground/50">
-            Scanning workspaces...
+            {t("mission.workspaceGallery.loading")}
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 space-y-2">
             <FolderOpen className="h-10 w-10 mx-auto text-muted-foreground/20" />
             <p className="text-[13px] text-muted-foreground/60">
               {items.length === 0
-                ? "No workspace output yet. Run agents to see their work here."
-                : "No items match the current filter."}
+                ? t("mission.workspaceGallery.empty")
+                : t("mission.workspaceGallery.noMatches")}
             </p>
           </div>
         ) : (

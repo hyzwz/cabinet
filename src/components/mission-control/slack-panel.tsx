@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, GripHorizontal, Hash, Plus, MessageCircle, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type { SlackMessage } from "@/types/agents";
 
 interface AgentMention {
@@ -134,6 +135,7 @@ export function SlackPanel({ height: initialHeight = 200, onOpenFile }: SlackPan
   const [newChannelName, setNewChannelName] = useState("");
   const [collapsed, setCollapsed] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const { t, format } = useLocale();
   const [agents, setAgents] = useState<AgentMention[]>([]);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(0);
@@ -221,11 +223,18 @@ export function SlackPanel({ height: initialHeight = 200, onOpenFile }: SlackPan
   }, [channels, activeChannel]);
 
   useEffect(() => {
-    if (channels.length > 0) loadCounts();
-  }, [channels, loadCounts]);
+    if (channels.length === 0) return;
+    const timeout = window.setTimeout(() => {
+      void loadCounts();
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [channels.length, loadCounts]);
 
   useEffect(() => {
-    loadChannels();
+    const timeout = window.setTimeout(() => {
+      void loadChannels();
+    }, 0);
+    return () => window.clearTimeout(timeout);
   }, [loadChannels]);
 
   // Load agents for @mention autocomplete
@@ -245,14 +254,21 @@ export function SlackPanel({ height: initialHeight = 200, onOpenFile }: SlackPan
   }, []);
 
   useEffect(() => {
-    loadMessages();
+    const timeout = window.setTimeout(() => {
+      void loadMessages();
+    }, 0);
     // Listen for SSE slack refresh events
-    const handleRefresh = () => loadMessages();
+    const handleRefresh = () => {
+      void loadMessages();
+    };
     window.addEventListener("cabinet:slack-refresh", handleRefresh);
     // Fallback poll every 10s (was 5s, now SSE handles real-time)
-    const interval = setInterval(loadMessages, 10000);
+    const interval = window.setInterval(() => {
+      void loadMessages();
+    }, 10000);
     return () => {
-      clearInterval(interval);
+      window.clearTimeout(timeout);
+      window.clearInterval(interval);
       window.removeEventListener("cabinet:slack-refresh", handleRefresh);
     };
   }, [loadMessages]);
@@ -363,7 +379,7 @@ export function SlackPanel({ height: initialHeight = 200, onOpenFile }: SlackPan
       {/* Channel tabs */}
       <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border/50 overflow-x-auto shrink-0 mt-1">
         <span className="text-[11px] text-muted-foreground/50 mr-1 shrink-0">
-          Agent Slack
+          {t("mission.slack.title")}
         </span>
         {channels.map((ch) => {
           const count = channelCounts[ch] || 0;
@@ -402,7 +418,7 @@ export function SlackPanel({ height: initialHeight = 200, onOpenFile }: SlackPan
                 if (e.key === "Escape") { setShowNewChannel(false); setNewChannelName(""); }
               }}
               onBlur={() => { if (!newChannelName.trim()) { setShowNewChannel(false); setNewChannelName(""); } }}
-              placeholder="channel-name"
+              placeholder={t("mission.slack.channelPlaceholder")}
               className="text-[11px] w-24 bg-transparent border-b border-primary/30 focus:outline-none placeholder:text-muted-foreground/30"
             />
           </div>
@@ -410,7 +426,7 @@ export function SlackPanel({ height: initialHeight = 200, onOpenFile }: SlackPan
           <button
             onClick={() => setShowNewChannel(true)}
             className="text-[11px] px-1.5 py-0.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors shrink-0"
-            title="Create channel"
+            title={t("mission.dialog.addGoal")}
           >
             <Plus className="h-3 w-3" />
           </button>
@@ -430,7 +446,7 @@ export function SlackPanel({ height: initialHeight = 200, onOpenFile }: SlackPan
               >
                 <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
-              <span className="text-[11px] font-medium text-muted-foreground">Thread</span>
+              <span className="text-[11px] font-medium text-muted-foreground">{t("mission.slack.thread")}</span>
               {parent && (
                 <span className="text-[11px] text-muted-foreground/50 truncate">
                   — {parent.displayName || parent.agent}: {parent.content.slice(0, 60)}
@@ -458,8 +474,8 @@ export function SlackPanel({ height: initialHeight = 200, onOpenFile }: SlackPan
             return (
               <p className="text-[12px] text-muted-foreground/40 text-center py-4">
                 {threadId
-                  ? "No replies in this thread yet."
-                  : `No messages in #${activeChannel} yet. Agents will post here when they run.`}
+                  ? t("mission.slack.noReplies")
+                  : format("mission.slack.emptyChannel", { channel: activeChannel })}
               </p>
             );
           }
@@ -475,9 +491,9 @@ export function SlackPanel({ height: initialHeight = 200, onOpenFile }: SlackPan
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       {msg.agent === "human" ? (
-                        <span className="text-[12px] font-medium text-primary">You</span>
+                        <span className="text-[12px] font-medium text-primary">{t("mission.slack.you")}</span>
                       ) : msg.agent === "system" ? (
-                        <span className="text-[12px] font-medium text-muted-foreground/60 italic">system</span>
+                        <span className="text-[12px] font-medium text-muted-foreground/60 italic">{t("mission.slack.system")}</span>
                       ) : (
                         <>
                           {msg.emoji && <span className="text-[11px]">{msg.emoji}</span>}
@@ -514,7 +530,7 @@ export function SlackPanel({ height: initialHeight = 200, onOpenFile }: SlackPan
                         <MessageCircle className="h-3 w-3" />
                         {replyCount > 0
                           ? `${replyCount} ${replyCount === 1 ? "reply" : "replies"}`
-                          : "Reply"}
+                          : t("mission.slack.reply")}
                       </button>
                     )}
                   </div>
@@ -537,7 +553,7 @@ export function SlackPanel({ height: initialHeight = 200, onOpenFile }: SlackPan
                   <span className="font-medium">{a.name}</span>
                 </span>
               ))}
-            <span className="text-muted-foreground/50">is thinking</span>
+            <span className="text-muted-foreground/50">{t("mission.slack.thinking")}</span>
             <span className="flex gap-0.5">
               <span className="h-1 w-1 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "0ms" }} />
               <span className="h-1 w-1 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "150ms" }} />

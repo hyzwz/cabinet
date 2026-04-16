@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { CheckCircle2, XCircle, X } from "lucide-react";
 import { dedupeConversationNotifications } from "@/lib/agents/conversation-notification-utils";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { useAppStore } from "@/stores/app-store";
 
 interface TaskNotification {
@@ -77,6 +78,7 @@ function playNotificationSound(status: "completed" | "failed") {
 export function NotificationToasts() {
   const [toasts, setToasts] = useState<TaskNotification[]>([]);
   const setSection = useAppStore((s) => s.setSection);
+  const { t } = useLocale();
 
   const dismiss = useCallback((key: string) => {
     setToasts((prev) => prev.filter((t) => t._key !== key));
@@ -159,7 +161,7 @@ export function NotificationToasts() {
                   toast.status === "completed" ? "text-emerald-500" : "text-red-500"
                 )}
               >
-                {toast.status === "completed" ? "Completed" : "Failed"}
+                {toast.status === "completed" ? t("layout.notifications.completed") : t("layout.notifications.failed")}
               </span>
             </div>
             <p className="mt-1 truncate text-[13px] font-medium text-foreground">

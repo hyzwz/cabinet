@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 import { buildConversationInstanceKey } from "@/lib/agents/conversation-identity";
 import {
@@ -31,6 +32,7 @@ export function ActivityFeed({
 }: ActivityFeedProps) {
   const [conversations, setConversations] = useState<ConversationMeta[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t, format } = useLocale();
 
   const agentBySlug = useMemo(() => {
     const map = new Map<string, { emoji: string; name: string }>();
@@ -75,14 +77,14 @@ export function ActivityFeed({
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-[1.65rem] font-semibold tracking-tight text-foreground">
-            Activity
+            {t("cabinets.activity.title")}
           </h2>
           <p className="text-[12px] text-muted-foreground">
-            {loading ? "Loading..." : `${conversations.length} recent`}
+            {loading ? t("cabinets.activity.loading") : format("cabinets.activity.recent", { count: conversations.length })}
             {runningCount > 0 && (
               <span className="ml-2 inline-flex items-center gap-1 text-emerald-500">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {runningCount} running
+                {format("cabinets.activity.running", { count: runningCount })}
               </span>
             )}
           </p>
@@ -94,18 +96,18 @@ export function ActivityFeed({
           onClick={onOpenWorkspace}
         >
           <Users className="h-3.5 w-3.5" />
-          View all
+          {t("cabinets.activity.viewAll")}
         </Button>
       </div>
 
       {/* Feed */}
       {loading ? (
         <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading activity...
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("cabinets.activity.loadingFeed")}
         </div>
       ) : sorted.length === 0 ? (
         <p className="py-4 text-sm text-muted-foreground">
-          No conversations yet. Run a heartbeat or send a task to an agent.
+          {t("cabinets.activity.empty")}
         </p>
       ) : (
         <div className="space-y-1">
