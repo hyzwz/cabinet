@@ -43,5 +43,5 @@ export async function GET(req: NextRequest) {
   }
 
   // No auth — needs setup (no users, no KB_PASSWORD)
-  return NextResponse.json({ authenticated: true, authEnabled: false, mode: "none", needsSetup: true });
+  return NextResponse.json({ authenticated: false, authEnabled: false, mode: "none", needsSetup: true });
 }
