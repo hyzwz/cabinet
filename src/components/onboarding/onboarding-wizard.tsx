@@ -772,55 +772,6 @@ function TeamBuildStep({
       </div>
 
       {/* Carousel section */}
-      <div
-        className="space-y-2 transition-all duration-700"
-        style={{
-          width: "100vw",
-          marginLeft: "calc(-50vw + 50%)",
-          opacity: phase >= 1 ? 1 : 0,
-          transform: phase >= 1 ? "translateY(0)" : "translateY(12px)",
-        }}
-      >
-        <div className="flex items-center justify-center gap-3">
-          <p
-            className="text-[11px] font-semibold uppercase tracking-wider"
-            style={{ color: WEB.textTertiary }}
-          >
-            Import a pre-made zero-human team
-          </p>
-          <button
-            onClick={() => setRegistryOpen(true)}
-            className="text-[11px] font-semibold transition-colors"
-            style={{ color: WEB.accent }}
-          >
-            Browse all &rarr;
-          </button>
-        </div>
-        <div
-          className="transition-opacity duration-500"
-          style={{ opacity: phase >= 2 ? 1 : 0 }}
-        >
-          <TeamCarousel
-            templates={registryTemplates}
-            onSelect={(t) => {
-              setImportTemplate(t);
-              setImportName(t.name);
-              setImportError(null);
-              setImportOpen(true);
-            }}
-          />
-        </div>
-        {importedSlugs.size > 0 && (
-          <p
-            className="text-[10px] font-medium text-center mt-1"
-            style={{ color: WEB.accent }}
-          >
-            <CheckCircle2 className="inline size-3 mr-1 -mt-px" />
-            {importedSlugs.size} cabinet{importedSlugs.size > 1 ? "s" : ""} imported
-          </p>
-        )}
-      </div>
-
       {/* Import dialog */}
       <Dialog open={importOpen} onOpenChange={(v) => { if (!importBusy) setImportOpen(v); }}>
         <DialogContent

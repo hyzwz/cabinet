@@ -364,3 +364,5 @@
 [2026-04-16] Localized the remaining visible agents settings chrome from the latest screenshot, including the library schedule hint and jobs list tooltip text. Extended the focused agents i18n regression to guard those labels so this settings view stays aligned with the shared zh/en catalog.
 
 [2026-04-16] Simplified status bar: removed git status, sync button, Discord/GitHub/Stars links, AI edit pill, and all related state/effects. Only the health indicator dot (green/amber/red) with its diagnostic popup remains.
+
+[2026-04-16] Removed 'Import a pre-made zero-human team' carousel from onboarding page and 'Connect' section (Discord/email) from settings About tab.
