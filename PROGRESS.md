@@ -1,3 +1,6 @@
+[2026-04-16] Added multi-user authentication system (Phase 1). Users stored in `data/.cabinet-state/users.json` (no database). JWT-based auth with auto-generated secret. First registered user becomes admin. Login page adapts to three modes: legacy single-password, multi-user login, and first-user setup. Git commits now include author identity. Pages support `owner` and `visibility` (private/team) frontmatter fields, with private pages filtered from tree and blocked in API. Added user management endpoints (admin CRUD), logout, auth store, and user menu in header. Fully backward-compatible with existing `KB_PASSWORD` env var.
+[2026-04-16] Refreshed the `data/example-text-your-mom/company/updates/index.md` and `data/example-text-your-mom/company/goals/index.md` executive pages with a midday CEO checkpoint. The update records that product sprint progress, TikTok briefs, and Reddit monitoring still lack visible dated artifacts, and narrows the immediate company ask to one shipped/moved product item, one TikTok brief, one Reddit artifact, and a confirmed RT-4 Friday writeup.
+[2026-04-16] Refreshed the `data/vc-os/intelligence/ukraine-war-update-2026-04-16.md` brief with later April 16 public reporting, updating the headline strike summary to reflect broader missile/drone attacks on Kyiv, Odesa, and Dnipro plus higher confirmed casualty figures. This keeps the intelligence note aligned with the latest open-source reporting before answering the user's battlefield question.
 [2026-04-15] Added a new root knowledge base roadmap page under `data/roadmap` that organizes Cabinet priorities into near-, mid-, and longer-term phases around stability, onboarding, AI editing, and distribution. Updated the KB home page to surface the roadmap as a primary entry point and summarize the current focus areas.
 [2026-04-15] Localized the remaining covered Settings providers/core surface copy by routing provider setup affordances and badges through the shared zh/en message catalog, and added a focused regression test guarding against new hard-coded covered-surface strings in settings-page.tsx. This keeps the Settings demo path localized with English fallback while staying scoped to the existing client i18n layer.
 [2026-04-15] Localized the Tasks workspace core demo copy in tasks-board.tsx, including the board filters/loading state, schedule controls/dialog labels, and first-screen summaries via the shared zh/en message catalog. This keeps Tasks board and schedule surfaces on the demo path locale-aware with English fallback while staying scoped to the existing i18n layer.
@@ -6,6 +9,76 @@
 [2026-04-16] Updated the Text Your Mom CEO updates page with a same-day executive readout for Apr 16, highlighting the three biggest priorities: proving the April 14 sprint is shipping, validating that marketing activation is producing artifacts, and keeping the RT-4 investigation on track for Friday's decision point.
 
 # Progress
+
+[2026-04-15] Added the demo i18n foundation: a lightweight client-side locale provider with persisted `zh`/`en` state, English fallback message lookup, and automatic `html lang` synchronization. Added a visible language switcher next to the theme control across shared header chrome, and wired the login surface to use localized copy before authentication without affecting theme persistence.
+
+[2026-04-14] CLI: `cabinetai run` is now fully all-in-one — no `create` needed first. Extracted scaffold logic into `cabinetai/src/lib/scaffold.ts` and added `resolveOrBootstrapCabinetRoot()` which auto-creates the cabinet structure (`.cabinet`, `.agents/`, `.jobs/`, `.cabinet-state/`) in the current directory if none is found. `ensureApp()` then detects and installs the web app if needed. Updated Quick Start in README and CABINETAI.md to reflect the single-command flow.
+
+[2026-04-14] CLI: all user-facing messages and README docs now show `npx cabinetai run` instead of bare `cabinetai run`. Users install via npx, so the bare command doesn't exist.
+
+[2026-04-14] Fixed task completion detection stuck on "running". Two bugs: (1) after ANSI stripping the `❯` idle prompt merged onto the same line as `⏵⏵ bypass permissions on`, so the exact-match regex `/^[❯>]$/` never matched — loosened to `/^[❯>](?:\s|$)/`; (2) Claude Code's completion timing line uses many verbs beyond "Brewed" (Sautéed, Baked, Churned, Crunched, etc.) — `isClaudeIdleTailNoise` now matches any spinner-prefixed `Verb for [time]` pattern generically instead of hardcoding individual verbs.
+
+[2026-04-14] Unified `cabinetai-plan.md` and `CABINETAI_DEPLOYMENT.md` into single `CABINETAI.md`. Synced all three package versions to 0.3.1 (app, create-cabinet, cabinetai). Published both npm packages with READMEs.
+
+[2026-04-14] CLI: added `cabinetai uninstall` command. Default removes cached app versions from `~/.cabinet/app/`; `--all` removes the entire `~/.cabinet` directory. Cabinet data directories are never touched.
+
+[2026-04-14] Registry API: added `?limit=N` query param (defaults to 10) so the onboarding carousel caps at 10 templates. The full registry browser passes `limit=100` to show all.
+
+[2026-04-14] Fix sidebar labels: cabinet name in header, "Data" for content section. The top header now always prefers the .cabinet manifest name (e.g. "APPLE") over the index.md frontmatter title ("Knowledge Base"). Previously, clicking the cabinet overview caused activeCabinet to resolve to the root tree node whose frontmatter title was "Knowledge Base".
+
+[2026-04-14] Onboarding wizard: removed directory picker from Step 7 (CLI already owns dir selection via CABINET_DATA_DIR), added .cabinet manifest detection at wizard start with a WelcomeBackStep for existing cabinets that pre-fills company name, and added "team of teams" framing subtitle to Step 2's TeamBuildStep title.
+
+[2026-04-14] Added zoom/pan controls to Mermaid viewer: toolbar buttons for zoom in/out/reset with percentage display, Ctrl+scroll wheel zoom, and click-drag panning with grab cursor.
+
+[2026-04-14] Fixed Mermaid viewer error handling: added `suppressErrorRendering` and `mermaid.parse()` pre-validation so syntax errors show a clean inline error message instead of mermaid injecting broken error SVGs into the DOM.
+
+[2026-04-14] After importing a registry cabinet in onboarding Step 2, show a "Your cabinet has been created" success screen with an animated file tree (cabinet name, .agents/, .jobs/, counts) that reveals line-by-line, then a "Continue setup" button to proceed through the remaining onboarding steps instead of skipping them.
+
+[2026-04-14] Onboarding Step 2: removed "Coming soon" blur from the team carousel, connected it to live registry templates from /api/registry, made cards clickable with an inline import dialog (POST /api/registry/import), and added a "Browse all" button that opens the full RegistryBrowser in a dialog.
+
+[2026-04-14] Added ai-hedge-fund cabinet to data/ — a full multi-agent stock analysis system inspired by virattt/ai-hedge-fund. Includes 12 agents (Portfolio Manager, Risk Manager, 6 legendary investor personas: Buffett/Munger/Graham/Lynch/Burry/Wood, and 4 analyst agents: Fundamentals/Valuation/Sentiment/Technicals), 3 scheduled jobs, example signals.csv with live-format data for AAPL/NVDA/META, portfolio tracking, investor philosophy research pages, and risk management parameters.
+
+[2026-04-14] Extracted scaffoldCabinet() to src/lib/storage/cabinet-scaffold.ts — unified duplicated cabinet bootstrap logic (dirs, .cabinet manifest, index.md) previously spread across onboarding/setup and cabinets/create API routes. Both routes now call the shared utility.
+
+[2026-04-14] Fixed onboarding to comply with cabinet protocol: `POST /api/onboarding/setup` now creates the root `.cabinet` YAML manifest (schemaVersion, id, name, kind, version, description, entry), `index.md` entry point, and `.cabinet-state/` runtime directory — all three were previously missing from root cabinet initialization.
+
+[2026-04-13] Fix job cards in ScheduleList not opening when agent lookup fails — removed agentRef guard from click handler, falls back to slug/name/emoji already on the item.
+
+[2026-04-13] Fixed Warp Ventures OS cabinet protocol compliance: added .cabinet identity files (root + 3 child cabinets: deal-flow, portfolio, intelligence), .cabinet-state/.gitkeep in all 4 cabinets, 4 agent personas (.agents/managing-partner, analyst, portfolio-manager, deal-scout), description fields and correct ownerAgent/agentSlug assignments across all 9 job YAMLs, and quoted cron schedule strings.
+
+[2026-04-13] Created "Warp Ventures OS" — a comprehensive VC operating system cabinet under data/vc-os. Includes 47 files across 9 modules: Intelligence Hub (daily X digest, 5 watchlist topics, live intelligence feed webapp), Events Calendar webapp, Deal Flow kanban webapp with 15 deals, Portfolio section with 5 companies each having metrics CSVs and news logs, Portfolio Dashboard webapp with Chart.js charts, Competitors section with Mermaid landscape diagram, Team profiles, LP management with commitments CSV, Finance section with IRR model/cap table/fees CSVs and Q1 report, and Programs (Fellowship + Accelerator) with cohort CSVs. Nine scheduled jobs across root/.jobs, portfolio/.jobs, intelligence/.jobs, and deal-flow/.jobs for daily briefs, portfolio health checks, deal pipeline reviews, board prep, LP updates, competitor intel, and market maps.
+
+[2026-04-13] Moved AI edit pill to the status bar (bottom), centered via absolute positioning; shows for all KB content (MD, CSV, PDF, webapp, dirs) whenever section.type === "page". Header reverted to original simple layout.
+
+[2026-04-13] Fix "Add cabinet data" creating pages at root instead of inside the active cabinet — button now opens the kbSubPage dialog (which uses dataRootPath) instead of the root NewPageDialog.
+
+[2026-04-13] Fix "New Page" failing at root level — added POST handler to /api/pages/route.ts so creating a root page no longer hits a 405.
+
+[2026-04-13] Task board inbox empty state now shows an "Add task" button instead of instructing users to click the header Add button.
+
+[2026-04-13] Sidebar "New Page" and "New Cabinet" buttons now use text-xs, tighter gap/padding, and whitespace-nowrap to keep labels on a single line.
+
+[2026-04-13] Constrain Jobs & heartbeats calendar to 600px height with a scrollbar. MonthView grid is now scrollable within a flex-1 overflow-y-auto wrapper; the section no longer grows to full content height.
+
+[2026-04-13] Paper theme updated to exact warm parchment palette from runcabinet.com: background #FAF6F1, card #FFFFFF, sidebar #F3EDE4, primary/ring #8B5E3C, secondary #F5E6D3, muted #FAF2EA, foreground #3B2F2F, muted-foreground #A89888, border #E8DDD0. All values converted to OKLCh. Accent preview color updated to #8B5E3C.
+
+[2026-04-13] Registry import: fix GitHub 403 rate-limit error on large templates (e.g. career-ops). Replaced recursive per-directory API calls with a single Git Trees API call (GET /git/trees/HEAD?recursive=1), then download files via raw.githubusercontent.com which has no API rate limit. Reduces GitHub API usage from O(directories) to 1 call per import.
+
+[2026-04-13] Fullscreen "New Cabinet" dialog: replaced the two-step small dialog with a single fullscreen overlay (fixed inset-0 z-50, backdrop-blur-md) rendered via createPortal. All fields shown at once — cabinet name input, full agent grid picker, and "or import a pre-made team →" registry link at the bottom. AgentPicker got a layout="grid" prop so department columns wrap instead of horizontal-scroll in the fullscreen context. Fixed agents-not-appearing bug: LIBRARY_DIR in create/route.ts was pointing to the non-existent DATA_DIR/.agents/.library — corrected to PROJECT_ROOT/src/lib/agents/library where templates actually live.
+
+[2026-04-13] Task board header cleanup: moved "Jobs & Heartbeats" schedule button to topmost right corner of the title row (flex justify-between), removed schedule toggle from filter row so it's back to original (agent filter + scope select + Refresh only). Fixed LayoutList not-defined runtime error by adding the import.
+
+[2026-04-13] Registry browser redesign: rewrote registry-browser.tsx to faithfully match the cabinets-website design. Warm parchment palette (#FAF6F1 bg, #8B5E3C accent, #3B2F2F text) scoped to the component. List view has search + domain filter chips + list rows with stats. Detail view has warm header strip with stats, org chart (full port of cabinet-org-chart.tsx — VLine/HBranch connectors, department columns, agent/job nodes, child cabinet nodes, stats footer), agents grid, jobs list, readme prose, import CTA banner. Both scroll properly via overflow-y-auto + min-h-0 (no ScrollArea dependency).
+
+[2026-04-13] Text Your Mom CEO heartbeat: executed marketing activation that was decided but not done earlier. Enabled all 6 marketing jobs across TikTok and Reddit cabinets (4 daily scans + 2 weekly digests). Updated team directory from 8/16 Active to 16/16 Active. Sent activation orders with specific deliverables to both marketing cabinet leads. Answered CFO's open data request on finance page (pricing $4.99/mo, burn ~$12K/mo, organic/paid split 60/40). Updated goals page with execution checkpoints for the week. Sent coordination messages to COO and CFO.
+
+[2026-04-13] Registry browser: full cabinet registry browsing experience as a new "registry" section. Home screen has "Browse all" link next to the carousel heading. The browser has a search bar + filterable list of all 8 registry templates, and clicking one opens a detail view with header, stats, cabinet structure tree, agent cards grid, job list, readme, and two "Import Cabinet" CTAs (top bar + inline banner). Detail data fetched live from GitHub via new GET /api/registry/[slug] endpoint that parses .cabinet manifests, agents, jobs, and child cabinets. Import flow uses the same fullscreen overlay + page reload pattern.
+
+[2026-04-13] Import UX polish: clicking Import now closes the dialog and shows a fullscreen blur overlay with spinner and progress text while downloading. On error, reopens the dialog with the error message. Added "Cabinet names can't be renamed later" warning under the name input.
+
+[2026-04-13] Cabinet creation and registry import: Added "New Cabinet" button to sidebar (multi-step dialog with name input + agent picker), "Create Cabinet Here" right-click option in tree context menu, and replaced the "Coming soon" home screen carousel with clickable registry import cards. Created shared AgentPicker component and useAgentPicker hook extracted from onboarding wizard. New APIs: POST /api/cabinets/create (creates .cabinet + .agents/ + .jobs/ structure with selected agents from library), GET /api/registry (serves bundled manifest of 8 registry templates), POST /api/registry/import (downloads templates from GitHub hilash/cabinets repo). New files: agent-picker.tsx, use-agent-picker.ts, new-cabinet-dialog.tsx, registry-manifest.ts, github-fetch.ts, plus 3 API routes.
+
+[2026-04-13] Pipeline Conductor first heartbeat: stood up 3 missing agent personas (conductor, evaluator, cv-tailor). Assessed pipeline state — Scanner has populated 50 roles across 14 companies (Anthropic, Stripe, Figma, Vercel, Linear, Supabase, Databricks, Airtable, Scale AI, Airbnb, dbt Labs, Brex, Resend, Clerk), all in "Discovered" status with zero evaluations. Identified critical blocker: master CV and proof points are still templates, blocking all Block B evaluations and downstream CV tailoring. Updated career-ops hub with accurate pipeline health metrics and agent roster.
 
 [2026-04-15] Added the demo i18n foundation: a lightweight client-side locale provider with persisted `zh`/`en` state, English fallback message lookup, and automatic `html lang` synchronization. Added a visible language switcher next to the theme control across shared header chrome, and wired the login surface to use localized copy before authentication without affecting theme persistence.
 
@@ -366,3 +439,6 @@
 [2026-04-16] Simplified status bar: removed git status, sync button, Discord/GitHub/Stars links, AI edit pill, and all related state/effects. Only the health indicator dot (green/amber/red) with its diagnostic popup remains.
 
 [2026-04-16] Removed 'Import a pre-made zero-human team' carousel from onboarding page and 'Connect' section (Discord/email) from settings About tab.
+[2026-04-16] 统一了中文 i18n 术语，将 agents/jobs/heartbeats 在已覆盖界面中改为 AI 代理、任务、心跳，并同步修正相关测试期望与 agents workspace 的触发标签类型问题。
+[2026-04-16] 修正中文术语映射：task 统一为任务，jobs 统一为定时任务，并同步更新相关 i18n 文案与测试期望。
+[2026-04-16] 将系统品牌文案统一为 CreatClaw，并把“新建/创建 Cabinet”相关入口改为“新建/创建工作空间”，同步更新测试期望。

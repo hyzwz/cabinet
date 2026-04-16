@@ -6,6 +6,8 @@ export interface FrontMatter {
   icon?: string;
   order?: number;
   dir?: "ltr" | "rtl";
+  owner?: string;
+  visibility?: "team" | "private";
 }
 
 export interface TreeNode {
@@ -27,3 +29,4 @@ export interface PageData {
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export * from "./update";
+export * from "./users";

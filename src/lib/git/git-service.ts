@@ -28,7 +28,12 @@ async function getGit(): Promise<SimpleGit | null> {
 
 let commitTimer: ReturnType<typeof setTimeout> | null = null;
 
-export async function autoCommit(pagePath: string, action: "Update" | "Add" | "Delete") {
+interface CommitUser {
+  username: string;
+  displayName?: string;
+}
+
+export async function autoCommit(pagePath: string, action: "Update" | "Add" | "Delete", user?: CommitUser) {
   // Debounce commits — batch within 5 seconds
   if (commitTimer) clearTimeout(commitTimer);
   commitTimer = setTimeout(async () => {
@@ -40,7 +45,13 @@ export async function autoCommit(pagePath: string, action: "Update" | "Add" | "D
       const status = await g.status();
       if (status.staged.length === 0 && status.modified.length === 0) return;
 
-      await g.commit(`${action} ${pagePath}`);
+      const commitOpts: Record<string, string> = {};
+      if (user?.username) {
+        const name = user.displayName || user.username;
+        commitOpts["--author"] = `${name} <${user.username}@cabinet.dev>`;
+      }
+
+      await g.commit(`${action} ${pagePath}`, undefined, commitOpts);
     } catch (error) {
       console.error("Auto-commit failed:", error);
     }
@@ -103,7 +114,7 @@ export async function getDiff(hash: string): Promise<string> {
   }
 }
 
-export async function manualCommit(message: string): Promise<boolean> {
+export async function manualCommit(message: string, user?: CommitUser): Promise<boolean> {
   const g = await getGit();
   if (!g) return false;
 
@@ -117,7 +128,12 @@ export async function manualCommit(message: string): Promise<boolean> {
     ) {
       return false;
     }
-    await g.commit(message);
+    const opts: Record<string, string> = {};
+    if (user?.username) {
+      const name = user.displayName || user.username;
+      opts["--author"] = `${name} <${user.username}@cabinet.dev>`;
+    }
+    await g.commit(message, undefined, opts);
     return true;
   } catch {
     return false;

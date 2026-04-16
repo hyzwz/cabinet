@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeInitializer } from "@/components/layout/theme-initializer";
 import { LocaleProvider } from "@/components/i18n/locale-provider";
+import { AuthInitializer } from "@/components/auth/auth-initializer";
 import "./globals.css";
 
 const inter = localFont({
@@ -25,7 +26,7 @@ const instrumentSerif = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Cabinet",
+  title: "GreatClaw",
   description: "AI-first knowledge base and startup OS",
 };
 
@@ -41,7 +42,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `if(window.CabinetDesktop)document.documentElement.classList.add("electron-desktop")` }} />
+        <script dangerouslySetInnerHTML={{ __html: `if(window.GreatClawDesktop)document.documentElement.classList.add("electron-desktop")` }} />
       </head>
       <body className="min-h-full flex flex-col font-sans">
         <ThemeProvider
@@ -52,6 +53,7 @@ export default function RootLayout({
         >
           <LocaleProvider>
             <ThemeInitializer />
+            <AuthInitializer />
             {children}
           </LocaleProvider>
         </ThemeProvider>

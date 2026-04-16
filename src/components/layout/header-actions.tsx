@@ -6,6 +6,7 @@ import { useAIPanelStore } from "@/stores/ai-panel-store";
 import { useAppStore } from "@/stores/app-store";
 import { ThemePicker } from "@/components/layout/theme-picker";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { UserMenu } from "@/components/auth/user-menu";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/components/i18n/locale-provider";
 
@@ -63,6 +64,9 @@ export function HeaderActions() {
 
       {/* Theme picker */}
       <ThemePicker />
+
+      {/* User menu */}
+      <UserMenu />
     </>
   );
 }

@@ -4,6 +4,7 @@ import { readPage, writePage, createPage } from "@/lib/storage/page-io";
 import { fileExists, writeFileContent } from "@/lib/storage/fs-operations";
 import { DATA_DIR } from "@/lib/storage/path-utils";
 import { autoCommit } from "@/lib/git/git-service";
+import { getRequestUser } from "@/lib/auth/request-user";
 
 const ROOT_INDEX = path.join(DATA_DIR, "index.md");
 
@@ -15,6 +16,11 @@ async function ensureRootIndex() {
       `---\ntitle: Knowledge Base\ncreated: "${now}"\nmodified: "${now}"\ntags: []\n---\n`
     );
   }
+}
+
+function commitUser(req: NextRequest) {
+  const user = getRequestUser(req);
+  return user ? { username: user.username, displayName: user.displayName } : undefined;
 }
 
 export async function GET() {
@@ -33,7 +39,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     await createPage("", body.title);
-    autoCommit("", "Add");
+    autoCommit("", "Add", commitUser(req));
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -46,7 +52,7 @@ export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
     await writePage("", body.content, body.frontmatter);
-    autoCommit("", "Update");
+    autoCommit("", "Update", commitUser(req));
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

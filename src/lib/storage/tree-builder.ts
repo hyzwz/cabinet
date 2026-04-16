@@ -191,6 +191,8 @@ async function buildTreeRecursive(
           title: (fm.title as string) || entry.name,
           icon: fm.icon as string | undefined,
           order: fm.order as number | undefined,
+          owner: fm.owner as string | undefined,
+          visibility: fm.visibility as "team" | "private" | undefined,
         },
         children,
       });
@@ -243,6 +245,8 @@ async function buildTreeRecursive(
           title: (fm.title as string) || entry.name.replace(/\.md$/, ""),
           icon: fm.icon as string | undefined,
           order: fm.order as number | undefined,
+          owner: fm.owner as string | undefined,
+          visibility: fm.visibility as "team" | "private" | undefined,
         },
       });
     }

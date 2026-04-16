@@ -53,6 +53,8 @@ export async function readPage(virtualPath: string): Promise<PageData> {
         tags: data.tags || [],
         icon: data.icon,
         order: data.order,
+        owner: data.owner,
+        visibility: data.visibility,
       },
     };
   }
