@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bot, BrainCircuit, Sparkles } from "lucide-react";
+import { Bot, BrainCircuit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   formatEffortName,
@@ -46,6 +46,7 @@ const EFFORT_TONES: Record<
   string,
   {
     header: string;
+    bg: string;
     line: string;
     dot: string;
     selected: string;
@@ -56,6 +57,7 @@ const EFFORT_TONES: Record<
 > = {
   [AUTO_EFFORT_ID]: {
     header: "text-slate-600",
+    bg: "bg-slate-100 border border-slate-200",
     line: "bg-slate-400",
     dot: "bg-slate-500",
     selected: "border-slate-600 bg-slate-100 shadow-[0_0_0_1px_rgba(71,85,105,0.24)]",
@@ -65,6 +67,7 @@ const EFFORT_TONES: Record<
   },
   none: {
     header: "text-slate-600",
+    bg: "bg-slate-100 border border-slate-200",
     line: "bg-slate-400",
     dot: "bg-slate-500",
     selected: "border-slate-600 bg-slate-100 shadow-[0_0_0_1px_rgba(71,85,105,0.24)]",
@@ -74,6 +77,7 @@ const EFFORT_TONES: Record<
   },
   minimal: {
     header: "text-yellow-700",
+    bg: "bg-yellow-50 border border-yellow-200",
     line: "bg-yellow-400",
     dot: "bg-yellow-500",
     selected: "border-yellow-600 bg-yellow-50 shadow-[0_0_0_1px_rgba(234,179,8,0.26)]",
@@ -83,6 +87,7 @@ const EFFORT_TONES: Record<
   },
   low: {
     header: "text-amber-700",
+    bg: "bg-amber-50 border border-amber-200",
     line: "bg-amber-400",
     dot: "bg-amber-500",
     selected: "border-amber-600 bg-amber-50 shadow-[0_0_0_1px_rgba(245,158,11,0.26)]",
@@ -92,6 +97,7 @@ const EFFORT_TONES: Record<
   },
   medium: {
     header: "text-orange-700",
+    bg: "bg-orange-50 border border-orange-200",
     line: "bg-orange-400",
     dot: "bg-orange-500",
     selected: "border-orange-600 bg-orange-50 shadow-[0_0_0_1px_rgba(249,115,22,0.28)]",
@@ -101,6 +107,7 @@ const EFFORT_TONES: Record<
   },
   high: {
     header: "text-emerald-700",
+    bg: "bg-emerald-50 border border-emerald-200",
     line: "bg-emerald-400",
     dot: "bg-emerald-500",
     selected: "border-emerald-600 bg-emerald-50 shadow-[0_0_0_1px_rgba(16,185,129,0.26)]",
@@ -110,6 +117,7 @@ const EFFORT_TONES: Record<
   },
   xhigh: {
     header: "text-rose-700",
+    bg: "bg-rose-50 border border-rose-200",
     line: "bg-rose-400",
     dot: "bg-rose-500",
     selected: "border-rose-600 bg-rose-50 shadow-[0_0_0_1px_rgba(244,63,94,0.26)]",
@@ -119,6 +127,7 @@ const EFFORT_TONES: Record<
   },
   max: {
     header: "text-red-700",
+    bg: "bg-red-50 border border-red-200",
     line: "bg-red-400",
     dot: "bg-red-500",
     selected: "border-red-600 bg-red-50 shadow-[0_0_0_1px_rgba(239,68,68,0.28)]",
@@ -268,7 +277,22 @@ function ProviderGlyph({
   className?: string;
 }) {
   if (icon === "sparkles") {
-    return <Sparkles className={className} />;
+    return (
+      <img
+        src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Claude_AI_symbol.svg"
+        alt="Claude"
+        className={className}
+      />
+    );
+  }
+  if (icon === "bot") {
+    return (
+      <img
+        src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/OpenAI_logo_2025_%28symbol%29.svg/960px-OpenAI_logo_2025_%28symbol%29.svg.png?_=20250205041901"
+        alt="OpenAI"
+        className={className}
+      />
+    );
   }
   return <Bot className={className} />;
 }
@@ -707,14 +731,29 @@ export function TaskRuntimePicker({
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         className={cn(
-          "inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex h-8 items-center gap-1 rounded-md border border-border/70 bg-background px-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50",
           className
         )}
         aria-label={triggerTitle}
         title={triggerTitle}
         disabled={loading && providers.length === 0}
       >
-        <BrainCircuit className="h-4 w-4" />
+        {currentProvider ? (
+          <>
+            <div className="flex size-4 shrink-0 items-center justify-center rounded border border-border/60 bg-muted/30">
+              <ProviderGlyph icon={currentProvider.icon} className="h-2.5 w-2.5" />
+            </div>
+            <span className={cn("text-[11px] font-medium", getEffortTone(normalizedValue.effort ?? AUTO_EFFORT_ID).header)}>
+              {currentModel?.name || currentProvider.name}
+            </span>
+            <span className="text-[9px] text-muted-foreground/40">·</span>
+            <span className={cn("text-[9px] font-medium", getEffortTone(normalizedValue.effort ?? AUTO_EFFORT_ID).header)}>
+              {currentEffort?.name || (normalizedValue.effort ? formatEffortName(normalizedValue.effort) : "Auto")}
+            </span>
+          </>
+        ) : (
+          <BrainCircuit className="h-4 w-4" />
+        )}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
@@ -722,38 +761,33 @@ export function TaskRuntimePicker({
         className="w-[min(32rem,calc(100vw-1rem))] min-w-[17rem] max-w-[calc(100vw-1rem)] p-0"
       >
         <DropdownMenuGroup>
-          <div className="flex items-start justify-between gap-3 px-1.5 py-1.5">
-            <div className="min-w-0">
-              <DropdownMenuLabel className="px-0 py-0">Task Model</DropdownMenuLabel>
+          <div className={cn("mx-1.5 mt-1.5 mb-1.5 flex items-center gap-2 rounded-lg px-2.5 py-2", getEffortTone(normalizedValue.effort ?? AUTO_EFFORT_ID).bg)}>
+            <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/60">
+              Selected Model
+            </span>
+
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
               {currentProvider ? (
-                <div className="mt-1 flex min-w-0 items-center gap-1.5">
-                  <div className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/20 text-muted-foreground">
+                <>
+                  <div className="flex size-5 shrink-0 items-center justify-center rounded border border-border/70 bg-background text-muted-foreground">
                     <ProviderGlyph
                       icon={currentProvider.icon}
-                      className="h-3 w-3"
+                      className="h-2.5 w-2.5"
                     />
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-[12px] font-medium text-foreground">
-                      {currentModel?.name || currentProvider.name}
-                    </p>
-                    <p className="truncate text-[9px] text-muted-foreground">
-                      {[
-                        currentProvider.name,
-                        currentEffort?.name ||
-                          (normalizedValue.effort
-                            ? formatEffortName(normalizedValue.effort)
-                            : "Auto"),
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                  </div>
-                </div>
+                  <span className={cn("truncate text-[11px] font-medium", getEffortTone(normalizedValue.effort ?? AUTO_EFFORT_ID).header)}>
+                    {currentModel?.name || currentProvider.name}
+                  </span>
+                  <span className="shrink-0 text-[9px] text-muted-foreground/50">·</span>
+                  <span className={cn("shrink-0 text-[9px] font-medium", getEffortTone(normalizedValue.effort ?? AUTO_EFFORT_ID).header)}>
+                    {currentEffort?.name ||
+                      (normalizedValue.effort
+                        ? formatEffortName(normalizedValue.effort)
+                        : "Auto")}
+                  </span>
+                </>
               ) : (
-                <p className="mt-1 text-[10px] text-muted-foreground">
-                  {selectionSummary}
-                </p>
+                <span className="text-[10px] text-muted-foreground">{selectionSummary}</span>
               )}
             </div>
 
@@ -780,22 +814,20 @@ export function TaskRuntimePicker({
                 .filter(Boolean)
                 .join(" · ")}
             >
-              App default
+              {sameSelection(normalizedValue, appDefaultSelection) ? "App default" : "Select app default"}
             </button>
           </div>
         </DropdownMenuGroup>
 
-        <DropdownMenuSeparator />
-
-        <div className="px-1.5 py-1">
+        <div className="px-1.5 pb-1.5">
           {selectableProviders.length > 0 ? (
             <Tabs
               value={activeProviderIdValue}
               onValueChange={setActiveProviderId}
               className="gap-0"
             >
-              <div className="overflow-hidden rounded-xl border border-border/70">
-                <div className="border-b border-border/60 px-1.5 pt-1.5">
+              <div className="overflow-hidden rounded-xl border-x border-b border-border/70">
+                <div className="bg-background px-1.5 pt-1.5">
                   <TabsList
                     variant="line"
                     aria-label="Task providers"
@@ -805,7 +837,7 @@ export function TaskRuntimePicker({
                       <TabsTrigger
                         key={provider.id}
                         value={provider.id}
-                        className="relative -mb-px h-7 flex-none gap-1.5 rounded-t-md rounded-b-none border border-border/50 border-b-0 bg-muted/35 px-2.5 py-1 text-[9px] font-medium text-muted-foreground shadow-none after:hidden hover:bg-muted/55 hover:text-foreground data-active:z-10 data-active:border-border/70 data-active:bg-background data-active:text-foreground data-active:shadow-[0_-1px_0_rgba(255,255,255,0.75)]"
+                        className="relative -mb-px h-7 flex-none gap-1.5 rounded-t-md rounded-b-none border border-border/50 border-b-0 bg-muted/15 px-2.5 py-1 text-[9px] font-medium text-muted-foreground shadow-none after:hidden hover:bg-muted/30 hover:text-foreground data-active:z-10 data-active:border-border/70 data-active:bg-background data-active:text-foreground data-active:shadow-[0_-1px_0_rgba(255,255,255,0.75)]"
                       >
                         <ProviderGlyph
                           icon={provider.icon}
