@@ -14,7 +14,6 @@ services:
       CABINET_DATA_DIR: /app/data
       CABINET_DAEMON_URL: http://host.docker.internal:4100
       CABINET_PUBLIC_DAEMON_ORIGIN: http://127.0.0.1:4100
-      KB_PASSWORD: "demo123"
       DOMAIN: localhost
     volumes:
       - ./data:/app/data

@@ -442,4 +442,4 @@
 [2026-04-16] Removed 'Import a pre-made zero-human team' carousel from onboarding page and 'Connect' section (Discord/email) from settings About tab.
 [2026-04-16] 统一了中文 i18n 术语，将 agents/jobs/heartbeats 在已覆盖界面中改为 AI 代理、任务、心跳，并同步修正相关测试期望与 agents workspace 的触发标签类型问题。
 [2026-04-16] 修正中文术语映射：task 统一为任务，jobs 统一为定时任务，并同步更新相关 i18n 文案与测试期望。
-[2026-04-16] 将系统品牌文案统一为 CreatClaw，并把“新建/创建 Cabinet”相关入口改为“新建/创建工作空间”，同步更新测试期望。
+[2026-04-16] 将今天中国自然灾害信息整理为知识库简报，汇总了四川资中地震、广西桂林地质灾害黄色预警，以及多省暴雨和强对流预警，并附上官方来源链接。
