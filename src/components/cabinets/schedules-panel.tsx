@@ -4,21 +4,21 @@ import { useMemo } from "react";
 import { Clock3 } from "lucide-react";
 import { cronToHuman, cronToShortLabel } from "@/lib/agents/cron-utils";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type { CabinetAgentSummary, CabinetJobSummary } from "@/types/cabinets";
 
 export function SchedulesPanel({
   agents,
   jobs,
-  onAgentClick,
   onJobClick,
   onHeartbeatClick,
 }: {
   agents: CabinetAgentSummary[];
   jobs: CabinetJobSummary[];
-  onAgentClick?: (agent: CabinetAgentSummary) => void;
   onJobClick?: (job: CabinetJobSummary, agent: CabinetAgentSummary) => void;
   onHeartbeatClick?: (agent: CabinetAgentSummary) => void;
 }) {
+  const { t, format } = useLocale();
   const agentMap = useMemo(() => {
     const map = new Map<string, CabinetAgentSummary>();
     for (const a of agents) {
@@ -50,15 +50,15 @@ export function SchedulesPanel({
     <div className="space-y-8">
       <div>
         <h2 className="text-[1.65rem] font-semibold tracking-tight text-foreground">
-          Jobs and heartbeats
+          {t("cabinets.schedules.title")}
         </h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          {jobsWithOwners.length} scheduled jobs and {heartbeatAgents.length} active heartbeats in this scope.
+          {format("cabinets.schedules.summary", { jobs: jobsWithOwners.length, heartbeats: heartbeatAgents.length })}
         </p>
       </div>
 
       <div>
-        <h3 className="text-sm font-medium text-foreground">Scheduled jobs</h3>
+        <h3 className="text-sm font-medium text-foreground">{t("cabinets.schedules.jobsHeading")}</h3>
         <div className="mt-3 border-t border-border/70">
           {jobsWithOwners.length > 0 ? (
             jobsWithOwners.map((job) => {
@@ -97,19 +97,19 @@ export function SchedulesPanel({
                         : "bg-muted text-muted-foreground"
                     )}
                   >
-                    {job.enabled ? "On" : "Off"}
+                    {job.enabled ? t("cabinets.schedules.enabled") : t("cabinets.schedules.disabled")}
                   </span>
                 </button>
               );
             })
           ) : (
-            <p className="py-4 text-sm text-muted-foreground">No cabinet jobs configured yet.</p>
+            <p className="py-4 text-sm text-muted-foreground">{t("cabinets.schedules.noJobs")}</p>
           )}
         </div>
       </div>
 
       <div>
-        <h3 className="text-sm font-medium text-foreground">Heartbeats</h3>
+        <h3 className="text-sm font-medium text-foreground">{t("cabinets.schedules.heartbeatsHeading")}</h3>
         <div className="mt-3 border-t border-border/70">
           {heartbeatAgents.length > 0 ? (
             heartbeatAgents.map((agent) => (
@@ -135,7 +135,7 @@ export function SchedulesPanel({
               </button>
             ))
           ) : (
-            <p className="py-4 text-sm text-muted-foreground">No heartbeats configured yet.</p>
+            <p className="py-4 text-sm text-muted-foreground">{t("cabinets.schedules.noHeartbeats")}</p>
           )}
         </div>
       </div>

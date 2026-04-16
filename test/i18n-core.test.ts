@@ -734,6 +734,145 @@ test("covered cabinet home components use locale message keys instead of hard-co
   assert.doesNotMatch(files.cabinetView, /Portable software layer for agents, jobs, and knowledge\./);
 });
 
+test("getMessage returns localized cabinet calendar chrome copy for the next follow-up batch", () => {
+  assert.equal(getMessage("cabinets.home.day", "zh"), "日");
+  assert.equal(getMessage("cabinets.home.week", "zh"), "周");
+  assert.equal(getMessage("cabinets.home.month", "zh"), "月");
+  assert.equal(getMessage("cabinets.calendar.monday", "zh"), "周一");
+  assert.equal(getMessage("cabinets.calendar.sunday", "zh"), "周日");
+  assert.equal(getMessage("cabinets.calendar.january", "zh"), "1月");
+  assert.equal(getMessage("cabinets.calendar.april", "zh"), "4月");
+  assert.equal(getMessage("cabinets.calendar.more", "zh"), "更多");
+  assert.equal(getMessage("cabinets.scheduler.menu.stopDescription", "zh"), "暂停心跳与 cron 任务");
+});
+
+test("covered cabinet calendar components use locale message keys instead of hard-coded calendar copy", async () => {
+  const fs = await import("node:fs/promises");
+  const files = {
+    cabinetView: await fs.readFile(new URL("../src/components/cabinets/cabinet-view.tsx", import.meta.url), "utf8"),
+    scheduleCalendar: await fs.readFile(new URL("../src/components/cabinets/schedule-calendar.tsx", import.meta.url), "utf8"),
+    cabinetSchedulerControls: await fs.readFile(new URL("../src/components/cabinets/cabinet-scheduler-controls.tsx", import.meta.url), "utf8"),
+  };
+
+  assert.match(files.cabinetView, /t\("cabinets\.home\.day"\)/);
+  assert.match(files.cabinetView, /t\("cabinets\.home\.week"\)/);
+  assert.match(files.cabinetView, /t\("cabinets\.home\.month"\)/);
+  assert.doesNotMatch(files.cabinetView, />day</);
+  assert.doesNotMatch(files.cabinetView, />week</);
+  assert.doesNotMatch(files.cabinetView, />month</);
+
+  assert.match(files.scheduleCalendar, /useLocale\(\)/);
+  assert.match(files.scheduleCalendar, /t\("cabinets\.calendar\.monday"\)/);
+  assert.match(files.scheduleCalendar, /t\("cabinets\.calendar\.january"\)/);
+  assert.match(files.scheduleCalendar, /t\("cabinets\.calendar\.more"\)/);
+
+  assert.match(files.cabinetSchedulerControls, /t\("cabinets\.scheduler\.menu\.stopDescription"\)/);
+});
+
+test("getMessage returns localized cabinet dialog and header chrome copy for the next follow-up batch", () => {
+  assert.equal(getMessage("cabinets.header.scope", "zh"), "范围");
+  assert.equal(getMessage("cabinets.dialog.jobFallback", "zh"), "Job");
+  assert.equal(getMessage("cabinets.dialog.runNow", "zh"), "立即运行");
+  assert.equal(getMessage("cabinets.dialog.schedule", "zh"), "调度");
+  assert.equal(getMessage("cabinets.dialog.prompt", "zh"), "提示词");
+  assert.equal(getMessage("cabinets.dialog.jobPromptPlaceholder", "zh"), "这个 job 应该做什么？");
+  assert.equal(getMessage("cabinets.dialog.enabled", "zh"), "已启用");
+  assert.equal(getMessage("cabinets.dialog.cancel", "zh"), "取消");
+  assert.equal(getMessage("cabinets.dialog.saving", "zh"), "保存中... ");
+  assert.equal(getMessage("cabinets.dialog.save", "zh"), "保存");
+  assert.equal(getMessage("cabinets.dialog.heartbeatTitle", "zh"), "Heartbeat");
+  assert.equal(getMessage("cabinets.dialog.active", "zh"), "运行中");
+});
+
+test("covered cabinet dialog and header components use locale message keys instead of hard-coded chrome copy", async () => {
+  const fs = await import("node:fs/promises");
+  const file = await fs.readFile(new URL("../src/components/cabinets/cabinet-view.tsx", import.meta.url), "utf8");
+
+  assert.match(file, /t\("cabinets\.header\.scope"\)/);
+  assert.match(file, /t\("cabinets\.dialog\.jobFallback"\)/);
+  assert.match(file, /t\("cabinets\.dialog\.runNow"\)/);
+  assert.match(file, /t\("cabinets\.dialog\.schedule"\)/);
+  assert.match(file, /t\("cabinets\.dialog\.prompt"\)/);
+  assert.match(file, /t\("cabinets\.dialog\.jobPromptPlaceholder"\)/);
+  assert.match(file, /t\("cabinets\.dialog\.enabled"\)/);
+  assert.match(file, /t\("cabinets\.dialog\.cancel"\)/);
+  assert.match(file, /t\("cabinets\.dialog\.saving"\)/);
+  assert.match(file, /t\("cabinets\.dialog\.save"\)/);
+  assert.match(file, /t\("cabinets\.dialog\.heartbeatTitle"\)/);
+  assert.match(file, /t\("cabinets\.dialog\.active"\)/);
+  assert.doesNotMatch(file, />Scope</);
+  assert.doesNotMatch(file, /\|\| "Job"/);
+  assert.doesNotMatch(file, />Run now</);
+  assert.doesNotMatch(file, />Schedule</);
+  assert.doesNotMatch(file, />Prompt</);
+  assert.doesNotMatch(file, /What should this job do\?/);
+  assert.doesNotMatch(file, />Enabled</);
+  assert.doesNotMatch(file, />Cancel</);
+  assert.doesNotMatch(file, /"Saving\.\.\."/);
+  assert.doesNotMatch(file, />Save</);
+  assert.doesNotMatch(file, />Heartbeat</);
+  assert.doesNotMatch(file, />Active</);
+});
+
+test("getMessage returns localized cabinet status card and schedules panel copy for the next follow-up batch", () => {
+  assert.equal(getMessage("cabinets.status.never", "zh"), "从未");
+  assert.equal(getMessage("cabinets.status.justNow", "zh"), "刚刚");
+  assert.equal(formatMessage("cabinets.status.minutesAgo", "zh", { count: 5 }), "5 分钟前");
+  assert.equal(getMessage("cabinets.status.running", "zh"), "运行中");
+  assert.equal(getMessage("cabinets.status.idle", "zh"), "空闲");
+  assert.equal(getMessage("cabinets.status.paused", "zh"), "已暂停");
+  assert.equal(getMessage("cabinets.status.noRecentActivity", "zh"), "还没有最近活动");
+  assert.equal(formatMessage("cabinets.status.taskCount", "zh", { count: 2, suffix: "" }), "2 个任务");
+  assert.equal(formatMessage("cabinets.status.sendTask", "zh", { name: "Ada" }), "给 Ada 发送任务");
+  assert.equal(getMessage("cabinets.grid.title", "zh"), "Agents");
+  assert.equal(getMessage("cabinets.grid.empty", "zh"), "这个 cabinet 还没有配置 agents。");
+  assert.equal(formatMessage("cabinets.grid.depth", "zh", { depth: 2 }), "深度 2");
+  assert.equal(getMessage("cabinets.schedules.title", "zh"), "Jobs 与 heartbeats");
+  assert.equal(formatMessage("cabinets.schedules.summary", "zh", { jobs: 3, heartbeats: 2 }), "当前范围内有 3 个 scheduled jobs 和 2 个 active heartbeats。 ");
+  assert.equal(getMessage("cabinets.schedules.jobsHeading", "zh"), "Scheduled jobs");
+  assert.equal(getMessage("cabinets.schedules.heartbeatsHeading", "zh"), "Heartbeats");
+  assert.equal(getMessage("cabinets.schedules.noJobs", "zh"), "这个 cabinet 还没有配置 jobs。");
+  assert.equal(getMessage("cabinets.schedules.noHeartbeats", "zh"), "还没有配置 heartbeats。");
+  assert.equal(getMessage("cabinets.schedules.enabled", "zh"), "开启");
+  assert.equal(getMessage("cabinets.schedules.disabled", "zh"), "关闭");
+});
+
+test("covered cabinet status card and schedules panel components use locale message keys instead of hard-coded copy", async () => {
+  const fs = await import("node:fs/promises");
+  const files = {
+    agentStatusCard: await fs.readFile(new URL("../src/components/cabinets/agent-status-card.tsx", import.meta.url), "utf8"),
+    agentStatusGrid: await fs.readFile(new URL("../src/components/cabinets/agent-status-grid.tsx", import.meta.url), "utf8"),
+    schedulesPanel: await fs.readFile(new URL("../src/components/cabinets/schedules-panel.tsx", import.meta.url), "utf8"),
+  };
+
+  assert.match(files.agentStatusCard, /useLocale\(\)/);
+  assert.match(files.agentStatusCard, /t\("cabinets\.status\.running"\)/);
+  assert.match(files.agentStatusCard, /t\("cabinets\.status\.noRecentActivity"\)/);
+  assert.match(files.agentStatusCard, /format\("cabinets\.status\.sendTask"/);
+  assert.doesNotMatch(files.agentStatusCard, />Running</);
+  assert.doesNotMatch(files.agentStatusCard, />Idle</);
+  assert.doesNotMatch(files.agentStatusCard, />Paused</);
+  assert.doesNotMatch(files.agentStatusCard, /No recent activity/);
+  assert.doesNotMatch(files.agentStatusCard, /Send task to \$\{agent\.name\}/);
+
+  assert.match(files.agentStatusGrid, /useLocale\(\)/);
+  assert.match(files.agentStatusGrid, /t\("cabinets\.grid\.title"\)/);
+  assert.match(files.agentStatusGrid, /t\("cabinets\.grid\.empty"\)/);
+  assert.match(files.agentStatusGrid, /format\("cabinets\.grid\.depth"/);
+  assert.doesNotMatch(files.agentStatusGrid, />Agents</);
+  assert.doesNotMatch(files.agentStatusGrid, /No agents configured for this cabinet yet\./);
+  assert.doesNotMatch(files.agentStatusGrid, /depth \$\{child\.cabinetDepth \?\? 1\}/);
+
+  assert.match(files.schedulesPanel, /useLocale\(\)/);
+  assert.match(files.schedulesPanel, /t\("cabinets\.schedules\.title"\)/);
+  assert.match(files.schedulesPanel, /format\("cabinets\.schedules\.summary"/);
+  assert.match(files.schedulesPanel, /t\("cabinets\.schedules\.enabled"\)/);
+  assert.doesNotMatch(files.schedulesPanel, />Jobs and heartbeats</);
+  assert.doesNotMatch(files.schedulesPanel, /No cabinet jobs configured yet\./);
+  assert.doesNotMatch(files.schedulesPanel, /No heartbeats configured yet\./);
+  assert.doesNotMatch(files.schedulesPanel, /job\.enabled \? "On" : "Off"/);
+});
+
 test("getMessage returns key when missing from all locales", () => {
   assert.equal(getMessage("missing.key" as never, "zh" satisfies Locale), "missing.key");
 });

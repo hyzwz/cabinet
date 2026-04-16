@@ -2,17 +2,23 @@
 
 import { Clock3, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/i18n/locale-provider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import type { CabinetAgentSummary, CabinetJobSummary } from "@/types/cabinets";
 
-function timeAgo(dateStr?: string): string {
-  if (!dateStr) return "never";
+function timeAgo(
+  dateStr: string | undefined,
+  format: (key: MessageKey, values: Record<string, string | number>) => string,
+  t: (key: MessageKey) => string
+): string {
+  if (!dateStr) return t("cabinets.status.never");
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("cabinets.status.justNow");
+  if (mins < 60) return format("cabinets.status.minutesAgo", { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 24) return format("cabinets.status.hoursAgo", { count: hours });
+  return format("cabinets.status.daysAgo", { count: Math.floor(hours / 24) });
 }
 
 export interface AgentConversationInfo {
@@ -36,6 +42,7 @@ export function AgentStatusCard({
 }) {
   const isRunning = latestConversation?.status === "running";
   const jobCount = jobs.length;
+  const { t, format } = useLocale();
 
   return (
     <div
@@ -82,7 +89,7 @@ export function AgentStatusCard({
                   : "text-amber-500/70"
               )}
             >
-              {isRunning ? "Running" : agent.active ? "Idle" : "Paused"}
+              {isRunning ? t("cabinets.status.running") : agent.active ? t("cabinets.status.idle") : t("cabinets.status.paused")}
             </span>
           </div>
         </div>
@@ -100,7 +107,7 @@ export function AgentStatusCard({
               &ldquo;{latestConversation.title}&rdquo;
             </p>
           ) : (
-            <p className="text-[11px] text-muted-foreground/40">No recent activity</p>
+            <p className="text-[11px] text-muted-foreground/40">{t("cabinets.status.noRecentActivity")}</p>
           )}
         </div>
       </button>
@@ -108,7 +115,7 @@ export function AgentStatusCard({
       {/* Footer: time + jobs + send */}
       <div className="flex items-center gap-2 border-t border-border/40 px-3.5 py-2">
         <span className="text-[10px] tabular-nums text-muted-foreground/60">
-          {latestConversation ? timeAgo(latestConversation.startedAt) : "—"}
+          {latestConversation ? timeAgo(latestConversation.startedAt, format, t) : "—"}
         </span>
 
         {jobCount > 0 && (
@@ -120,7 +127,7 @@ export function AgentStatusCard({
 
         {agent.taskCount > 0 && (
           <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-            {agent.taskCount} task{agent.taskCount === 1 ? "" : "s"}
+            {format("cabinets.status.taskCount", { count: agent.taskCount, suffix: t(agent.taskCount === 1 ? "cabinets.status.taskCountSuffix.one" : "cabinets.status.taskCountSuffix.other") })}
           </span>
         )}
 
@@ -134,8 +141,8 @@ export function AgentStatusCard({
               onSend();
             }}
             className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/40 opacity-0 transition-all group-hover:opacity-100 hover:bg-muted/50 hover:text-foreground"
-            aria-label={`Send task to ${agent.name}`}
-            title={`Send task to ${agent.name}`}
+            aria-label={format("cabinets.status.sendTask", { name: agent.name })}
+            title={format("cabinets.status.sendTask", { name: agent.name })}
           >
             <Send className="h-3 w-3" />
           </button>

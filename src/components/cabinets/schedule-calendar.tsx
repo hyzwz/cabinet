@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/i18n/locale-provider";
 import {
   getScheduleEvents,
   getViewRange,
@@ -17,11 +18,6 @@ const PILL_HEIGHT = 22;
 const VISIBLE_START_HOUR = 5; // 5 AM
 const VISIBLE_END_HOUR = 23; // 11 PM
 const TOTAL_HOURS = VISIBLE_END_HOUR - VISIBLE_START_HOUR;
-const DAY_NAMES_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
 
 /* ─── Helpers ─── */
 
@@ -102,17 +98,18 @@ function EventPill({
 function TimeGridView({
   events,
   days,
-  fullscreen,
   onEventClick,
+  dayNamesShort,
 }: {
   events: ScheduleEvent[];
   days: Date[];
-  fullscreen?: boolean;
   onEventClick: (event: ScheduleEvent) => void;
+  dayNamesShort: string[];
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState(() => new Date());
   const isMultiDay = days.length > 1;
+  const firstDayTime = days[0]?.getTime();
 
   // Update current time
   useEffect(() => {
@@ -125,7 +122,7 @@ function TimeGridView({
     const hour = new Date().getHours();
     const target = Math.max(0, (hour - VISIBLE_START_HOUR - 1) * HOUR_HEIGHT);
     scrollRef.current?.scrollTo({ top: target, behavior: "smooth" });
-  }, [days[0]?.getTime()]);
+  }, [firstDayTime]);
 
   // Group events by day column
   const dayColumns = useMemo(() => {
@@ -179,7 +176,7 @@ function TimeGridView({
               )}
             >
               <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                {DAY_NAMES_SHORT[day.getDay() === 0 ? 6 : day.getDay() - 1]}
+                {dayNamesShort[day.getDay() === 0 ? 6 : day.getDay() - 1]}
               </div>
               <div
                 className={cn(
@@ -303,11 +300,15 @@ function MonthView({
   anchor,
   onEventClick,
   onDayClick,
+  dayNamesShort,
+  moreLabel,
 }: {
   events: ScheduleEvent[];
   anchor: Date;
   onEventClick: (event: ScheduleEvent) => void;
   onDayClick: (date: Date) => void;
+  dayNamesShort: string[];
+  moreLabel: string;
 }) {
   const now = new Date();
   const year = anchor.getFullYear();
@@ -365,7 +366,7 @@ function MonthView({
     <div className="flex h-full flex-col overflow-hidden">
       {/* Day name headers */}
       <div className="grid grid-cols-7 border-b border-border/50 bg-muted/20">
-        {DAY_NAMES_SHORT.map((name) => (
+        {dayNamesShort.map((name) => (
           <div
             key={name}
             className="border-r border-border/30 px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 last:border-r-0"
@@ -435,7 +436,7 @@ function MonthView({
                 })}
                 {display.length > maxShow && (
                   <div className="px-1 text-[9px] text-muted-foreground/60">
-                    +{display.length - maxShow} more
+                    +{display.length - maxShow} {moreLabel}
                   </div>
                 )}
               </div>
@@ -459,6 +460,32 @@ export function ScheduleCalendar({
   onEventClick,
   onDayClick,
 }: ScheduleCalendarProps) {
+  const { t } = useLocale();
+  void fullscreen;
+  const dayNamesShort = [
+    t("cabinets.calendar.monday"),
+    t("cabinets.calendar.tuesday"),
+    t("cabinets.calendar.wednesday"),
+    t("cabinets.calendar.thursday"),
+    t("cabinets.calendar.friday"),
+    t("cabinets.calendar.saturday"),
+    t("cabinets.calendar.sunday"),
+  ];
+  const monthNames = [
+    t("cabinets.calendar.january"),
+    t("cabinets.calendar.february"),
+    t("cabinets.calendar.march"),
+    t("cabinets.calendar.april"),
+    t("cabinets.calendar.may"),
+    t("cabinets.calendar.june"),
+    t("cabinets.calendar.july"),
+    t("cabinets.calendar.august"),
+    t("cabinets.calendar.september"),
+    t("cabinets.calendar.october"),
+    t("cabinets.calendar.november"),
+    t("cabinets.calendar.december"),
+  ];
+  void monthNames;
   const { start, end } = useMemo(() => getViewRange(mode, anchor), [mode, anchor]);
 
   const events = useMemo(
@@ -485,6 +512,8 @@ export function ScheduleCalendar({
         anchor={anchor}
         onEventClick={onEventClick}
         onDayClick={onDayClick}
+        dayNamesShort={dayNamesShort}
+        moreLabel={t("cabinets.calendar.more")}
       />
     );
   }
@@ -493,8 +522,8 @@ export function ScheduleCalendar({
     <TimeGridView
       events={events}
       days={days}
-      fullscreen={fullscreen}
       onEventClick={onEventClick}
+      dayNamesShort={dayNamesShort}
     />
   );
 }

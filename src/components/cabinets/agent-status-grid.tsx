@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FolderTree } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CABINET_VISIBILITY_OPTIONS } from "@/lib/cabinets/visibility";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { sortOrgAgents, startCase } from "./cabinet-utils";
 import { AgentStatusCard } from "./agent-status-card";
 import type { AgentConversationInfo } from "./agent-status-card";
@@ -38,6 +39,7 @@ export function AgentStatusGrid({
   onAgentSend,
   onChildCabinetClick,
 }: AgentStatusGridProps) {
+  const { t, format } = useLocale();
   const [conversationMap, setConversationMap] = useState<
     Map<string, AgentConversationInfo>
   >(new Map());
@@ -71,9 +73,12 @@ export function AgentStatusGrid({
   }, [cabinetPath, visibilityMode]);
 
   useEffect(() => {
-    void fetchConversations();
+    const initialLoad = setTimeout(() => void fetchConversations(), 0);
     const iv = setInterval(() => void fetchConversations(), 8000);
-    return () => clearInterval(iv);
+    return () => {
+      clearTimeout(initialLoad);
+      clearInterval(iv);
+    };
   }, [fetchConversations]);
 
   const sorted = useMemo(() => [...agents].sort(sortOrgAgents), [agents]);
@@ -116,7 +121,7 @@ export function AgentStatusGrid({
       {/* Section header with depth filter */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-[1.65rem] font-semibold tracking-tight text-foreground">
-          Agents
+          {t("cabinets.grid.title")}
         </h2>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/55">
@@ -142,7 +147,7 @@ export function AgentStatusGrid({
       {/* Agent cards grid */}
       {sorted.length === 0 ? (
         <p className="py-6 text-sm text-muted-foreground">
-          No agents configured for this cabinet yet.
+          {t("cabinets.grid.empty")}
         </p>
       ) : hasDepartments ? (
         <div className="space-y-6">
@@ -199,7 +204,7 @@ export function AgentStatusGrid({
               <div>
                 <p className="text-[12px] font-medium text-foreground">{child.name}</p>
                 <p className="text-[10px] text-muted-foreground">
-                  depth {child.cabinetDepth ?? 1}
+                  {format("cabinets.grid.depth", { depth: child.cabinetDepth ?? 1 })}
                 </p>
               </div>
             </button>

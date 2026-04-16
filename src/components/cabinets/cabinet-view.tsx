@@ -579,24 +579,36 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
   }
 
   const calendarLabel = useMemo(() => {
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const calendarMonthNames = [
+      t("cabinets.calendar.january"),
+      t("cabinets.calendar.february"),
+      t("cabinets.calendar.march"),
+      t("cabinets.calendar.april"),
+      t("cabinets.calendar.may"),
+      t("cabinets.calendar.june"),
+      t("cabinets.calendar.july"),
+      t("cabinets.calendar.august"),
+      t("cabinets.calendar.september"),
+      t("cabinets.calendar.october"),
+      t("cabinets.calendar.november"),
+      t("cabinets.calendar.december"),
+    ];
     if (calendarMode === "day") {
       return calendarAnchor.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     }
     if (calendarMode === "month") {
-      return `${months[calendarAnchor.getMonth()]} ${calendarAnchor.getFullYear()}`;
+      return `${calendarMonthNames[calendarAnchor.getMonth()]} ${calendarAnchor.getFullYear()}`;
     }
-    // week: show range
     const start = new Date(calendarAnchor);
     const dow = start.getDay();
     start.setDate(start.getDate() - (dow === 0 ? 6 : dow - 1));
     const end = new Date(start);
     end.setDate(end.getDate() + 6);
     if (start.getMonth() === end.getMonth()) {
-      return `${months[start.getMonth()]} ${start.getDate()}–${end.getDate()}, ${start.getFullYear()}`;
+      return `${calendarMonthNames[start.getMonth()]} ${start.getDate()}–${end.getDate()}, ${start.getFullYear()}`;
     }
-    return `${months[start.getMonth()]} ${start.getDate()} – ${months[end.getMonth()]} ${end.getDate()}`;
-  }, [calendarAnchor, calendarMode]);
+    return `${calendarMonthNames[start.getMonth()]} ${start.getDate()} – ${calendarMonthNames[end.getMonth()]} ${end.getDate()}`;
+  }, [calendarAnchor, calendarMode, t]);
 
   const sectionSurfaces = {
     overview: "color-mix(in oklch, var(--background) 95%, var(--muted) 5%)",
@@ -641,7 +653,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
 
           <div className="flex shrink-0 items-center gap-2">
             <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/55">
-              Scope
+              {t("cabinets.header.scope")}
             </span>
             {CABINET_VISIBILITY_OPTIONS.map((option) => (
               <button
@@ -811,7 +823,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                       <div className="flex items-center rounded-lg border border-border/60 p-0.5">
                         {(["day", "week", "month"] as CalendarMode[]).map((m) => (
                           <button
-                            key={m}
+                            key={m === "day" ? t("cabinets.home.day") : m === "week" ? t("cabinets.home.week") : t("cabinets.home.month")}
                             onClick={() => setCalendarMode(m)}
                             className={cn(
                               "rounded-md px-2.5 py-1 text-[11px] font-medium capitalize transition-colors",
@@ -820,7 +832,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                                 : "text-muted-foreground hover:text-foreground"
                             )}
                           >
-                            {m}
+                            {m === "day" ? t("cabinets.home.day") : m === "week" ? t("cabinets.home.week") : t("cabinets.home.month")}
                           </button>
                         ))}
                       </div>
@@ -936,7 +948,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
               <div className="flex items-center justify-between gap-3 pr-10">
                 <DialogTitle className="flex items-center gap-2">
                   <Clock3 className="h-4 w-4 text-emerald-400" />
-                  {jobDialog.draft.name || "Job"}
+                  {jobDialog.draft.name || t("cabinets.dialog.jobFallback")}
                   <span className="text-[11px] font-normal text-muted-foreground">· {jobDialog.agentName}</span>
                 </DialogTitle>
                 <Button
@@ -947,13 +959,13 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                   disabled={dialogRunning}
                 >
                   {dialogRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-                  Run now
+                  {t("cabinets.dialog.runNow")}
                 </Button>
               </div>
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Schedule</span>
+                <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{t("cabinets.dialog.schedule")}</span>
                 <SchedulePicker
                   value={jobDialog.draft.schedule || "0 9 * * 1-5"}
                   onChange={(cron) =>
@@ -964,7 +976,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                 />
               </div>
               <div className="space-y-1.5">
-                <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Prompt</span>
+                <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{t("cabinets.dialog.prompt")}</span>
                 <textarea
                   value={jobDialog.draft.prompt}
                   onChange={(e) =>
@@ -973,7 +985,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                     )
                   }
                   className="h-48 w-full resize-none rounded-lg bg-muted/60 px-3 py-2 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:bg-muted"
-                  placeholder="What should this job do?"
+                  placeholder={t("cabinets.dialog.jobPromptPlaceholder")}
                 />
               </div>
               <div className="flex items-center justify-between border-t border-border pt-3">
@@ -987,11 +999,11 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                       )
                     }
                   />
-                  Enabled
+                  {t("cabinets.dialog.enabled")}
                 </label>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setJobDialog(null)}>
-                    Cancel
+                    {t("cabinets.dialog.cancel")}
                   </Button>
                   <Button
                     size="sm"
@@ -1000,7 +1012,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                     disabled={dialogSaving}
                   >
                     <Save className="h-3.5 w-3.5" />
-                    {dialogSaving ? "Saving..." : "Save"}
+                    {dialogSaving ? t("cabinets.dialog.saving") : t("cabinets.dialog.save")}
                   </Button>
                 </div>
               </div>
@@ -1017,7 +1029,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
               <div className="flex items-center justify-between gap-3 pr-10">
                 <DialogTitle className="flex items-center gap-2">
                   <HeartPulse className="h-4 w-4 text-pink-400" />
-                  Heartbeat
+                  {t("cabinets.dialog.heartbeatTitle")}
                   <span className="text-[11px] font-normal text-muted-foreground">· {heartbeatDialog.agentName}</span>
                 </DialogTitle>
                 <Button
@@ -1028,13 +1040,13 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                   disabled={dialogRunning}
                 >
                   {dialogRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-                  Run now
+                  {t("cabinets.dialog.runNow")}
                 </Button>
               </div>
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Schedule</span>
+                <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{t("cabinets.dialog.schedule")}</span>
                 <SchedulePicker
                   value={heartbeatDialog.heartbeat}
                   onChange={(cron) =>
@@ -1054,11 +1066,11 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                     }
                     className="h-3.5 w-3.5 cursor-pointer appearance-none rounded-sm border border-border bg-background transition-colors checked:border-primary checked:bg-primary focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1"
                   />
-                  Active
+                  {t("cabinets.dialog.active")}
                 </label>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setHeartbeatDialog(null)}>
-                    Cancel
+                    {t("cabinets.dialog.cancel")}
                   </Button>
                   <Button
                     size="sm"
@@ -1067,7 +1079,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                     disabled={dialogSaving}
                   >
                     <Save className="h-3.5 w-3.5" />
-                    {dialogSaving ? "Saving..." : "Save"}
+                    {dialogSaving ? t("cabinets.dialog.saving") : t("cabinets.dialog.save")}
                   </Button>
                 </div>
               </div>

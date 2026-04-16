@@ -1,7 +1,7 @@
 ---
 title: CEO Updates
 created: '2026-04-12T00:00:00Z'
-modified: '2026-04-13T00:00:00Z'
+modified: '2026-04-16T00:00:00Z'
 tags:
   - leadership
   - updates
@@ -10,6 +10,28 @@ order: 5
 # CEO Updates
 
 Weekly leadership updates from the CEO. Each entry covers what matters this week, what's at risk, and what each team should focus on.
+
+---
+
+## Today — April 16, 2026
+
+### The Big Things Today
+
+1. **This is the make-or-break execution day for the April 14 sprint.** The sprint plan for `app-development/backlog/sprint-2026-04-14/index.md` says this week should ship four small items (OB-2, OB-5, OB-6, PC-3), start two bigger ones (OB-1, OB-3), and document RT-4 findings by Friday. If nothing is visibly shipped by today, the company is heading toward a third straight week of strong planning and weak execution.
+
+2. **Marketing activation should already be producing visible output.** Leadership formally chose Option A and activated both TikTok and Reddit on April 13. The goals page says first outputs were expected Monday April 14, and the weekly checkpoints call for a first TikTok content brief, first Reddit monitored thread, and a Friday Reddit→TikTok handoff note. Today's question is not whether marketing should start — it is whether the activation produced artifacts.
+
+3. **RT-4 remains the highest-leverage technical risk.** The reminder-timing bug still blocks P2, which in turn delays P3 and P4. The CTO already framed this as either a bounded local-scheduling fix or a larger architecture change toward server-triggered push. That finding is due Friday, so today is the last full working day to make sure the investigation is converging on an answer.
+
+### What Matters Most Right Now
+
+- **Product:** prove the sprint is real by shipping at least one low-risk item through the pipeline.
+- **Marketing:** show the first concrete artifacts from the newly activated TikTok and Reddit cabinets.
+- **Leadership:** verify that Friday's RT-4 writeup and sprint scorecard will actually exist.
+
+### CEO Read
+
+The big picture has not changed: the company already has strategy, PRDs, backlog grooming, and a staffed team. The live question for today is whether those plans are finally converting into visible outputs. If yes, the week can still count as the moment execution started. If no, the April 26 checkpoint will have to shift from growth planning to target revision and accountability.
 
 ---
 

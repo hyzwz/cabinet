@@ -757,7 +757,12 @@ export function SettingsPage() {
                                     const disabledProviderIds = providers
                                       .filter((p) => !p.enabled && p.id !== provider.id)
                                       .map((p) => p.id);
-                                    void saveProviderSettings(provider.id, disabledProviderIds);
+                                    const oldDefault = defaultProvider;
+                                    const oldDefaultUsage = providers.find((p) => p.id === oldDefault)?.usage;
+                                    const migrations = (oldDefaultUsage?.totalCount ?? 0) > 0
+                                      ? [{ fromProviderId: oldDefault, toProviderId: provider.id }]
+                                      : [];
+                                    void saveProviderSettings(provider.id, disabledProviderIds, migrations);
                                   }}
                                   disabled={savingProviders}
                                   className={cn(

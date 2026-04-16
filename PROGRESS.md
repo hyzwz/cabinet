@@ -3,6 +3,8 @@
 [2026-04-15] Localized the Tasks workspace core demo copy in tasks-board.tsx, including the board filters/loading state, schedule controls/dialog labels, and first-screen summaries via the shared zh/en message catalog. This keeps Tasks board and schedule surfaces on the demo path locale-aware with English fallback while staying scoped to the existing i18n layer.
 [2026-04-15] Fixed the Tasks workspace typecheck regression by restoring the board scope label to use the existing visibility option label lookup instead of passing unsupported arguments through the locale helper. This keeps the change narrowly scoped to the Tasks board locale wiring and unblocks workspace-tasks-core-copy validation.
 
+[2026-04-16] Updated the Text Your Mom CEO updates page with a same-day executive readout for Apr 16, highlighting the three biggest priorities: proving the April 14 sprint is shipping, validating that marketing activation is producing artifacts, and keeping the RT-4 investigation on track for Friday's decision point.
+
 # Progress
 
 [2026-04-15] Added the demo i18n foundation: a lightweight client-side locale provider with persisted `zh`/`en` state, English fallback message lookup, and automatic `html lang` synchronization. Added a visible language switcher next to the theme control across shared header chrome, and wired the login surface to use localized copy before authentication without affecting theme persistence.
@@ -346,3 +348,6 @@
 [2026-04-16] Localized the next cabinet chrome batch in the header scope pill and job/heartbeat dialogs, covering run/save/cancel labels, prompt and schedule captions, enabled/active toggles, and fallback job title, with regression coverage added to the core i18n suite.
 
 [2026-04-16] Fixed Hermes Agent not selectable in Settings UI. Root cause: Docker container had old build without hermes-cli registered in provider-registry. Added .worktrees to .dockerignore (was causing "no space left on device"), freed 31GB Docker cache, rebuilt container. All 3 providers now selectable in UI.
+[2026-04-16] Localized cabinet status cards and schedules panel copy, including relative activity timestamps, task badges, child cabinet depth labels, and jobs/heartbeats summaries. Added regression coverage for the new cabinet i18n keys and aligned the status grid effect with the current react-hooks lint rule.
+
+[2026-04-16] Fixed switching default provider not migrating existing agent assignments. When changing default provider in settings, all agents assigned to the old default are now automatically migrated to the new provider. Root cause: each agent persona.md had hardcoded provider field, and the default switch only changed settings but not agent assignments.
