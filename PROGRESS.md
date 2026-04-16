@@ -342,3 +342,7 @@
 [2026-04-16] Localized the remaining cabinet home shell copy covering the headline, board description fallback, org chart heading, agents workspace CTA, loading state, and schedule toolbar labels, with regression coverage added to the core i18n test suite.
 
 [2026-04-16] Integrated Hermes Agent as third provider engine (alongside Claude Code and Codex CLI). New file hermes-cli.ts implements AgentProvider with one-shot CLI PTY mode (hermes chat --yolo -Q -q). Health check parses hermes status for API key presence and hermes --version for version. Added hermes venv paths to RUNTIME_PATH and enrichedPath. All three providers now detected: claude-code, codex-cli, hermes-cli.
+[2026-04-16] Localized the remaining cabinet schedule chrome for the day/week/month toggle, month and weekday labels, calendar overflow badge, and scheduler stop description, with regression coverage added for the calendar surfaces.
+[2026-04-16] Localized the next cabinet chrome batch in the header scope pill and job/heartbeat dialogs, covering run/save/cancel labels, prompt and schedule captions, enabled/active toggles, and fallback job title, with regression coverage added to the core i18n suite.
+
+[2026-04-16] Fixed Hermes Agent not selectable in Settings UI. Root cause: Docker container had old build without hermes-cli registered in provider-registry. Added .worktrees to .dockerignore (was causing "no space left on device"), freed 31GB Docker cache, rebuilt container. All 3 providers now selectable in UI.
