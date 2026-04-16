@@ -47,9 +47,20 @@ export async function middleware(req: NextRequest) {
   const password = process.env.KB_PASSWORD || "";
   const hasUsers = usersExist();
 
-  // No auth configured at all — allow everything
+  // No auth configured at all — need first-user setup
+  // Allow access to login page and auth APIs for registration, block everything else
   if (!password && !hasUsers) {
-    return NextResponse.next();
+    const p = req.nextUrl.pathname;
+    if (
+      p === "/login" ||
+      p.startsWith("/api/auth/") ||
+      p.startsWith("/api/health") ||
+      p.startsWith("/_next/") ||
+      p === "/favicon.ico"
+    ) {
+      return NextResponse.next();
+    }
+    return authFailed(req, p);
   }
 
   const { pathname } = req.nextUrl;
