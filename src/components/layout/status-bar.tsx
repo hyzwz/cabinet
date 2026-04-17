@@ -328,7 +328,7 @@ export function StatusBar() {
                   void handleAISubmit();
                 }
               }}
-              placeholder="How to edit this page?"
+              placeholder={t("layout.status.aiPlaceholder")}
               className="flex-1 bg-transparent text-[11px] text-foreground placeholder:text-muted-foreground/40 outline-none min-w-0"
             />
             <button
@@ -368,7 +368,7 @@ export function StatusBar() {
                 ? t("layout.status.health.daemonDown")
                 : t("layout.status.health.noProviders")
             }
-            aria-label="Server status — click for details"
+            aria-label={t("layout.status.serverStatusAria")}
           >
             <span
               className={`inline-block h-2 w-2 rounded-full ${
@@ -443,7 +443,7 @@ export function StatusBar() {
                       <span className={`inline-block h-1.5 w-1.5 rounded-full shrink-0 ${
                         anyProviderReady ? "bg-green-500" : "bg-red-500"
                       }`} />
-                      <span className="font-medium text-foreground/80">Agent Providers</span>
+                      <span className="font-medium text-foreground/80">{t("layout.status.popup.providers")}</span>
                       <span className={`ml-auto ${anyProviderReady ? "text-green-500" : "text-red-500"}`}>
                         {!providersLoaded ? t("layout.status.popup.checking") : anyProviderReady ? t("layout.status.popup.available") : t("layout.status.popup.noneReady")}
                       </span>
@@ -457,9 +457,9 @@ export function StatusBar() {
                         }`} />
                         <span>{p.name}</span>
                         <span className="ml-auto">
-                          {p.available && p.authenticated ? "Ready"
-                          : p.available ? "Not logged in"
-                          : "Not installed"}
+                          {p.available && p.authenticated ? t("layout.status.popup.providerReady")
+                          : p.available ? t("layout.status.popup.providerNotLoggedIn")
+                          : t("layout.status.popup.providerNotInstalled")}
                         </span>
                       </div>
                     ))}
@@ -468,15 +468,15 @@ export function StatusBar() {
                   {/* Troubleshooting tips */}
                   {(!appAlive || !daemonAlive || !anyProviderReady) && (
                     <div className="pt-1.5 border-t border-border space-y-1">
-                      <p className="text-[10px] font-medium text-foreground/70">How to fix</p>
+                      <p className="text-[10px] font-medium text-foreground/70">{t("layout.status.popup.howToFix")}</p>
                       {(!appAlive || !daemonAlive) && (
                         installKind === "electron-macos" ? (
                           <p className="text-[10px] text-muted-foreground">
                             {!appAlive && !daemonAlive
-                              ? "Both servers are down. Try quitting and reopening the Cabinet app."
+                              ? t("layout.status.popup.bothDown")
                               : !appAlive
-                              ? "The app server is not responding. Try quitting and reopening the Cabinet app."
-                              : "The background daemon is not running. Try quitting and reopening the Cabinet app. If the issue persists, check Activity Monitor for stuck Cabinet processes."}
+                              ? t("layout.status.popup.appDownHelp")
+                              : t("layout.status.popup.daemonDownHelp")}
                           </p>
                         ) : installKind === "source-managed" ? (
                           <p className="text-[10px] text-muted-foreground">
@@ -512,12 +512,12 @@ export function StatusBar() {
                       )}
                       {appAlive && daemonAlive && !anyProviderReady && (
                         <p className="text-[10px] text-muted-foreground">
-                          No agent providers are installed or logged in.{" "}
+                          {t("layout.status.popup.noProvidersInstalled")}
                           <button
                             onClick={() => { setSection({ type: "settings" }); setShowServerPopup(false); }}
                             className="underline hover:text-foreground transition-colors"
                           >
-                            Configure in Settings
+                            {t("layout.status.popup.configureInSettings")}
                           </button>
                         </p>
                       )}
@@ -527,14 +527,14 @@ export function StatusBar() {
                   {/* All good state */}
                   {appAlive && daemonAlive && anyProviderReady && (
                     <p className="text-[10px] text-muted-foreground/60 pt-1 border-t border-border">
-                      Cabinet is fully operational. All features are available.
+                      {t("layout.status.popup.allFeaturesAvailable")}
                     </p>
                   )}
                 </div>
                 <button
                   onClick={() => setShowServerPopup(false)}
                   className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                  aria-label="Dismiss"
+                  aria-label={t("layout.status.popup.dismiss")}
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -545,70 +545,70 @@ export function StatusBar() {
         {currentPath && (
           <span>
             {saveStatus === "saving"
-              ? "Saving..."
+              ? t("layout.status.saving")
               : saveStatus === "saved"
-              ? "Saved"
+              ? t("layout.status.saved")
               : saveStatus === "error"
-              ? "Save failed"
-              : "Ready"}
+              ? t("layout.status.saveFailed")
+              : t("layout.status.ready")}
           </span>
         )}
         {pullStatus === "pulling" && (
           <span className="flex items-center gap-1 text-blue-400">
             <CloudDownload className="h-3 w-3 animate-pulse" />
-            Pulling...
+            {t("layout.status.pull.pulling")}
           </span>
         )}
         {pullStatus === "pulled" && (
           <span className="flex items-center gap-1 text-green-400">
             <Check className="h-3 w-3" />
-            Updated from remote
+            {t("layout.status.pull.updated")}
           </span>
         )}
         {pullStatus === "up-to-date" && (
           <span className="flex items-center gap-1 text-muted-foreground/60">
             <Check className="h-3 w-3" />
-            Up to date
+            {t("layout.status.pull.upToDate")}
           </span>
         )}
         {pullStatus === "error" && (
           <span className="flex items-center gap-1 text-red-400">
-            Pull failed
+            {t("layout.status.pull.failed")}
           </span>
         )}
         {update?.updateStatus.state === "restart-required" && (
           <button
             onClick={() => setSection({ type: "settings" })}
             className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-amber-600 hover:bg-muted hover:text-foreground transition-colors"
-            title="Open Settings to review the installed update"
+            title={t("layout.status.restartSettingsTitle")}
           >
             <CloudDownload className="h-3 w-3" />
-            Restart to finish update
+            {t("layout.status.restartCta")}
           </button>
         )}
         {update?.updateAvailable && update?.updateStatus.state !== "restart-required" && update.latest && (
           <button
             onClick={() => setSection({ type: "settings" })}
             className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-blue-500 hover:bg-muted hover:text-foreground transition-colors"
-            title={`Cabinet ${update.latest.version} is available`}
+            title={t("layout.status.updateAvailableTitle").replace("{version}", update.latest.version)}
           >
             <CloudDownload className="h-3 w-3" />
-            Update {update.latest.version} available
+            {t("layout.status.updateAvailableLabel").replace("{version}", update.latest.version)}
           </button>
         )}
         <span className="flex items-center gap-1">
           <GitBranch className="h-3 w-3" />
-          {uncommitted > 0 ? `${uncommitted} uncommitted` : "All committed"}
+          {uncommitted > 0 ? t("layout.status.uncommitted").replace("{count}", String(uncommitted)) : t("layout.status.allCommitted")}
         </span>
         <button
           onClick={pullAndRefresh}
           disabled={pulling}
-          aria-label="Pull latest changes from GitHub and refresh"
+          aria-label={t("layout.status.pullLatest")}
           className="flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1"
-          title="Pull latest from GitHub & refresh"
+          title={t("layout.status.pullLatestTitle")}
         >
           <RefreshCw className={`h-3 w-3 ${pulling ? "animate-spin" : ""}`} />
-          Sync
+          {t("layout.status.sync")}
         </button>
       </div>
       <div className="flex items-center gap-1.5">
@@ -616,26 +616,26 @@ export function StatusBar() {
           href={DISCORD_SUPPORT_URL}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Open Discord for support and feedback"
-          title="Support and feedback on Discord"
+          aria-label={t("layout.status.discordAria")}
+          title={t("layout.status.discord")}
           className="inline-flex items-center gap-1.5 rounded-full border border-[#5865F2]/20 bg-[#5865F2]/10 px-2.5 py-1 text-[#5865F2] transition-all hover:-translate-y-px hover:border-[#5865F2]/35 hover:bg-[#5865F2]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1"
         >
           <DiscordIcon className="h-3.5 w-3.5" />
           <span className="text-[10px] font-semibold tracking-[0.04em] text-foreground">
-            Chat
+            {t("layout.status.chat")}
           </span>
         </a>
         <a
           href={GITHUB_REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Open the Cabinet GitHub repository to contribute"
-          title="Contribute on GitHub"
+          aria-label={t("layout.status.githubAria")}
+          title={t("layout.status.github")}
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/55 px-2.5 py-1 transition-all hover:-translate-y-px hover:border-foreground/15 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1"
         >
           <GitHubIcon className="h-3.5 w-3.5" />
           <span className="text-[10px] font-semibold tracking-[0.04em] text-foreground">
-            Contribute
+            {t("layout.status.contribute")}
           </span>
         </a>
         <a

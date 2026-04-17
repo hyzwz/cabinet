@@ -69,6 +69,15 @@ export const layoutEn = {
   "layout.update.releaseNotes": "Release notes",
   "layout.notifications.completed": "Completed",
   "layout.notifications.failed": "Failed",
+  "layout.status.serverStatusAria": "Server status — click for details",
+  "layout.status.popup.bothDown": "Both servers are down. Try quitting and reopening the Cabinet app.",
+  "layout.status.popup.appDownHelp": "The app server is not responding. Try quitting and reopening the Cabinet app.",
+  "layout.status.popup.daemonDownHelp": "The background daemon is not running. Try quitting and reopening the Cabinet app. If the issue persists, check Activity Monitor for stuck Cabinet processes.",
+  "layout.status.popup.providerReady": "Ready",
+  "layout.status.popup.providerNotLoggedIn": "Not logged in",
+  "layout.status.popup.providerNotInstalled": "Not installed",
+  "layout.status.discordAria": "Open Discord for support and feedback",
+  "layout.status.githubAria": "Open the Cabinet GitHub repository to contribute",
 } as const;
 
 export const layoutZh: Partial<Record<keyof typeof layoutEn, string>> = {
@@ -138,4 +147,13 @@ export const layoutZh: Partial<Record<keyof typeof layoutEn, string>> = {
   "layout.update.releaseNotes": "发布说明",
   "layout.notifications.completed": "已完成",
   "layout.notifications.failed": "失败",
+  "layout.status.serverStatusAria": "服务器状态 — 点击查看详情",
+  "layout.status.popup.bothDown": "两个服务都已停止。请尝试退出并重新打开 Cabinet 应用。",
+  "layout.status.popup.appDownHelp": "应用服务未响应。请尝试退出并重新打开 Cabinet 应用。",
+  "layout.status.popup.daemonDownHelp": "后台 daemon 未运行。请尝试退出并重新打开 Cabinet 应用。如问题持续，请检查活动监视器中是否有卡住的 Cabinet 进程。",
+  "layout.status.popup.providerReady": "就绪",
+  "layout.status.popup.providerNotLoggedIn": "未登录",
+  "layout.status.popup.providerNotInstalled": "未安装",
+  "layout.status.discordAria": "打开 Discord 获取支持和反馈",
+  "layout.status.githubAria": "打开 Cabinet GitHub 仓库来贡献代码",
 };

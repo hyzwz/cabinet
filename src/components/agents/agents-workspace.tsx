@@ -66,6 +66,7 @@ import {
 } from "@/components/composer/task-runtime-picker";
 import { useComposer, type MentionableItem } from "@/hooks/use-composer";
 import { useLocale } from "@/components/i18n/locale-provider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import {
   formatAdapterOptionLabel,
   getAdapterOptionsForProvider,
@@ -120,11 +121,14 @@ const GENERAL_AGENT: AgentListItem = {
   body: "",
 };
 
-const TRIGGER_LABELS: Record<ConversationMeta["trigger"], string> = {
-  manual: "Manual",
-  job: "Job",
-  heartbeat: "Heartbeat",
-};
+function useTriggerLabels(): Record<ConversationMeta["trigger"], string> {
+  const { t } = useLocale();
+  return {
+    manual: t("agents.filters.manual"),
+    job: t("agents.filters.job"),
+    heartbeat: t("agents.filters.heartbeat"),
+  };
+}
 
 const TASK_CARD_TRIGGER_STYLES: Record<ConversationMeta["trigger"], string> = {
   manual: "bg-sky-500/12 text-sky-400 ring-1 ring-sky-500/20",
@@ -229,17 +233,19 @@ function isAgentWorking(agent: Pick<AgentListItem, "active" | "runningCount">): 
 
 function ActivityBeacon({
   active,
-  title = "Working",
+  title,
 }: {
   active: boolean;
   title?: string;
 }) {
+  const { t } = useLocale();
+  const resolvedTitle = title || t("agents.activity.working");
   if (!active) return null;
 
   return (
     <span
-      title={title}
-      aria-label={title}
+      title={resolvedTitle}
+      aria-label={resolvedTitle}
       className="relative inline-flex h-3.5 w-3.5 shrink-0"
     >
       <span className="absolute -inset-1 rounded-full border border-emerald-400/25 animate-ping [animation-duration:2.4s]" />
@@ -300,8 +306,18 @@ function formatRelative(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function formatTimestamp(iso?: string): string {
-  if (!iso) return "Not available";
+function formatRelativeI18n(iso: string, t: (key: MessageKey) => string): string {
+  const delta = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(delta / 60000);
+  if (minutes < 1) return t("agents.time.justNow");
+  if (minutes < 60) return t("agents.time.minutesAgo").replace("{minutes}", String(minutes));
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return t("agents.time.hoursAgo").replace("{hours}", String(hours));
+  return t("agents.time.daysAgo").replace("{days}", String(Math.floor(hours / 24)));
+}
+
+function formatTimestamp(iso?: string, notAvailable = "Not available"): string {
+  if (!iso) return notAvailable;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
   return date.toLocaleString();
@@ -475,6 +491,7 @@ export function AgentsWorkspace({
   const [orgChartHeartbeatSaving, setOrgChartHeartbeatSaving] = useState(false);
   const lastSavedSettingsRef = useRef<string | null>(null);
   const { t } = useLocale();
+  const TRIGGER_LABELS = useTriggerLabels();
   const conversationsPanel = useHorizontalResize(340, 260, 520, "right");
   const treeNodes = useTreeStore((state) => state.nodes);
   const section = useAppStore((state) => state.section);
@@ -1170,7 +1187,7 @@ export function AgentsWorkspace({
           return;
         }
         setAgentFlowError(
-          await readErrorMessage(res, `Unable to add ${template.name} right now.`)
+          await readErrorMessage(res, t("agents.library.loadError"))
         );
         return;
       }
@@ -1181,7 +1198,7 @@ export function AgentsWorkspace({
       await refreshSettings(template.slug);
       handleSettingsEditorOpenChange(true);
     } catch {
-      setAgentFlowError(`Unable to add ${template.name} right now.`);
+      setAgentFlowError(t("agents.library.loadError"));
     } finally {
       setAddingAgentSlug(null);
     }
@@ -1555,7 +1572,7 @@ export function AgentsWorkspace({
 
       if (!response.ok) {
         setAgentFlowError(
-          await readErrorMessage(response, "Unable to create this agent right now.")
+          await readErrorMessage(response, t("agents.create.error"))
         );
         return;
       }
@@ -1566,7 +1583,7 @@ export function AgentsWorkspace({
       await refreshSettings(slug);
       handleSettingsEditorOpenChange(true);
     } catch {
-      setAgentFlowError("Unable to create this agent right now.");
+      setAgentFlowError(t("agents.create.error"));
     } finally {
       setCreatingAgent(false);
     }
@@ -1630,6 +1647,8 @@ export function AgentsWorkspace({
   const settingsAgent = settingsAgentSlug
     ? agents.find((agent) => agent.slug === settingsAgentSlug) || null
     : null;
+  const notAvailableLabel = t("agents.conversation.detailsValue.notAvailable");
+  const noneLabel = t("agents.conversation.detailsValue.none");
   const selectedConversationDebugText = activeConversationMeta
     ? [
         `Conversation ID: ${activeConversationMeta.id}`,
@@ -1637,15 +1656,15 @@ export function AgentsWorkspace({
         `Agent: ${activeConversationMeta.agentSlug}`,
         `Trigger: ${activeConversationMeta.trigger}`,
         `Status: ${activeConversationMeta.status}`,
-        `Job ID: ${activeConversationMeta.jobId || t("agents.conversation.detailsValue.notAvailable")}`,
-        `Job name: ${activeConversationMeta.jobName || t("agents.conversation.detailsValue.notAvailable")}`,
-        `Started at: ${formatTimestamp(activeConversationMeta.startedAt)}`,
-        `Completed at: ${formatTimestamp(activeConversationMeta.completedAt)}`,
-        `Exit code: ${activeConversationMeta.exitCode ?? t("agents.conversation.detailsValue.notAvailable")}`,
+        `Job ID: ${activeConversationMeta.jobId || notAvailableLabel}`,
+        `Job name: ${activeConversationMeta.jobName || notAvailableLabel}`,
+        `Started at: ${formatTimestamp(activeConversationMeta.startedAt, notAvailableLabel)}`,
+        `Completed at: ${formatTimestamp(activeConversationMeta.completedAt, notAvailableLabel)}`,
+        `Exit code: ${activeConversationMeta.exitCode ?? notAvailableLabel}`,
         `Prompt path: ${activeConversationMeta.promptPath}`,
         `Transcript path: ${activeConversationMeta.transcriptPath}`,
-        `Mentioned paths: ${activeConversationMeta.mentionedPaths.join(", ") || "None"}`,
-        `Artifact paths: ${activeConversationMeta.artifactPaths.join(", ") || "None"}`,
+        `Mentioned paths: ${activeConversationMeta.mentionedPaths.join(", ") || noneLabel}`,
+        `Artifact paths: ${activeConversationMeta.artifactPaths.join(", ") || noneLabel}`,
       ].join("\n")
     : "";
   const groupedAgentTemplates = Object.entries(
@@ -1681,7 +1700,7 @@ export function AgentsWorkspace({
     name: "CEO",
     slug: "__ceo_fallback__",
     emoji: "👑",
-    role: "Executive lead not configured yet",
+    role: t("agents.orgChart.ceoNotConfigured"),
     department: "executive",
     type: "lead",
     active: false,
@@ -1719,11 +1738,11 @@ export function AgentsWorkspace({
     return (
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-          <h3 className="text-[15px] font-semibold">Your Team Org Chart</h3>
+          <h3 className="text-[15px] font-semibold">{t("agents.orgChart.title")}</h3>
           <div className="flex flex-wrap items-center gap-1.5">
             <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5">
               <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                Agents
+                {t("agents.orgChart.agents")}
               </span>
               <span className="rounded-full bg-foreground px-1.5 py-0.5 text-[9px] font-semibold text-background">
                 {orgAgentCount}
@@ -1731,7 +1750,7 @@ export function AgentsWorkspace({
             </div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5">
               <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                Departments
+                {t("agents.orgChart.departments")}
               </span>
               <span className="rounded-full bg-background/90 px-1.5 py-0.5 text-[9px] font-semibold text-foreground">
                 {groupedOrgAgents.length}
@@ -1739,7 +1758,7 @@ export function AgentsWorkspace({
             </div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5">
               <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                Active
+                {t("agents.orgChart.active")}
               </span>
               <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground">
                 {activeOrgCount}
@@ -1768,9 +1787,9 @@ export function AgentsWorkspace({
               className="h-7 min-w-0 w-auto gap-1 rounded-md border-border/60 bg-transparent px-2 text-[11px] font-medium text-muted-foreground shadow-none hover:text-foreground"
             >
               <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground/70">
-                Depth
+                {t("agents.orgChart.depth")}
               </span>
-              <SelectValue placeholder="All" />
+              <SelectValue placeholder={t("agents.orgChart.depthPlaceholder")} />
             </SelectTrigger>
             <SelectContent align="end" className="min-w-[200px]">
               <SelectGroup>
@@ -1787,7 +1806,7 @@ export function AgentsWorkspace({
           </Select>
           <Button size="sm" className="h-8 gap-1 text-xs" onClick={openAddAgentDialog}>
             <Plus className="h-3.5 w-3.5" />
-            Add agent
+            {t("agents.orgChart.addAgent")}
           </Button>
         </div>
       </div>
@@ -1821,7 +1840,7 @@ export function AgentsWorkspace({
                     <div
                       role="button"
                       tabIndex={0}
-                      title={`Send task to ${orgRoot.name}`}
+                      title={t("agents.orgChart.sendTask").replace("{name}", orgRoot.name)}
                       onClick={(event) => {
                         event.stopPropagation();
                         openAgentComposer(chiefAgent.slug);
@@ -1849,13 +1868,13 @@ export function AgentsWorkspace({
                   <div className="min-w-0 flex-1">
                     <div className="inline-flex items-center gap-2 rounded-full bg-background/72 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
                       <Crown className="h-3 w-3" />
-                      CEO
+                      {t("agents.orgChart.ceoBadge")}
                     </div>
                     <h5 className="mt-2 text-[20px] font-semibold tracking-[-0.03em] text-foreground">
                       {orgRoot.name}
                     </h5>
                     <p className="mt-0.5 text-[13px] text-foreground/85">
-                      {orgRoot.role || "Chief Executive Officer"}
+                      {orgRoot.role || t("agents.orgChart.fallbackRole")}
                     </p>
                   </div>
                 </div>
@@ -1899,7 +1918,7 @@ export function AgentsWorkspace({
                   ))}
                   {(agentJobsMap[orgRoot.slug] || []).length > 3 ? (
                     <span className="text-[10px] text-muted-foreground">
-                      +{(agentJobsMap[orgRoot.slug] || []).length - 3} more
+                      {t("agents.orgChart.moreCount").replace("{count}", String((agentJobsMap[orgRoot.slug] || []).length - 3))}
                     </span>
                   ) : null}
                 </div>
@@ -1935,12 +1954,12 @@ export function AgentsWorkspace({
                               {group.label}
                             </h5>
                             <p className="mt-0.5 text-[11px] text-muted-foreground">
-                              {group.agents.length} {group.agents.length === 1 ? "agent" : "agents"}
+                              {group.agents.length === 1 ? t("agents.orgChart.countLabel.agent_one").replace("{count}", "1") : t("agents.orgChart.countLabel.agent_other").replace("{count}", String(group.agents.length))}
                             </p>
                           </div>
                           {leadCount > 0 ? (
                             <div className="rounded-full bg-background/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
-                              {`${leadCount} lead`}
+                              {t("agents.orgChart.countLabel.lead").replace("{count}", String(leadCount))}
                             </div>
                           ) : null}
                         </div>
@@ -1967,13 +1986,13 @@ export function AgentsWorkspace({
                                         <ActivityBeacon active={isAgentWorking(agent)} />
                                       </div>
                                       <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-muted-foreground">
-                                        {agent.role || "Role not set"}
+                                        {agent.role || t("agents.settings.meta.notSet")}
                                       </p>
                                     </div>
                                     <div
                                       role="button"
                                       tabIndex={0}
-                                      title={`Send task to ${agent.name}`}
+                                      title={t("agents.orgChart.sendTask").replace("{name}", agent.name)}
                                       onClick={(event) => {
                                         event.stopPropagation();
                                         openAgentComposer(agent.slug);
@@ -2025,7 +2044,7 @@ export function AgentsWorkspace({
                                     ))}
                                     {(agentJobsMap[agent.slug] || []).length > 2 ? (
                                       <span className="text-[10px] text-muted-foreground">
-                                        +{(agentJobsMap[agent.slug] || []).length - 2} more
+                                        {t("agents.orgChart.moreCount").replace("{count}", String((agentJobsMap[agent.slug] || []).length - 2))}
                                       </span>
                                     ) : null}
                                   </div>
@@ -2041,7 +2060,7 @@ export function AgentsWorkspace({
               </div>
             ) : (
               <div className="rounded-[26px] bg-card p-6 text-center text-[13px] text-muted-foreground">
-                Add more agents to start populating departments under the CEO.
+                {t("agents.orgChart.empty")}
               </div>
             )}
           </div>
@@ -2057,8 +2076,8 @@ export function AgentsWorkspace({
     return (
       <ComposerInput
         composer={composer}
-        placeholder={`Ask ${panelAgent?.name || agentSlug} to work on something. Type @ to mention pages or agents.`}
-        submitLabel="Start"
+        placeholder={t("agents.composer.placeholder").replace("{name}", panelAgent?.name || agentSlug || "")}
+        submitLabel={t("agents.conversation.submitLabel")}
         variant="card"
         items={mentionItems}
         autoFocus
@@ -2096,16 +2115,16 @@ export function AgentsWorkspace({
                   {activeAgent.name}
                 </h3>
                 <p className="text-[11px] text-muted-foreground">
-                  {`Recent runs for ${activeAgent.name}`}
+                  {t("agents.conversations.recentRunsAgent").replace("{name}", activeAgent.name)}
                 </p>
               </button>
             ) : (
               <div
                 className="rounded-xl bg-muted/40 px-3 py-2"
               >
-                <h3 className="text-[14px] font-semibold">All agents</h3>
+                <h3 className="text-[14px] font-semibold">{t("agents.conversations.allAgents")}</h3>
                 <p className="text-[11px] text-muted-foreground">
-                  Recent runs across your whole team
+                  {t("agents.conversations.recentRunsTeam")}
                 </p>
               </div>
             )}
@@ -2128,19 +2147,19 @@ export function AgentsWorkspace({
                 onClick={() => setTriggerFilter(filter)}
               >
                 {filter === "all" ? (
-                  "All"
+                  t("agents.filters.all")
                 ) : filter === "job" ? (
                   <span className="inline-flex items-center gap-1.5">
                     <TriggerIcon trigger="job" />
-                    Jobs
+                    {t("agents.filters.jobs")}
                   </span>
                 ) : filter === "heartbeat" ? (
                   <span className="inline-flex items-center gap-1.5">
                     <TriggerIcon trigger="heartbeat" />
-                    Heartbeat
+                    {t("agents.filters.heartbeat")}
                   </span>
                 ) : (
-                  "Manual"
+                  t("agents.filters.manual")
                 )}
               </TriggerChip>
             ))}
@@ -2152,7 +2171,7 @@ export function AgentsWorkspace({
                 active={statusFilter === filter}
                 onClick={() => setStatusFilter(filter)}
               >
-                {filter === "all" ? "Any status" : filter[0].toUpperCase() + filter.slice(1)}
+                {filter === "all" ? t("agents.filters.anyStatus") : filter === "running" ? t("agents.status.running") : filter === "completed" ? t("agents.status.completed") : t("agents.status.failed")}
               </TriggerChip>
             ))}
           </div>
@@ -2162,13 +2181,13 @@ export function AgentsWorkspace({
             {conversationsLoading && conversations.length > 0 ? (
               <div className="flex items-center gap-2 px-3 py-6 text-[12px] text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading conversations...
+                {t("agents.conversations.loading")}
               </div>
             ) : !hasLoadedConversations && conversations.length === 0 ? (
               <div className="px-3 py-8" />
             ) : conversations.length === 0 ? (
               <div className="animate-in fade-in duration-300 px-3 py-8 text-[12px] text-muted-foreground">
-                No conversations yet.
+                {t("agents.conversations.empty")}
               </div>
             ) : (
               conversations.map((conversation) => {
@@ -2232,8 +2251,8 @@ export function AgentsWorkspace({
                           <span
                             role="button"
                             tabIndex={0}
-                            aria-label="Delete conversation"
-                            title="Delete conversation"
+                            aria-label={t("agents.conversation.deleteAria")}
+                            title={t("agents.conversation.deleteAria")}
                             onClick={(e) => {
                               e.stopPropagation();
                               void deleteConversation(conversation.id, conversation.cabinetPath);
@@ -2265,12 +2284,12 @@ export function AgentsWorkspace({
                       </div>
                       {editedPagePath ? (
                         <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                          edited: {editedPagePath}
+                          {t("agents.conversation.edited").replace("{path}", editedPagePath)}
                         </p>
                       ) : null}
                       <div className="mt-0.5 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
                         <p className="truncate">{agent?.name || conversation.agentSlug}</p>
-                        <span className="shrink-0">{formatRelative(conversation.startedAt)}</span>
+                        <span className="shrink-0">{formatRelativeI18n(conversation.startedAt, t)}</span>
                       </div>
                     </div>
                   </button>
@@ -2285,7 +2304,7 @@ export function AgentsWorkspace({
         <div
           role="separator"
           aria-orientation="vertical"
-          aria-label="Resize conversations panel"
+          aria-label={t("agents.layout.resizeConversations")}
           onPointerDown={conversationsPanel.startResize}
           className="absolute inset-y-0 left-1/2 w-3 -translate-x-1/2 cursor-col-resize bg-transparent"
         />
@@ -2298,7 +2317,7 @@ export function AgentsWorkspace({
               <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                   <div className="flex items-center justify-between gap-3 pr-10">
-                    <DialogTitle>Job Details</DialogTitle>
+                    <DialogTitle>{t("agents.conversation.jobDetails")}</DialogTitle>
                     <Button
                       variant="outline"
                       size="sm"
@@ -2306,7 +2325,7 @@ export function AgentsWorkspace({
                       onClick={() => void copyConversationDetails()}
                     >
                       <Copy className="h-3.5 w-3.5" />
-                      {detailsCopied ? "Copied" : "Copy"}
+                      {detailsCopied ? t("agents.conversation.copied") : t("agents.conversation.copy")}
                     </Button>
                   </div>
                 </DialogHeader>
@@ -2347,7 +2366,7 @@ export function AgentsWorkspace({
                         STATUS_TAG_STYLES[activeConversationMeta.status] || "bg-muted text-muted-foreground ring-1 ring-border"
                       )}
                     >
-                      {activeConversationMeta.status}
+                      {activeConversationMeta.status === "running" ? t("agents.status.running") : activeConversationMeta.status === "completed" ? t("agents.status.completed") : activeConversationMeta.status === "failed" ? t("agents.status.failed") : activeConversationMeta.status}
                     </span>
                   </div>
                 </div>
@@ -2360,7 +2379,7 @@ export function AgentsWorkspace({
                       onClick={() => openAgentSettings(activeConversationMeta.agentSlug)}
                     >
                       <Settings className="h-3 w-3" />
-                      Settings
+                      {t("agents.conversation.settings")}
                     </Button>
                   )}
                   <Button
@@ -2370,7 +2389,7 @@ export function AgentsWorkspace({
                     onClick={() => setConversationDetailsOpen(true)}
                   >
                     <Copy className="h-3 w-3" />
-                    Details
+                    {t("agents.conversation.details")}
                   </Button>
                   <Button
                     variant="ghost"
@@ -2384,7 +2403,7 @@ export function AgentsWorkspace({
                     }
                   >
                     <Trash2 className="h-3 w-3" />
-                    Delete
+                    {t("agents.conversation.delete")}
                   </Button>
                 </div>
               </div>
@@ -2405,7 +2424,7 @@ export function AgentsWorkspace({
                       : { type: "page" }
                   );
                 }}
-                waitingLabel="Waiting for conversation detail..."
+                waitingLabel={t("agents.conversation.waitingLabel")}
               />
             </div>
           </div>
@@ -2418,10 +2437,10 @@ export function AgentsWorkspace({
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <Library className="h-4 w-4" />
-                        <DialogTitle>Browse Agent Library</DialogTitle>
+                        <DialogTitle>{t("agents.library.browse")}</DialogTitle>
                       </div>
                       <DialogDescription>
-                        Bring in a predefined agent, or open a custom editor and make your own.
+                        {t("agents.library.description")}
                       </DialogDescription>
                     </div>
                     <Button
@@ -2431,7 +2450,7 @@ export function AgentsWorkspace({
                       onClick={openCustomAgentDialog}
                     >
                       <Settings className="h-3.5 w-3.5" />
-                      Edit your own agent
+                      {t("agents.library.editOwn")}
                     </Button>
                   </div>
                   {agentFlowError ? (
@@ -2445,7 +2464,7 @@ export function AgentsWorkspace({
                     {loadingAgentTemplates ? (
                       <div className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading the agent library...
+                        {t("agents.library.loading")}
                       </div>
                     ) : groupedAgentTemplates.length > 0 ? (
                       groupedAgentTemplates.map(([department, templates]) => (
@@ -2466,7 +2485,7 @@ export function AgentsWorkspace({
                                       {template.name}
                                     </h4>
                                     <p className="mt-1 text-[11px] text-foreground/85">
-                                      {template.role || "No role summary yet"}
+                                      {template.role || t("agents.settings.roleSummaryEmpty")}
                                     </p>
                                     {template.description ? (
                                       <p className="mt-2 line-clamp-3 text-[11px] text-muted-foreground">
@@ -2483,7 +2502,7 @@ export function AgentsWorkspace({
                                   disabled={addingAgentSlug === template.slug}
                                 >
                                   <Plus className="h-3.5 w-3.5" />
-                                  {addingAgentSlug === template.slug ? "Bringing in..." : "Bring in"}
+                                  {addingAgentSlug === template.slug ? t("agents.library.bringingIn") : t("agents.library.bringIn")}
                                 </Button>
                               </div>
                             ))}
@@ -2492,8 +2511,7 @@ export function AgentsWorkspace({
                       ))
                     ) : (
                       <div className="rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
-                        No predefined agents are available right now. Use &ldquo;Edit your own
-                        agent&rdquo; to create one from scratch.
+                        {t("agents.library.empty")}
                       </div>
                     )}
                   </div>
@@ -2504,9 +2522,9 @@ export function AgentsWorkspace({
             <Dialog open={customAgentDialogOpen} onOpenChange={handleCustomAgentDialogOpenChange}>
               <DialogContent className="sm:max-w-4xl">
                 <DialogHeader className="gap-1">
-                  <DialogTitle>Edit your own agent</DialogTitle>
+                  <DialogTitle>{t("agents.library.editOwn")}</DialogTitle>
                   <DialogDescription>
-                    Create a custom agent from scratch, then fine-tune it in the same popup flow.
+                    {t("agents.custom.description")}
                   </DialogDescription>
                   {agentFlowError ? (
                     <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -2517,7 +2535,7 @@ export function AgentsWorkspace({
                 <ScrollArea className="max-h-[70vh]">
                   <div className="grid gap-4 pr-2 md:grid-cols-2">
                     <label className="space-y-1 text-[11px] text-muted-foreground">
-                      <span>Name</span>
+                      <span>{t("agents.settings.field.name")}</span>
                       <input
                         value={newAgentDraft.name}
                         onChange={(event) =>
@@ -2535,11 +2553,11 @@ export function AgentsWorkspace({
                           })
                         }
                         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] text-foreground"
-                        placeholder="Editor"
+                        placeholder={t("agents.settings.namePlaceholder")}
                       />
                     </label>
                     <label className="space-y-1 text-[11px] text-muted-foreground">
-                      <span>Slug</span>
+                      <span>{t("agents.settings.field.slug")}</span>
                       <input
                         value={newAgentDraft.slug}
                         onChange={(event) =>
@@ -2549,22 +2567,22 @@ export function AgentsWorkspace({
                           })
                         }
                         className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-[13px] text-foreground"
-                        placeholder="editor"
+                        placeholder={t("agents.settings.slugPlaceholder")}
                       />
                     </label>
                     <label className="space-y-1 text-[11px] text-muted-foreground">
-                      <span>Role</span>
+                      <span>{t("agents.settings.field.role")}</span>
                       <input
                         value={newAgentDraft.role}
                         onChange={(event) =>
                           setNewAgentDraft({ ...newAgentDraft, role: event.target.value })
                         }
                         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] text-foreground"
-                        placeholder="Product writing agent"
+                        placeholder={t("agents.settings.rolePlaceholder")}
                       />
                     </label>
                     <div className="space-y-1 text-[11px] text-muted-foreground">
-                      <span>Heartbeat</span>
+                      <span>{t("agents.settings.heartbeat")}</span>
                       <SchedulePicker
                         value={newAgentDraft.heartbeat || "0 */4 * * *"}
                         onChange={(cron) =>
@@ -2576,7 +2594,7 @@ export function AgentsWorkspace({
                       />
                     </div>
                     <label className="space-y-1 text-[11px] text-muted-foreground">
-                      <span>Department</span>
+                      <span>{t("agents.settings.field.department")}</span>
                       <input
                         value={newAgentDraft.department}
                         onChange={(event) =>
@@ -2589,7 +2607,7 @@ export function AgentsWorkspace({
                       />
                     </label>
                     <label className="space-y-1 text-[11px] text-muted-foreground">
-                      <span>Type</span>
+                      <span>{t("agents.settings.field.type")}</span>
                       <input
                         value={newAgentDraft.type}
                         onChange={(event) =>
@@ -2599,7 +2617,7 @@ export function AgentsWorkspace({
                       />
                     </label>
                     <label className="space-y-1 text-[11px] text-muted-foreground">
-                      <span>Provider</span>
+                      <span>{t("agents.settings.field.provider")}</span>
                       <select
                         value={newAgentDraft.provider}
                         onChange={(event) =>
@@ -2618,14 +2636,14 @@ export function AgentsWorkspace({
                       >
                         {selectableCliProviders.map((provider) => (
                           <option key={provider.id} value={provider.id}>
-                            {provider.name}{provider.available ? "" : " (not installed)"}
+                            {provider.name}{provider.available ? "" : ` (${t("agents.settings.notInstalled")})`}
                           </option>
                         ))}
                       </select>
                     </label>
                     {newAgentAdapterOptions.length > 0 ? (
                       <label className="space-y-1 text-[11px] text-muted-foreground">
-                        <span>Runtime</span>
+                        <span>{t("agents.settings.runtime")}</span>
                         <select
                           value={
                             newAgentDraft.adapterType ||
@@ -2653,7 +2671,7 @@ export function AgentsWorkspace({
                       </label>
                     ) : null}
                     <label className="space-y-1 text-[11px] text-muted-foreground md:col-span-2">
-                      <span>Workspace</span>
+                      <span>{t("agents.settings.field.workspace")}</span>
                       <input
                         value={newAgentDraft.workspace}
                         onChange={(event) =>
@@ -2663,11 +2681,11 @@ export function AgentsWorkspace({
                           })
                         }
                         className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-[13px] text-foreground"
-                        placeholder="workspace"
+                        placeholder={t("agents.settings.workspacePlaceholder")}
                       />
                     </label>
                     <div className="space-y-2 text-[11px] text-muted-foreground md:col-span-2">
-                      <span>Avatar</span>
+                      <span>{t("agents.settings.avatar")}</span>
                       <div className="flex flex-wrap gap-2">
                         {AGENT_EMOJI_OPTIONS.map((emoji) => (
                           <button
@@ -2692,14 +2710,14 @@ export function AgentsWorkspace({
                       </div>
                     </div>
                     <label className="space-y-1 text-[11px] text-muted-foreground md:col-span-2">
-                      <span>Instructions</span>
+                      <span>{t("agents.settings.field.instructions")}</span>
                       <textarea
                         value={newAgentDraft.body}
                         onChange={(event) =>
                           setNewAgentDraft({ ...newAgentDraft, body: event.target.value })
                         }
                         className="min-h-[240px] w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] text-foreground"
-                        placeholder="Define how this agent should work inside Cabinet and the KB."
+                        placeholder={t("agents.settings.instructionsPlaceholder")}
                       />
                     </label>
                   </div>
@@ -2716,7 +2734,7 @@ export function AgentsWorkspace({
                         })
                       }
                     />
-                    Start active
+                    {t("agents.settings.startActive")}
                   </label>
                   <div className="flex gap-2">
                     <Button
@@ -2725,7 +2743,7 @@ export function AgentsWorkspace({
                       className="h-8 text-xs"
                       onClick={() => handleCustomAgentDialogOpenChange(false)}
                     >
-                      Cancel
+                      {t("agents.detail.cancel")}
                     </Button>
                     <Button
                       size="sm"
@@ -2733,7 +2751,7 @@ export function AgentsWorkspace({
                       onClick={() => void createAgent()}
                       disabled={creatingAgent || !newAgentDraft.name.trim() || !newAgentDraft.role.trim()}
                     >
-                      {creatingAgent ? "Creating..." : "Create agent"}
+                      {creatingAgent ? t("agents.custom.creatingAgent") : t("agents.custom.createAgent")}
                     </Button>
                   </div>
                 </div>
@@ -2752,7 +2770,7 @@ export function AgentsWorkspace({
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{settingsAgent?.emoji || "🤖"}</span>
                       <h3 className="text-[15px] font-semibold">
-                        {settingsAgent?.name || "Agent settings"}
+                        {settingsAgent?.name || t("agents.settings.fallbackTitle")}
                       </h3>
                     </div>
                     <div className="flex gap-2">
@@ -2763,48 +2781,48 @@ export function AgentsWorkspace({
                         onClick={() => handleSettingsEditorOpenChange(true)}
                       >
                         <Settings className="h-3.5 w-3.5" />
-                        Edit agent
+                        {t("agents.settings.editAgent")}
                       </Button>
                       <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={runHeartbeatNow}>
                         <Zap className="h-3.5 w-3.5" />
-                        Run heartbeat
+                        {t("agents.settings.runHeartbeat")}
                       </Button>
                       <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={toggleAgentActive}>
                         {settingsPersona.active ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                        {settingsPersona.active ? "Pause" : "Activate"}
+                        {settingsPersona.active ? t("agents.settings.pause") : t("agents.settings.activate")}
                       </Button>
                     </div>
                   </div>
 
                   <div className="flex min-w-0 flex-wrap gap-2">
                     <div className="overflow-hidden rounded-lg bg-muted/60 px-3 py-2">
-                      <div className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground mb-0.5">Role</div>
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground mb-0.5">{t("agents.settings.meta.role")}</div>
                       <div className="min-w-0 break-words text-[12px] leading-tight text-foreground line-clamp-2">
-                        {settingsPersona.role || "Not set"}
+                        {settingsPersona.role || t("agents.settings.meta.notSet")}
                       </div>
                     </div>
                     <div className="overflow-hidden rounded-lg bg-muted/60 px-3 py-2">
-                      <div className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground mb-0.5">Department</div>
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground mb-0.5">{t("agents.settings.meta.department")}</div>
                       <div className="min-w-0 break-words text-[12px] leading-tight text-foreground line-clamp-2">
-                        {settingsPersona.department || "Not set"}
+                        {settingsPersona.department || t("agents.settings.meta.notSet")}
                       </div>
                     </div>
                     <div className="overflow-hidden rounded-lg bg-muted/60 px-3 py-2">
-                      <div className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground mb-0.5">Type</div>
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground mb-0.5">{t("agents.settings.meta.type")}</div>
                       <div className="min-w-0 break-words text-[12px] leading-tight text-foreground line-clamp-2">
-                        {settingsPersona.type || "Not set"}
+                        {settingsPersona.type || t("agents.settings.meta.notSet")}
                       </div>
                     </div>
                     <div className="overflow-hidden rounded-lg bg-muted/60 px-3 py-2">
-                      <div className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground mb-0.5">Heartbeat</div>
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground mb-0.5">{t("agents.settings.heartbeat")}</div>
                       <div className="min-w-0 break-words text-[12px] leading-tight text-foreground line-clamp-2">
-                        {settingsPersona.heartbeat ? cronToHuman(settingsPersona.heartbeat) : "Not set"}
+                        {settingsPersona.heartbeat ? cronToHuman(settingsPersona.heartbeat) : t("agents.settings.meta.notSet")}
                       </div>
                     </div>
                     <div className="overflow-hidden rounded-lg bg-muted/60 px-3 py-2">
-                      <div className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground mb-0.5">Workspace</div>
+                      <div className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground mb-0.5">{t("agents.settings.meta.workspace")}</div>
                       <div className="min-w-0 break-all font-mono text-[12px] leading-tight text-foreground line-clamp-2">
-                        {settingsPersona.workspace || "Not set"}
+                        {settingsPersona.workspace || t("agents.settings.meta.notSet")}
                       </div>
                     </div>
                   </div>
@@ -2813,9 +2831,9 @@ export function AgentsWorkspace({
                 <Dialog open={settingsEditorOpen} onOpenChange={handleSettingsEditorOpenChange}>
                   <DialogContent className="sm:max-w-5xl">
                     <DialogHeader className="gap-1">
-                      <DialogTitle>Edit Agent</DialogTitle>
+                      <DialogTitle>{t("agents.settings.editAgent")}</DialogTitle>
                       <DialogDescription>
-                        Review the live agent, make your changes here, and save when you are ready.
+                        {t("agents.settings.editDescription")}
                       </DialogDescription>
                       {agentFlowError ? (
                         <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -2829,7 +2847,7 @@ export function AgentsWorkspace({
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                              Instructions
+                              {t("agents.settings.instructions")}
                             </span>
                             <div className="flex rounded-lg bg-muted/60 p-0.5">
                               <button
@@ -2842,7 +2860,7 @@ export function AgentsWorkspace({
                                     : "text-muted-foreground hover:text-foreground"
                                 )}
                               >
-                                Write
+                                {t("agents.settings.write")}
                               </button>
                               <button
                                 type="button"
@@ -2854,7 +2872,7 @@ export function AgentsWorkspace({
                                     : "text-muted-foreground hover:text-foreground"
                                 )}
                               >
-                                Preview
+                                {t("agents.settings.preview")}
                               </button>
                             </div>
                           </div>
@@ -2863,7 +2881,7 @@ export function AgentsWorkspace({
                               value={settingsEditorBody}
                               onChange={(event) => setSettingsEditorBody(event.target.value)}
                               className="h-[60vh] w-full resize-none rounded-lg bg-muted/60 px-3 py-2 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:bg-muted"
-                              placeholder="Write markdown for this agent's instructions."
+                              placeholder={t("agents.settings.writePlaceholder")}
                             />
                           ) : (
                             <div className="h-[60vh] overflow-auto rounded-lg bg-muted/60 px-3 py-3">
@@ -2878,7 +2896,7 @@ export function AgentsWorkspace({
                                 </pre>
                               ) : (
                                 <div className="text-[12px] text-muted-foreground">
-                                  Nothing to preview yet.
+                                  {t("agents.settings.previewEmpty")}
                                 </div>
                               )}
                             </div>
@@ -2886,7 +2904,7 @@ export function AgentsWorkspace({
                         </div>
                         <div className="grid content-start gap-2.5 sm:grid-cols-2 xl:grid-cols-2">
                           <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                            <span>Name</span>
+                            <span>{t("agents.settings.name")}</span>
                             <input
                               value={settingsEditorDraft.name || ""}
                               onChange={(event) =>
@@ -2896,7 +2914,7 @@ export function AgentsWorkspace({
                             />
                           </label>
                           <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                            <span>Role</span>
+                            <span>{t("agents.settings.role")}</span>
                             <input
                               value={settingsEditorDraft.role || ""}
                               onChange={(event) =>
@@ -2906,7 +2924,7 @@ export function AgentsWorkspace({
                             />
                           </label>
                           <div className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                            <span>Heartbeat</span>
+                            <span>{t("agents.settings.heartbeat")}</span>
                             <SchedulePicker
                               value={settingsEditorDraft.heartbeat || "0 */4 * * *"}
                               onChange={(cron) =>
@@ -2915,7 +2933,7 @@ export function AgentsWorkspace({
                             />
                           </div>
                           <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                            <span>Department</span>
+                            <span>{t("agents.settings.department")}</span>
                             <input
                               value={settingsEditorDraft.department || ""}
                               onChange={(event) =>
@@ -2925,7 +2943,7 @@ export function AgentsWorkspace({
                             />
                           </label>
                           <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                            <span>Type</span>
+                            <span>{t("agents.settings.type")}</span>
                             <input
                               value={settingsEditorDraft.type || ""}
                               onChange={(event) =>
@@ -2935,7 +2953,7 @@ export function AgentsWorkspace({
                             />
                           </label>
                           <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                            <span>Provider</span>
+                            <span>{t("agents.settings.provider")}</span>
                             <select
                               value={settingsEditorDraft.provider || defaultProvider}
                               onChange={(event) =>
@@ -2954,14 +2972,14 @@ export function AgentsWorkspace({
                             >
                               {selectableCliProviders.map((provider) => (
                                 <option key={provider.id} value={provider.id}>
-                                  {provider.name}{provider.available ? "" : " (not installed)"}
+                                  {provider.name}{provider.available ? "" : ` (${t("agents.settings.notInstalled")})`}
                                 </option>
                               ))}
                             </select>
                           </label>
                           {settingsEditorAdapterOptions.length > 0 ? (
                             <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                              <span>Runtime</span>
+                              <span>{t("agents.settings.runtime")}</span>
                               <select
                                 value={
                                   settingsEditorDraft.adapterType ||
@@ -2989,7 +3007,7 @@ export function AgentsWorkspace({
                             </label>
                           ) : null}
                           <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground sm:col-span-2">
-                            <span>Workspace</span>
+                            <span>{t("agents.settings.workspace")}</span>
                             <input
                               value={settingsEditorDraft.workspace || ""}
                               onChange={(event) =>
@@ -2999,7 +3017,7 @@ export function AgentsWorkspace({
                             />
                           </label>
                           <div className="space-y-2 text-[10px] uppercase tracking-[0.08em] text-muted-foreground sm:col-span-2">
-                            <span>Avatar</span>
+                            <span>{t("agents.settings.avatar")}</span>
                             <div className="flex flex-wrap gap-2">
                               {AGENT_EMOJI_OPTIONS.map((emoji) => (
                                 <button
@@ -3031,7 +3049,7 @@ export function AgentsWorkspace({
                           disabled={deletingAgent}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                          {deletingAgent ? "Removing..." : "Remove agent"}
+                          {deletingAgent ? t("agents.settings.removing") : t("agents.settings.removeAgent")}
                         </Button>
                         <Button
                           size="sm"
@@ -3040,13 +3058,13 @@ export function AgentsWorkspace({
                           disabled={savingSettings || deletingAgent || !canSaveSettings}
                         >
                           <Save className="h-3.5 w-3.5" />
-                          {savingSettings ? "Saving..." : settingsEditorDraft.setupComplete ? "Save" : "Continue"}
+                          {savingSettings ? t("agents.settings.saving") : settingsEditorDraft.setupComplete ? t("agents.detail.save") : t("agents.settings.continue")}
                         </Button>
                       </div>
                     </div>
                     ) : (
                       <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                        Loading agent editor...
+                        {t("agents.settings.loadingEditor")}
                       </div>
                     )}
                   </DialogContent>
@@ -3063,11 +3081,11 @@ export function AgentsWorkspace({
                     <DialogHeader className="gap-1">
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
-                          <DialogTitle>{selectedJobId && selectedJobId !== "__new__" ? "Edit Job" : "New Job"}</DialogTitle>
+                          <DialogTitle>{selectedJobId && selectedJobId !== "__new__" ? t("agents.jobs.edit") : t("agents.jobs.new")}</DialogTitle>
                           <DialogDescription>
                             {selectedJobId && selectedJobId !== "__new__"
-                              ? "Edit this scheduled job. Changes take effect on the next run."
-                              : "Configure a scheduled prompt that runs automatically on a cron schedule."}
+                              ? t("agents.jobs.editDescription")
+                              : t("agents.jobs.createDescription")}
                           </DialogDescription>
                         </div>
                         {selectedJobId && selectedJobId !== "__new__" ? (
@@ -3084,7 +3102,7 @@ export function AgentsWorkspace({
                               ) : (
                                 <Play className="h-3.5 w-3.5" />
                               )}
-                              Run
+                              {t("agents.detail.run")}
                             </Button>
                             <Button
                               variant="ghost"
@@ -3098,7 +3116,7 @@ export function AgentsWorkspace({
                               ) : (
                                 <Trash2 className="h-3.5 w-3.5" />
                               )}
-                              Delete
+                              {t("agents.conversation.delete")}
                             </Button>
                           </div>
                         ) : null}
@@ -3109,7 +3127,7 @@ export function AgentsWorkspace({
                         <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)]">
                           <div className="space-y-1">
                             <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                              Prompt
+                              {t("agents.jobs.prompt")}
                             </span>
                             <textarea
                               value={jobDraft.prompt}
@@ -3119,12 +3137,12 @@ export function AgentsWorkspace({
                                 )
                               }
                               className="h-[60vh] w-full resize-none rounded-lg bg-muted/60 px-3 py-2 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:bg-muted"
-                              placeholder="What should this job do?"
+                              placeholder={t("agents.detail.jobs.editPlaceholder")}
                             />
                           </div>
                           <div className="grid content-start gap-2.5 sm:grid-cols-2">
                             <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground sm:col-span-2">
-                              <span>Job name</span>
+                              <span>{t("agents.jobs.name")}</span>
                               <input
                                 value={jobDraft.name}
                                 onChange={(event) =>
@@ -3133,11 +3151,11 @@ export function AgentsWorkspace({
                                   )
                                 }
                                 className="w-full rounded-lg bg-muted/60 px-3 py-2 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:bg-muted"
-                                placeholder="Weekly strategy digest"
+                                placeholder={t("agents.jobs.namePlaceholder")}
                               />
                             </label>
                             <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground sm:col-span-2">
-                              <span>Job id</span>
+                              <span>{t("agents.jobs.id")}</span>
                               <input
                                 value={jobDraft.id}
                                 onChange={(event) =>
@@ -3146,11 +3164,11 @@ export function AgentsWorkspace({
                                   )
                                 }
                                 className="w-full rounded-lg bg-muted/60 px-3 py-2 font-mono text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:bg-muted"
-                                placeholder="weekly-strategy-digest"
+                                placeholder={t("agents.jobs.idPlaceholder")}
                               />
                             </label>
                             <div className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground sm:col-span-2">
-                              <span>Schedule</span>
+                              <span>{t("agents.jobs.schedule")}</span>
                               <SchedulePicker
                                 value={jobDraft.schedule || "0 9 * * 1-5"}
                                 onChange={(cron) =>
@@ -3161,7 +3179,7 @@ export function AgentsWorkspace({
                               />
                             </div>
                             <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                              <span>Provider</span>
+                              <span>{t("agents.settings.provider")}</span>
                               <select
                                 value={jobDraft.provider}
                                 onChange={(event) =>
@@ -3184,14 +3202,14 @@ export function AgentsWorkspace({
                               >
                                 {selectableCliProviders.map((provider) => (
                                   <option key={provider.id} value={provider.id}>
-                                    {provider.name}{provider.available ? "" : " (not installed)"}
+                                    {provider.name}{provider.available ? "" : ` (${t("agents.settings.notInstalled")})`}
                                   </option>
                                 ))}
                               </select>
                             </label>
                             {jobDraftAdapterOptions.length > 0 ? (
                               <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                                <span>Runtime</span>
+                                <span>{t("agents.settings.runtime")}</span>
                                 <select
                                   value={
                                     jobDraft.adapterType ||
@@ -3220,7 +3238,7 @@ export function AgentsWorkspace({
                               </label>
                             ) : null}
                             <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                              <span>Timeout (s)</span>
+                              <span>{t("agents.jobs.timeout")}</span>
                               <input
                                 type="number"
                                 value={jobDraft.timeout || 600}
@@ -3244,7 +3262,7 @@ export function AgentsWorkspace({
                                   )
                                 }
                               />
-                              <span>Enabled</span>
+                              <span>{t("agents.jobs.enabled")}</span>
                             </label>
                           </div>
                         </div>
@@ -3257,12 +3275,12 @@ export function AgentsWorkspace({
                               onClick={() => setLibraryDialogOpen(true)}
                             >
                               <Library className="h-3.5 w-3.5" />
-                              Starter library
+                              {t("agents.jobs.starterLibrary")}
                             </Button>
                           ) : <div />}
                           <div className="flex gap-2">
                             <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={closeNewJobDialog}>
-                              Cancel
+                              {t("agents.detail.cancel")}
                             </Button>
                             <Button
                               size="sm"
@@ -3276,7 +3294,7 @@ export function AgentsWorkspace({
                               }
                             >
                               <Save className="h-3.5 w-3.5" />
-                              {savingJob ? "Saving..." : selectedJobId && selectedJobId !== "__new__" ? "Save job" : "Create job"}
+                              {savingJob ? t("agents.jobs.saving") : selectedJobId && selectedJobId !== "__new__" ? t("agents.jobs.save") : t("agents.jobs.create")}
                             </Button>
                           </div>
                         </div>
@@ -3288,7 +3306,7 @@ export function AgentsWorkspace({
                 <Dialog open={libraryDialogOpen} onOpenChange={setLibraryDialogOpen}>
                   <DialogContent className="sm:max-w-4xl">
                     <DialogHeader>
-                      <DialogTitle>Starter Library</DialogTitle>
+                      <DialogTitle>{t("agents.jobs.starterLibrary")}</DialogTitle>
                     </DialogHeader>
                     <ScrollArea className="max-h-[70vh]">
                       <div className="grid gap-3 pr-2 md:grid-cols-2">
@@ -3304,7 +3322,7 @@ export function AgentsWorkspace({
                                   {template.description}
                                 </p>
                                 <p className="mt-3 text-[10px] text-muted-foreground">
-                                  Suggested schedule: {cronToHuman(template.schedule)}
+                                  {t("agents.jobs.suggestedSchedule").replace("{schedule}", cronToHuman(template.schedule))}
                                 </p>
                               </div>
                               <div className="mt-4 flex justify-end">
@@ -3314,7 +3332,7 @@ export function AgentsWorkspace({
                                   className="h-8 text-xs"
                                   onClick={() => applyLibraryTemplate(template)}
                                 >
-                                  Use template
+                                  {t("agents.jobs.useTemplate")}
                                 </Button>
                               </div>
                             </div>
@@ -3329,7 +3347,7 @@ export function AgentsWorkspace({
                   {/* Left: Instructions (read-only, scrollable) */}
                   <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border">
                     <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                      <h4 className="text-[13px] font-semibold">Instructions</h4>
+                      <h4 className="text-[13px] font-semibold">{t("agents.jobs.instructionsTitle")}</h4>
                       <Button
                         variant="outline"
                         size="sm"
@@ -3337,7 +3355,7 @@ export function AgentsWorkspace({
                         onClick={() => handleSettingsEditorOpenChange(true)}
                       >
                         <Settings className="h-3.5 w-3.5" />
-                        Edit
+                        {t("agents.detail.edit")}
                       </Button>
                     </div>
                     <ScrollArea className="min-h-0 flex-1">
@@ -3353,7 +3371,7 @@ export function AgentsWorkspace({
                           </pre>
                         ) : (
                           <div className="text-[12px] text-muted-foreground">
-                            No instructions yet. Click Edit to add them.
+                            {t("agents.jobs.instructionsEmpty")}
                           </div>
                         )}
                       </div>
@@ -3363,8 +3381,8 @@ export function AgentsWorkspace({
                   {/* Right: Jobs */}
                   <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border">
                     <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                      <h4 className="text-[13px] font-semibold" title="Per-agent recurring prompts">
-                        Jobs
+                      <h4 className="text-[13px] font-semibold" title={t("agents.jobs.listTitleHint")}>
+                        {t("agents.detail.tabs.jobs")}
                       </h4>
                       <Button
                         variant="outline"
@@ -3373,14 +3391,14 @@ export function AgentsWorkspace({
                         onClick={startNewJobDraft}
                       >
                         <Plus className="h-3.5 w-3.5" />
-                        New job
+                        {t("agents.jobs.new")}
                       </Button>
                     </div>
                     <ScrollArea className="min-h-0 flex-1">
                       <div className="p-1">
                         {settingsJobs.length === 0 ? (
                           <div className="px-3 py-6 text-[12px] text-muted-foreground">
-                            No jobs yet. Start from scratch or use a library template.
+                            {t("agents.jobs.emptyDescription")}
                           </div>
                         ) : (
                           settingsJobs.map((job) => (
@@ -3410,7 +3428,7 @@ export function AgentsWorkspace({
                                   onClick={() => void runJob(job.id)}
                                   disabled={runningJobId === job.id}
                                   className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-primary"
-                                  title="Run now"
+                                  title={t("agents.jobs.runNow")}
                                 >
                                   {runningJobId === job.id ? (
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -3421,7 +3439,7 @@ export function AgentsWorkspace({
                                 <button
                                   onClick={() => void toggleJob(job)}
                                   className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                                  title={job.enabled ? "Pause" : "Enable"}
+                                  title={job.enabled ? t("agents.settings.pause") : t("agents.jobs.enabled")}
                                 >
                                   {job.enabled ? (
                                     <Pause className="h-3.5 w-3.5" />
@@ -3433,7 +3451,7 @@ export function AgentsWorkspace({
                                   onClick={() => void deleteJob(job.id)}
                                   disabled={deletingJobId === job.id}
                                   className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
-                                  title="Delete"
+                                  title={t("agents.conversation.delete")}
                                 >
                                   {deletingJobId === job.id ? (
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -3462,7 +3480,7 @@ export function AgentsWorkspace({
                 ) : settingsAgentSlug === "general" ? (
                   <div className="max-w-3xl space-y-4">
                     <div className="rounded-xl border border-border bg-card p-4 text-[13px] text-muted-foreground">
-                      General is manual-only in this MVP. Use it as the default place for ad-hoc conversations, and manage the rest of the team from the agent directory.
+                      {t("agents.general.manualOnly")}
                     </div>
                     <Button
                       variant="outline"
@@ -3470,13 +3488,13 @@ export function AgentsWorkspace({
                       className="h-8 text-xs"
                       onClick={() => openAgentWorkspace("general")}
                     >
-                      Open General conversations
+                      {t("agents.general.openConversations")}
                     </Button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading settings...
+                    {t("agents.detail.loading")}
                   </div>
                 )}
               </div>
@@ -3503,7 +3521,7 @@ export function AgentsWorkspace({
               <div className="flex items-center justify-between gap-3 pr-10">
                 <DialogTitle className="flex items-center gap-2">
                   <Clock3 className="h-4 w-4 text-emerald-400" />
-                  {orgChartJobDialog.draft.name || "Job"}
+                  {orgChartJobDialog.draft.name || t("agents.filters.job")}
                   <span className="text-[11px] font-normal text-muted-foreground">· {orgChartJobDialog.agentName}</span>
                 </DialogTitle>
                 <Button
@@ -3514,13 +3532,13 @@ export function AgentsWorkspace({
                   disabled={orgChartJobRunning}
                 >
                   {orgChartJobRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-                  Run now
+                  {t("agents.jobs.runNow")}
                 </Button>
               </div>
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Schedule</span>
+                <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{t("agents.jobs.schedule")}</span>
                 <SchedulePicker
                   value={orgChartJobDialog.draft.schedule || "0 9 * * 1-5"}
                   onChange={(cron) =>
@@ -3531,7 +3549,7 @@ export function AgentsWorkspace({
                 />
               </div>
               <div className="space-y-1.5">
-                <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Prompt</span>
+                <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{t("agents.jobs.prompt")}</span>
                 <textarea
                   value={orgChartJobDialog.draft.prompt}
                   onChange={(e) =>
@@ -3540,7 +3558,7 @@ export function AgentsWorkspace({
                     )
                   }
                   className="h-48 w-full resize-none rounded-lg bg-muted/60 px-3 py-2 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:bg-muted"
-                  placeholder="What should this job do?"
+                  placeholder={t("agents.detail.jobs.editPlaceholder")}
                 />
               </div>
               <div className="flex items-center justify-between border-t border-border pt-3">
@@ -3554,11 +3572,11 @@ export function AgentsWorkspace({
                       )
                     }
                   />
-                  Enabled
+                  {t("agents.jobs.enabled")}
                 </label>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setOrgChartJobDialog(null)}>
-                    Cancel
+                    {t("agents.detail.cancel")}
                   </Button>
                   <Button
                     size="sm"
@@ -3567,7 +3585,7 @@ export function AgentsWorkspace({
                     disabled={orgChartJobSaving}
                   >
                     <Save className="h-3.5 w-3.5" />
-                    {orgChartJobSaving ? "Saving..." : "Save"}
+                    {orgChartJobSaving ? t("agents.jobs.saving") : t("agents.detail.save")}
                   </Button>
                 </div>
               </div>
@@ -3584,7 +3602,7 @@ export function AgentsWorkspace({
               <div className="flex items-center justify-between gap-3 pr-10">
                 <DialogTitle className="flex items-center gap-2">
                   <HeartPulse className="h-4 w-4 text-pink-400" />
-                  Heartbeat
+                  {t("agents.filters.heartbeat")}
                   <span className="text-[11px] font-normal text-muted-foreground">· {orgChartHeartbeatDialog.agentName}</span>
                 </DialogTitle>
                 <Button
@@ -3595,13 +3613,13 @@ export function AgentsWorkspace({
                   disabled={orgChartHeartbeatRunning}
                 >
                   {orgChartHeartbeatRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-                  Run now
+                  {t("agents.jobs.runNow")}
                 </Button>
               </div>
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Schedule</span>
+                <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{t("agents.jobs.schedule")}</span>
                 <SchedulePicker
                   value={orgChartHeartbeatDialog.heartbeat}
                   onChange={(cron) =>
@@ -3621,11 +3639,11 @@ export function AgentsWorkspace({
                     }
                     className="h-3.5 w-3.5 cursor-pointer appearance-none rounded-sm border border-border bg-background transition-colors checked:border-primary checked:bg-primary focus:outline-none focus:ring-1 focus:ring-ring focus:ring-offset-1"
                   />
-                  Active
+                  {t("agents.settings.activate")}
                 </label>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setOrgChartHeartbeatDialog(null)}>
-                    Cancel
+                    {t("agents.detail.cancel")}
                   </Button>
                   <Button
                     size="sm"
@@ -3634,7 +3652,7 @@ export function AgentsWorkspace({
                     disabled={orgChartHeartbeatSaving}
                   >
                     <Save className="h-3.5 w-3.5" />
-                    {orgChartHeartbeatSaving ? "Saving..." : "Save"}
+                    {orgChartHeartbeatSaving ? t("agents.jobs.saving") : t("agents.detail.save")}
                   </Button>
                 </div>
               </div>
@@ -3660,8 +3678,8 @@ export function AgentsWorkspace({
             <div className="relative z-10 w-full max-w-xl">
               <ComposerInput
                 composer={composer}
-                placeholder={`Ask ${targetAgent?.name || quickSendAgent} to work on something. Type @ to mention pages or agents.`}
-                submitLabel="Send"
+                placeholder={t("agents.composer.placeholder").replace("{name}", targetAgent?.name || quickSendAgent || "")}
+                submitLabel={t("agents.general.send")}
                 variant="card"
                 items={mentionItems}
                 autoFocus
@@ -3683,7 +3701,7 @@ export function AgentsWorkspace({
                         {targetAgent?.name || quickSendAgent}
                       </p>
                       <p className="text-[11px] text-muted-foreground">
-                        {targetAgent?.role || "Agent"}
+                        {targetAgent?.role || ""}
                       </p>
                     </div>
                     <button

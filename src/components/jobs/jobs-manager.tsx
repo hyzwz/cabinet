@@ -20,6 +20,7 @@ import {
 } from "@/lib/agents/conversation-identity";
 import { cronToHuman } from "@/lib/agents/cron-utils";
 import { useLocale } from "@/components/i18n/locale-provider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { useAppStore } from "@/stores/app-store";
 import { ROOT_CABINET_PATH } from "@/lib/cabinets/paths";
 import { openArtifactPath } from "@/lib/navigation/open-artifact-path";
@@ -67,14 +68,15 @@ function statusFromFilter(filter: StatusFilter): ConversationMeta["status"] | un
   return filter;
 }
 
-function formatRelative(iso: string): string {
+function formatRelative(iso: string, t: (key: MessageKey) => string): string {
   const delta = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(delta / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t("agents.time.justNow");
+  if (minutes < 60) return t("agents.time.minutesAgo").replace("{minutes}", String(minutes));
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 24) return t("agents.time.hoursAgo").replace("{hours}", String(hours));
+  const days = Math.floor(hours / 24);
+  return t("agents.time.daysAgo").replace("{days}", String(days));
 }
 
 function isScheduledRun(conversation: ConversationMeta): boolean {
@@ -463,9 +465,9 @@ export function JobsManager({
         >
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-[15px] font-semibold tracking-[-0.02em]">Jobs</h2>
+              <h2 className="text-[15px] font-semibold tracking-[-0.02em]">{t("jobs.title")}</h2>
               <p className="text-[11px] text-muted-foreground">
-                Configure recurring work by agent
+                {t("jobs.subtitle")}
               </p>
             </div>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
@@ -526,7 +528,7 @@ export function JobsManager({
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="text-[14px] font-semibold">
-                {selectedAgent ? `Scheduled runs for ${selectedAgent.name}` : t("jobs.scheduledRuns")}
+                {selectedAgent ? t("jobs.scheduledRunsForAgent").replace("{name}", selectedAgent.name) : t("jobs.scheduledRuns")}
               </h3>
               <p className="text-[11px] text-muted-foreground">
                 {selectedAgent
@@ -544,7 +546,9 @@ export function JobsManager({
               >
                 {filter === "all"
                   ? t("jobs.filters.anyStatus")
-                  : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                  : filter === "running"
+                    ? t("jobs.filters.running")
+                    : t("jobs.filters.failed")}
               </FilterChip>
             ))}
           </div>
@@ -593,7 +597,7 @@ export function JobsManager({
                       </div>
                       <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
                         <span className="truncate">{agent?.name || conversation.agentSlug}</span>
-                        <span className="shrink-0">{formatRelative(conversation.startedAt)}</span>
+                        <span className="shrink-0">{formatRelative(conversation.startedAt, t)}</span>
                       </div>
                     </div>
                     <span
@@ -636,7 +640,7 @@ export function JobsManager({
                     }}
                   >
                     <Settings2 className="h-3.5 w-3.5" />
-                    Configure
+                    {t("jobs.configure")}
                   </Button>
                   {activeSelectedConversation?.artifacts?.map((artifact) => (
                     <button
@@ -677,7 +681,7 @@ export function JobsManager({
                       : { type: "page" }
                   );
                 }}
-                waitingLabel="Waiting for conversation detail..."
+                waitingLabel={t("agents.conversation.waitingLabel")}
               />
             </div>
           </div>
@@ -688,17 +692,17 @@ export function JobsManager({
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{selectedAgent.emoji || "🤖"}</span>
                   <div>
-                    <h3 className="text-[15px] font-semibold">{selectedAgent.name} jobs</h3>
+                    <h3 className="text-[15px] font-semibold">{t("jobs.agentJobs").replace("{name}", selectedAgent.name)}</h3>
                     <p className="text-[11px] text-muted-foreground">
-                      Configure heartbeat, recurring jobs, and starter templates
+                      {t("jobs.agentJobsDescription")}
                     </p>
                   </div>
                 </div>
               ) : (
                 <div>
-                  <h3 className="text-[15px] font-semibold">Select an agent</h3>
+                  <h3 className="text-[15px] font-semibold">{t("jobs.selectAgent")}</h3>
                   <p className="text-[11px] text-muted-foreground">
-                    Pick an agent on the left to configure heartbeat and jobs, or browse recent runs in the middle.
+                    {t("jobs.selectAgentDescription")}
                   </p>
                 </div>
               )}
@@ -748,7 +752,7 @@ export function JobsManager({
                         </Button>
                       </div>
                       <p className="mt-2 text-[11px] text-muted-foreground">
-                        {heartbeatDraft ? cronToHuman(heartbeatDraft) : "No heartbeat configured."}
+                        {heartbeatDraft ? cronToHuman(heartbeatDraft) : t("jobs.noHeartbeat")}
                       </p>
                     </div>
 
@@ -756,9 +760,9 @@ export function JobsManager({
                       <div className="rounded-2xl border border-border bg-background p-4">
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <h4 className="text-[13px] font-semibold">Jobs</h4>
+                            <h4 className="text-[13px] font-semibold">{t("jobs.jobsTitle")}</h4>
                             <p className="text-[11px] text-muted-foreground">
-                              Per-agent recurring prompts
+                              {t("jobs.jobsDescription")}
                             </p>
                           </div>
                           <Button
@@ -768,14 +772,14 @@ export function JobsManager({
                             onClick={startBlankJob}
                           >
                             <Plus className="h-3.5 w-3.5" />
-                            New job
+                            {t("jobs.newJob")}
                           </Button>
                         </div>
 
                         <div className="mt-4 space-y-2">
                           {jobs.length === 0 ? (
                             <div className="rounded-xl border border-dashed border-border px-3 py-6 text-[12px] text-muted-foreground">
-                              No jobs yet. Start from scratch or use a library template.
+                              {t("jobs.noJobs")}
                             </div>
                           ) : (
                             jobs.map((job) => (
@@ -822,7 +826,7 @@ export function JobsManager({
                                     <button
                                       onClick={() => void toggleJob(job)}
                                       className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                                      title={job.enabled ? "Pause" : "Enable"}
+                                      title={job.enabled ? t("jobs.pause") : t("jobs.enable")}
                                     >
                                       {job.enabled ? (
                                         <Pause className="h-3.5 w-3.5" />
@@ -834,7 +838,7 @@ export function JobsManager({
                                       onClick={() => void deleteJob(job.id)}
                                       disabled={deletingJobId === job.id}
                                       className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
-                                      title="Delete"
+                                      title={t("jobs.delete")}
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </button>
@@ -850,12 +854,12 @@ export function JobsManager({
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <h4 className="text-[13px] font-semibold">
-                              {selectedJobId === "__new__" ? "New job" : selectedJobId ? "Job editor" : "Starter library"}
+                              {selectedJobId === "__new__" ? t("jobs.jobEditor.new") : selectedJobId ? t("jobs.jobEditor.edit") : t("jobs.jobEditor.library")}
                             </h4>
                             <p className="text-[11px] text-muted-foreground">
                               {selectedJobId
-                                ? "Edit the selected job for this agent."
-                                : "Pick a starter job to prefill a new recurring workflow."}
+                                ? t("jobs.jobEditor.editDescription")
+                                : t("jobs.jobEditor.libraryDescription")}
                             </p>
                           </div>
                           {selectedJobId && (
@@ -868,7 +872,7 @@ export function JobsManager({
                                 setJobDraft(null);
                               }}
                             >
-                              Done
+                              {t("jobs.done")}
                             </Button>
                           )}
                         </div>
@@ -876,7 +880,7 @@ export function JobsManager({
                         {jobDraft ? (
                           <div className="mt-4 space-y-4">
                             <div>
-                              <label className="text-[11px] font-medium text-muted-foreground">Job name</label>
+                              <label className="text-[11px] font-medium text-muted-foreground">{t("jobs.jobName")}</label>
                               <input
                                 value={jobDraft.name}
                                 onChange={(event) =>
@@ -885,11 +889,11 @@ export function JobsManager({
                                   )
                                 }
                                 className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-3 text-[13px] focus:outline-none focus:ring-1 focus:ring-ring"
-                                placeholder="Weekly strategy digest"
+                                placeholder={t("jobs.jobNamePlaceholder")}
                               />
                             </div>
                             <div>
-                              <label className="text-[11px] font-medium text-muted-foreground">Job id</label>
+                              <label className="text-[11px] font-medium text-muted-foreground">{t("jobs.jobId")}</label>
                               <input
                                 value={jobDraft.id}
                                 onChange={(event) =>
@@ -902,7 +906,7 @@ export function JobsManager({
                               />
                             </div>
                             <div>
-                              <label className="text-[11px] font-medium text-muted-foreground">Schedule</label>
+                              <label className="text-[11px] font-medium text-muted-foreground">{t("jobs.schedule")}</label>
                               <input
                                 value={jobDraft.schedule}
                                 onChange={(event) =>
@@ -914,11 +918,11 @@ export function JobsManager({
                                 placeholder="0 9 * * 1"
                               />
                               <p className="mt-1 text-[10px] text-muted-foreground">
-                                {jobDraft.schedule ? cronToHuman(jobDraft.schedule) : "No schedule set."}
+                                {jobDraft.schedule ? cronToHuman(jobDraft.schedule) : t("jobs.noSchedule")}
                               </p>
                             </div>
                             <div>
-                              <label className="text-[11px] font-medium text-muted-foreground">Prompt</label>
+                              <label className="text-[11px] font-medium text-muted-foreground">{t("jobs.prompt")}</label>
                               <textarea
                                 value={jobDraft.prompt}
                                 onChange={(event) =>
@@ -928,7 +932,7 @@ export function JobsManager({
                                 }
                                 rows={10}
                                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring resize-none"
-                                placeholder="What should this job do?"
+                                placeholder={t("jobs.promptPlaceholder")}
                               />
                             </div>
                             <div className="flex items-center gap-3">
@@ -943,7 +947,7 @@ export function JobsManager({
                                   !jobDraft.prompt.trim()
                                 }
                               >
-                                {savingJob ? t("tasks.schedule.saving") : "Save job"}
+                                {savingJob ? t("tasks.schedule.saving") : t("jobs.saveJob")}
                               </Button>
                               <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
                                 <input
@@ -955,7 +959,7 @@ export function JobsManager({
                                     )
                                   }
                                 />
-                                Enabled
+                                {t("jobs.enabled")}
                               </label>
                             </div>
                           </div>
@@ -973,7 +977,7 @@ export function JobsManager({
                                       {template.description}
                                     </p>
                                     <p className="mt-2 text-[10px] text-muted-foreground">
-                                      Suggested schedule: {cronToHuman(template.schedule)}
+                                      {t("jobs.suggestedSchedule").replace("{schedule}", cronToHuman(template.schedule))}
                                     </p>
                                   </div>
                                   <Button
@@ -982,7 +986,7 @@ export function JobsManager({
                                     className="h-8 shrink-0 text-xs"
                                     onClick={() => applyLibraryTemplate(template)}
                                   >
-                                    Use
+                                    {t("jobs.useTemplate")}
                                   </Button>
                                 </div>
                               </div>
@@ -995,9 +999,9 @@ export function JobsManager({
                 ) : (
                   <div className="rounded-2xl border border-dashed border-border px-6 py-10 text-center">
                     <Bot className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                    <h4 className="mt-3 text-[14px] font-semibold">Select an agent to configure jobs</h4>
+                    <h4 className="mt-3 text-[14px] font-semibold">{t("jobs.selectAgentEmptyTitle")}</h4>
                     <p className="mt-2 text-[12px] text-muted-foreground">
-                      The middle column stays focused on runs and history, while this main panel becomes the job and heartbeat control center for the selected agent.
+                      {t("jobs.selectAgentEmptyDescription")}
                     </p>
                   </div>
                 )}

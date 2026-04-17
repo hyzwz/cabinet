@@ -492,3 +492,9 @@
 - P2: 恢复 4 个因合并丢失 i18n 的组件（agents-workspace/jobs-manager/status-bar），补充 3 个缺失翻译键
 - P3: 创建 src/lib/auth/index.ts barrel export，统一 auth 模块入口
 - P4: 提取 middleware 认证逻辑到 src/middleware/auth-middleware.ts，主 middleware.ts 变为薄壳（~30行），支持未来与上游 middleware 组合
+
+[2026-04-17] Replaced all ~27 remaining hardcoded English display strings in status-bar.tsx with t() i18n calls. Covers: AI placeholder, server status aria-label, provider status labels, troubleshooting messages, dismiss button, save/pull status indicators, update banner, git status, pull button, social links (Discord/GitHub), and Sync/Chat/Contribute button text.
+
+[2026-04-17] Completed i18n for jobs-manager.tsx: replaced all remaining hardcoded English display strings with t() calls. Converted formatRelative utility to accept t parameter. Added jobs.filters.running and jobs.filters.failed keys to tasks.ts (EN + ZH).
+
+[2026-04-17] Comprehensive i18n pass on agents-workspace.tsx: replaced ~70 hardcoded English display strings with t() calls. Added useTriggerLabels() hook for module-scope TRIGGER_LABELS, formatRelativeI18n() for time formatting, and ActivityBeacon's own useLocale(). Added 'agents.settings.runtime' and 'agents.settings.notInstalled' keys to agents.ts with Chinese translations.
