@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useTreeStore } from "@/stores/tree-store";
 import { useEditorStore } from "@/stores/editor-store";
+import { slugify } from "@/lib/storage/path-utils";
 import { useLocale } from "@/components/i18n/locale-provider";
 
 export function NewPageDialog() {
@@ -30,11 +31,7 @@ export function NewPageDialog() {
       // Create at root level or under the currently selected directory
       const parentPath = "";
       await createPage(parentPath, title.trim());
-      const slug = title
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
+      const slug = slugify(title);
       loadPage(slug);
       setTitle("");
       setOpen(false);

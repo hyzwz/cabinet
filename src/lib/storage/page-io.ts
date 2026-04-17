@@ -4,7 +4,7 @@ import matter from "gray-matter";
 import yaml from "js-yaml";
 import { CABINET_LINK_META_CANDIDATES } from "@/lib/cabinets/files";
 import type { PageData, FrontMatter } from "@/types";
-import { resolveContentPath } from "./path-utils";
+import { resolveContentPath, slugify } from "./path-utils";
 import {
   readFileContent,
   writeFileContent,
@@ -172,10 +172,7 @@ export async function renamePage(
 ): Promise<string> {
   const fromResolved = resolveContentPath(virtualPath);
   const parentDir = path.dirname(fromResolved);
-  const slug = newName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+  const slug = slugify(newName);
   const toResolved = path.join(parentDir, slug);
 
   if (fromResolved === toResolved) return virtualPath;

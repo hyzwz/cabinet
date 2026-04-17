@@ -7,6 +7,7 @@ import {
   movePageApi,
   renamePageApi,
 } from "@/lib/api/client";
+import { slugify } from "@/lib/storage/path-utils";
 
 interface TreeState {
   nodes: TreeNode[];
@@ -99,10 +100,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   },
 
   createPage: async (parentPath: string, title: string) => {
-    const slug = title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
+    const slug = slugify(title);
     const fullPath = parentPath ? `${parentPath}/${slug}` : slug;
     await createPageApi(fullPath, title);
     if (parentPath) {

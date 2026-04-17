@@ -29,8 +29,9 @@ export const WikiLink = Mark.create({
   renderHTML({ HTMLAttributes }) {
     const pageName = HTMLAttributes["data-page-name"] || "";
     const slug = pageName
+      .trim()
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/[^\p{L}\p{N}]+/gu, "-")
       .replace(/^-|-$/g, "");
 
     return [

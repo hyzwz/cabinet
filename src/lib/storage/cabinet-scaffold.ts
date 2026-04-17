@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs/promises";
 import yaml from "js-yaml";
-import { DATA_DIR } from "@/lib/storage/path-utils";
+import { DATA_DIR, slugify } from "@/lib/storage/path-utils";
 import { PROJECT_ROOT } from "@/lib/runtime/runtime-config";
 
 export interface ScaffoldCabinetOptions {
@@ -105,7 +105,7 @@ export async function scaffoldCabinet(
   await fs.mkdir(path.join(targetDir, ".cabinet-state"), { recursive: true });
 
   // .cabinet manifest
-  const slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const slug = slugify(name);
   const manifest = {
     schemaVersion: 1,
     id: `${slug}-${kind}`,

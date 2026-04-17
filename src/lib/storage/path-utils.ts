@@ -26,10 +26,19 @@ export function virtualPathFromFs(fsPath: string): string {
 
 export function sanitizeFilename(name: string): string {
   return name
-    .replace(/[^a-zA-Z0-9-_ ]/g, "")
+    .replace(/[^\p{L}\p{N}\s_-]/gu, "")
     .trim()
     .replace(/\s+/g, "-")
     .toLowerCase();
+}
+
+/** Shared slug generator — supports CJK and other Unicode scripts */
+export function slugify(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-|-$/g, "");
 }
 
 export function isMarkdownFile(name: string): boolean {

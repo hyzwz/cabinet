@@ -53,6 +53,7 @@ import { LinkRepoDialog } from "./link-repo-dialog";
 import { NewCabinetDialog } from "./new-cabinet-dialog";
 import { getDataDir } from "@/lib/data-dir-cache";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { slugify } from "@/lib/storage/path-utils";
 
 interface TreeNodeProps {
   node: TreeNodeType;
@@ -131,11 +132,7 @@ export function TreeNode({
     setCreating(true);
     try {
       await createPage(node.path, subPageTitle.trim());
-      const slug = subPageTitle
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
+      const slug = slugify(subPageTitle);
       const nextPath = `${node.path}/${slug}`;
       selectPage(nextPath);
       loadPage(nextPath);

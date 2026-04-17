@@ -82,6 +82,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { slugify } from "@/lib/storage/path-utils";
 
 interface AgentSummary {
   scopedId?: string;
@@ -744,11 +745,7 @@ export function TreeView() {
             setKbCreating(true);
             try {
               await createPage(dataRootPath, kbSubPageTitle.trim());
-              const slug = kbSubPageTitle
-                .trim()
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, "-")
-                .replace(/^-|-$/g, "");
+              const slug = slugify(kbSubPageTitle);
               const nextPath = dataRootPath ? `${dataRootPath}/${slug}` : slug;
               selectPage(nextPath);
               await loadPage(nextPath);
