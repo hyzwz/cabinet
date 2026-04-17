@@ -82,7 +82,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLocale } from "@/components/i18n/locale-provider";
-import { slugify } from "@/lib/storage/path-utils";
+import { slugify } from "@/lib/storage/slugify";
 
 interface AgentSummary {
   scopedId?: string;

@@ -53,7 +53,7 @@ import { LinkRepoDialog } from "./link-repo-dialog";
 import { NewCabinetDialog } from "./new-cabinet-dialog";
 import { getDataDir } from "@/lib/data-dir-cache";
 import { useLocale } from "@/components/i18n/locale-provider";
-import { slugify } from "@/lib/storage/path-utils";
+import { slugify } from "@/lib/storage/slugify";
 
 interface TreeNodeProps {
   node: TreeNodeType;

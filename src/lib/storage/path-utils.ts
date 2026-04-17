@@ -33,13 +33,7 @@ export function sanitizeFilename(name: string): string {
 }
 
 /** Shared slug generator — supports CJK and other Unicode scripts */
-export function slugify(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, "-")
-    .replace(/^-|-$/g, "");
-}
+export { slugify } from "./slugify";
 
 export function isMarkdownFile(name: string): boolean {
   return name.endsWith(".md");

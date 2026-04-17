@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useTreeStore } from "@/stores/tree-store";
 import { useEditorStore } from "@/stores/editor-store";
-import { slugify } from "@/lib/storage/path-utils";
+import { slugify } from "@/lib/storage/slugify";
 import { useLocale } from "@/components/i18n/locale-provider";
 
 export function NewPageDialog() {

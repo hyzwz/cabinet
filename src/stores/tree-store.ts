@@ -7,7 +7,7 @@ import {
   movePageApi,
   renamePageApi,
 } from "@/lib/api/client";
-import { slugify } from "@/lib/storage/path-utils";
+import { slugify } from "@/lib/storage/slugify";
 
 interface TreeState {
   nodes: TreeNode[];
