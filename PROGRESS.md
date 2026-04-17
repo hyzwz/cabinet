@@ -483,3 +483,12 @@
 [2026-04-17] Phase 3 完成：添加 .gitattributes 合并策略、docs/upstream-sync-guide.md 同步指南、npm run sync:upstream 脚本。已推送到 origin。
 
 [2026-04-17] Phase 4 分析完成：i18n 层涉及 43 个文件（3 核心 + 43 消费者），冲突风险高；Auth 层共 13 个文件，隔离度好（大部分为 fork 专属文件）。建议：(1) i18n 提取为插件/wrapper 模式减少 ~70% 冲突；(2) Auth 命名空间化；(3) Middleware 模块化。
+
+[2026-04-17] Re-applied i18n translations to status-bar.tsx. Added useLocale import and replaced all hardcoded user-visible strings with t() translation calls using existing message catalog keys.
+
+[2026-04-17] 实施代码隔离策略 P0-P4：
+- P0: 创建 .fork-manifest.json，记录 fork 自定义文件分类（fork-only/fork-modified/i18n-consumers/needs-re-i18n）
+- P1: 将 messages.ts（1921行）拆分为 12 个领域文件（agents/auth/cabinets/core/editor/home/layout/mission-control/search/settings/sidebar/tasks），保持公共 API 完全向后兼容
+- P2: 恢复 4 个因合并丢失 i18n 的组件（agents-workspace/jobs-manager/status-bar），补充 3 个缺失翻译键
+- P3: 创建 src/lib/auth/index.ts barrel export，统一 auth 模块入口
+- P4: 提取 middleware 认证逻辑到 src/middleware/auth-middleware.ts，主 middleware.ts 变为薄壳（~30行），支持未来与上游 middleware 组合

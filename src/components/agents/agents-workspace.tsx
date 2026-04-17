@@ -65,6 +65,7 @@ import {
   type TaskRuntimeSelection,
 } from "@/components/composer/task-runtime-picker";
 import { useComposer, type MentionableItem } from "@/hooks/use-composer";
+import { useLocale } from "@/components/i18n/locale-provider";
 import {
   formatAdapterOptionLabel,
   getAdapterOptionsForProvider,
@@ -473,6 +474,7 @@ export function AgentsWorkspace({
   const [orgChartHeartbeatRunning, setOrgChartHeartbeatRunning] = useState(false);
   const [orgChartHeartbeatSaving, setOrgChartHeartbeatSaving] = useState(false);
   const lastSavedSettingsRef = useRef<string | null>(null);
+  const { t } = useLocale();
   const conversationsPanel = useHorizontalResize(340, 260, 520, "right");
   const treeNodes = useTreeStore((state) => state.nodes);
   const section = useAppStore((state) => state.section);
@@ -1133,14 +1135,14 @@ export function AgentsWorkspace({
         const res = await fetch("/api/agents/library");
         if (!res.ok) {
           setAgentFlowError(
-            await readErrorMessage(res, "Unable to load the agent library right now.")
+            await readErrorMessage(res, t("agents.library.loadError"))
           );
           return;
         }
         const data = await res.json();
         setAgentTemplates(data.templates || []);
       } catch {
-        setAgentFlowError("Unable to load the agent library right now.");
+        setAgentFlowError(t("agents.library.loadError"));
       } finally {
         setLoadingAgentTemplates(false);
       }
@@ -1222,7 +1224,7 @@ export function AgentsWorkspace({
       });
       if (!response.ok) {
         setAgentFlowError(
-          await readErrorMessage(response, "Unable to save this agent right now.")
+          await readErrorMessage(response, t("agents.settings.saveError"))
         );
         return;
       }
@@ -1235,7 +1237,7 @@ export function AgentsWorkspace({
       await refreshSettings(settingsAgentSlug, { resetJobEditor: false });
       handleSettingsEditorOpenChange(false);
     } catch {
-      setAgentFlowError("Unable to save this agent right now.");
+      setAgentFlowError(t("agents.settings.saveError"));
     } finally {
       setSavingSettings(false);
     }
@@ -1635,11 +1637,11 @@ export function AgentsWorkspace({
         `Agent: ${activeConversationMeta.agentSlug}`,
         `Trigger: ${activeConversationMeta.trigger}`,
         `Status: ${activeConversationMeta.status}`,
-        `Job ID: ${activeConversationMeta.jobId || "Not available"}`,
-        `Job name: ${activeConversationMeta.jobName || "Not available"}`,
+        `Job ID: ${activeConversationMeta.jobId || t("agents.conversation.detailsValue.notAvailable")}`,
+        `Job name: ${activeConversationMeta.jobName || t("agents.conversation.detailsValue.notAvailable")}`,
         `Started at: ${formatTimestamp(activeConversationMeta.startedAt)}`,
         `Completed at: ${formatTimestamp(activeConversationMeta.completedAt)}`,
-        `Exit code: ${activeConversationMeta.exitCode ?? "Not available"}`,
+        `Exit code: ${activeConversationMeta.exitCode ?? t("agents.conversation.detailsValue.notAvailable")}`,
         `Prompt path: ${activeConversationMeta.promptPath}`,
         `Transcript path: ${activeConversationMeta.transcriptPath}`,
         `Mentioned paths: ${activeConversationMeta.mentionedPaths.join(", ") || "None"}`,

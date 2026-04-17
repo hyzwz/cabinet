@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { GitBranch, RefreshCw, Check, CloudDownload, Star, X, ArrowRight } from "lucide-react";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { useCabinetUpdate } from "@/hooks/use-cabinet-update";
 import { useEditorStore } from "@/stores/editor-store";
 import { useTreeStore } from "@/stores/tree-store";
@@ -75,6 +76,7 @@ function StarExplosion() {
 }
 
 export function StatusBar() {
+  const { t } = useLocale();
   const { saveStatus, currentPath } = useEditorStore();
   const loadTree = useTreeStore((s) => s.loadTree);
   const selectedPath = useTreeStore((s) => s.selectedPath);
@@ -357,14 +359,14 @@ export function StatusBar() {
             }`}
             title={
               appAlive && daemonAlive && anyProviderReady
-                ? "All systems running"
+                ? t("layout.status.health.allRunning")
                 : !appAlive
-                ? "App server is not responding"
+                ? t("layout.status.health.appDown")
                 : !daemonAlive && !anyProviderReady
-                ? "Daemon is not responding; no agent providers available"
+                ? t("layout.status.health.daemonAndProvidersDown")
                 : !daemonAlive
-                ? "Daemon is not responding"
-                : "No agent providers available"
+                ? t("layout.status.health.daemonDown")
+                : t("layout.status.health.noProviders")
             }
             aria-label="Server status — click for details"
           >
@@ -379,10 +381,10 @@ export function StatusBar() {
             />
             <span>
               {appAlive && daemonAlive && anyProviderReady
-                ? "Online"
+                ? t("layout.status.online")
                 : !appAlive
-                ? "Offline"
-                : "Degraded"}
+                ? t("layout.status.offline")
+                : t("layout.status.degraded")}
             </span>
           </button>
           {showServerPopup && (
@@ -403,21 +405,21 @@ export function StatusBar() {
                       : "text-amber-500"
                   }`}>
                     {appAlive && daemonAlive && anyProviderReady
-                      ? "All Systems Running"
-                      : "Service Disruption"}
+                      ? t("layout.status.popup.allRunning")
+                      : t("layout.status.popup.disruption")}
                   </p>
 
                   {/* App Server */}
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2 text-[11px]">
                       <span className={`inline-block h-1.5 w-1.5 rounded-full shrink-0 ${appAlive ? "bg-green-500" : "bg-red-500"}`} />
-                      <span className="font-medium text-foreground/80">App Server</span>
-                      <span className={`ml-auto ${appAlive ? "text-green-500" : "text-red-500"}`}>{appAlive ? "Running" : "Down"}</span>
+                      <span className="font-medium text-foreground/80">{t("layout.status.popup.appServer")}</span>
+                      <span className={`ml-auto ${appAlive ? "text-green-500" : "text-red-500"}`}>{appAlive ? t("layout.status.popup.running") : t("layout.status.popup.down")}</span>
                     </div>
                     <p className="text-[10px] text-muted-foreground/70 pl-3.5">
                       {appAlive
-                        ? "Pages, editor, search, and file management are working."
-                        : "Pages, editor, search, and saving are unavailable. You can still read cached content."}
+                        ? t("layout.status.popup.pagesWorking")
+                        : t("layout.status.popup.pagesUnavailable")}
                     </p>
                   </div>
 
@@ -425,13 +427,13 @@ export function StatusBar() {
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2 text-[11px]">
                       <span className={`inline-block h-1.5 w-1.5 rounded-full shrink-0 ${daemonAlive ? "bg-green-500" : "bg-red-500"}`} />
-                      <span className="font-medium text-foreground/80">Daemon</span>
-                      <span className={`ml-auto ${daemonAlive ? "text-green-500" : "text-red-500"}`}>{daemonAlive ? "Running" : "Down"}</span>
+                      <span className="font-medium text-foreground/80">{t("layout.status.popup.daemon")}</span>
+                      <span className={`ml-auto ${daemonAlive ? "text-green-500" : "text-red-500"}`}>{daemonAlive ? t("layout.status.popup.running") : t("layout.status.popup.down")}</span>
                     </div>
                     <p className="text-[10px] text-muted-foreground/70 pl-3.5">
                       {daemonAlive
-                        ? "AI agents, scheduled jobs, and the web terminal are working."
-                        : "AI agents, scheduled jobs, and the web terminal are unavailable. Page editing still works."}
+                        ? t("layout.status.popup.agentsWorking")
+                        : t("layout.status.popup.agentsUnavailable")}
                     </p>
                   </div>
 
@@ -443,7 +445,7 @@ export function StatusBar() {
                       }`} />
                       <span className="font-medium text-foreground/80">Agent Providers</span>
                       <span className={`ml-auto ${anyProviderReady ? "text-green-500" : "text-red-500"}`}>
-                        {!providersLoaded ? "Checking..." : anyProviderReady ? "Available" : "None Ready"}
+                        {!providersLoaded ? t("layout.status.popup.checking") : anyProviderReady ? t("layout.status.popup.available") : t("layout.status.popup.noneReady")}
                       </span>
                     </div>
                     {providersLoaded && providerStatuses.map((p) => (

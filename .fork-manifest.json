@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "description": "hyzwz/cabinet fork 自定义文件清单",
+  "upstream": "https://github.com/hilash/cabinet.git",
+  "lastSync": "2026-04-17",
+  "categories": {
+    "fork-only": {
+      "description": "Fork 专属文件，上游不存在",
+      "files": [
+        "src/components/i18n/locale-provider.tsx",
+        "src/components/i18n/language-switcher.tsx",
+        "src/lib/i18n/messages.ts",
+        "src/lib/i18n/messages/",
+        "src/middleware.ts",
+        "src/stores/auth-store.ts",
+        "src/lib/auth/jwt.ts",
+        "src/lib/auth/request-user.ts",
+        "src/lib/storage/user-io.ts",
+        "src/components/auth/auth-initializer.tsx",
+        "src/components/auth/user-menu.tsx",
+        "src/app/api/auth/",
+        "src/app/login/page.tsx",
+        "src/types/users.ts",
+        "src/components/settings/users-tab.tsx",
+        "Dockerfile",
+        "docker-compose.yml",
+        "docs/upstream-sync-guide.md",
+        "docs/code-isolation-strategy.md",
+        ".gitattributes",
+        ".fork-manifest.json"
+      ]
+    },
+    "fork-modified": {
+      "description": "修改过的上游文件（合并时重点关注）",
+      "files": [
+        "src/app/layout.tsx",
+        "src/lib/storage/path-utils.ts",
+        "src/lib/agents/provider-registry.ts",
+        "src/components/layout/header-actions.tsx",
+        "src/components/settings/settings-page.tsx",
+        "server/cabinet-daemon.ts",
+        "src/app/api/agents/providers/route.ts",
+        "package.json"
+      ]
+    },
+    "i18n-consumers": {
+      "description": "引入了 useLocale() 的组件文件（合并时注意保留 i18n 导入）",
+      "detect": "grep -r 'useLocale' src/ --include='*.tsx' -l",
+      "count": 43
+    },
+    "needs-re-i18n": {
+      "description": "上次合并 (2026-04-17) 中丢失 i18n 的文件，需要重新国际化",
+      "files": [
+        "src/components/agents/agents-workspace.tsx",
+        "src/components/jobs/jobs-manager.tsx",
+        "src/components/tasks/task-detail-panel.tsx",
+        "src/components/layout/status-bar.tsx"
+      ]
+    }
+  }
+}
