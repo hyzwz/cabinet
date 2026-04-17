@@ -1651,20 +1651,20 @@ export function AgentsWorkspace({
   const noneLabel = t("agents.conversation.detailsValue.none");
   const selectedConversationDebugText = activeConversationMeta
     ? [
-        `Conversation ID: ${activeConversationMeta.id}`,
-        `Title: ${activeConversationMeta.title}`,
-        `Agent: ${activeConversationMeta.agentSlug}`,
-        `Trigger: ${activeConversationMeta.trigger}`,
-        `Status: ${activeConversationMeta.status}`,
-        `Job ID: ${activeConversationMeta.jobId || notAvailableLabel}`,
-        `Job name: ${activeConversationMeta.jobName || notAvailableLabel}`,
-        `Started at: ${formatTimestamp(activeConversationMeta.startedAt, notAvailableLabel)}`,
-        `Completed at: ${formatTimestamp(activeConversationMeta.completedAt, notAvailableLabel)}`,
-        `Exit code: ${activeConversationMeta.exitCode ?? notAvailableLabel}`,
-        `Prompt path: ${activeConversationMeta.promptPath}`,
-        `Transcript path: ${activeConversationMeta.transcriptPath}`,
-        `Mentioned paths: ${activeConversationMeta.mentionedPaths.join(", ") || noneLabel}`,
-        `Artifact paths: ${activeConversationMeta.artifactPaths.join(", ") || noneLabel}`,
+        `${t("agents.conversation.detailsField.conversationId")}: ${activeConversationMeta.id}`,
+        `${t("agents.conversation.detailsField.title")}: ${activeConversationMeta.title}`,
+        `${t("agents.conversation.detailsField.agent")}: ${activeConversationMeta.agentSlug}`,
+        `${t("agents.conversation.detailsField.trigger")}: ${activeConversationMeta.trigger}`,
+        `${t("agents.conversation.detailsField.status")}: ${activeConversationMeta.status}`,
+        `${t("agents.conversation.detailsField.jobId")}: ${activeConversationMeta.jobId || notAvailableLabel}`,
+        `${t("agents.conversation.detailsField.jobName")}: ${activeConversationMeta.jobName || notAvailableLabel}`,
+        `${t("agents.conversation.detailsField.startedAt")}: ${formatTimestamp(activeConversationMeta.startedAt, notAvailableLabel)}`,
+        `${t("agents.conversation.detailsField.completedAt")}: ${formatTimestamp(activeConversationMeta.completedAt, notAvailableLabel)}`,
+        `${t("agents.conversation.detailsField.exitCode")}: ${activeConversationMeta.exitCode ?? notAvailableLabel}`,
+        `${t("agents.conversation.detailsField.promptPath")}: ${activeConversationMeta.promptPath}`,
+        `${t("agents.conversation.detailsField.transcriptPath")}: ${activeConversationMeta.transcriptPath}`,
+        `${t("agents.conversation.detailsField.mentionedPaths")}: ${activeConversationMeta.mentionedPaths.join(", ") || noneLabel}`,
+        `${t("agents.conversation.detailsField.artifactPaths")}: ${activeConversationMeta.artifactPaths.join(", ") || noneLabel}`,
       ].join("\n")
     : "";
   const groupedAgentTemplates = Object.entries(
