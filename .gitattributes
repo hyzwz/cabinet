@@ -1,0 +1,14 @@
+# Merge strategies for upstream sync
+# These files change frequently on both sides but conflicts are low-risk
+
+# Changelog — always union merge (keep both sides)
+PROGRESS.md merge=union
+
+# Data content files — prefer ours (fork's content)
+data/**/*.md merge=ours
+data/**/*.yaml merge=ours
+data/**/*.json merge=ours
+data/**/*.jsonl merge=ours
+
+# Lock files — prefer theirs (upstream dependency updates)
+package-lock.json merge=theirs
