@@ -1,0 +1,24 @@
+Now I have a full picture. Let me draft creative briefs for the top candidates and advance their statuses.Now update the CSV to reflect status changes:Now update the briefs index to surface these new briefs:Here's what I did this run:
+
+**Briefs written — 2 moved to Script Ready, 1 advanced to Research:**
+
+**`question-mark-brief.md`** (Critical → Script Ready)
+The `?` hook is the strongest asset in the backlog. 5 slides: lock screen dread → the `haha` crime scene → the escalation pattern → the translation → the CTA. Visual direction: dark backgrounds, real chat bubbles, notification red as the only accent. The joke peaks at slide 4 — the brief explicitly says don't explain it further.
+
+**`reply-guilt-math-brief.md`** (High → Script Ready)
+"Emotionally buffering" is a quotable line. 6 slides: screen time data → the alibi activities → the progress bar punchline → the cognitive load breakdown → the app as pattern interrupt → 12-second close. Stats-card aesthetic makes it feel native to TikTok without being a talking head.
+
+**`group-chat-shame-brief.md`** (High → Research)
+Strong concept but needs a format decision before scripting — the skit version might outperform the carousel. Brief documents the 5-slide carousel structure, flags the skit alternate, and notes the recurring character potential ("Family Group Chat Katie"). Holding at Research until format is validated.
+
+**Also updated:** `content-ideas.csv` statuses and `briefs/index.md` index table.
+
+```cabinet
+SUMMARY: Drafted 3 creative briefs from Idea/Research backlog; moved 2 concepts to Script Ready and 1 to Research
+CONTEXT: "Text your mom before she sends ?" and "The fake mental math of reply guilt" are now script-ready; "Group chat shame spiral" needs format validation before scripting
+ARTIFACT: briefs/question-mark-brief.md
+ARTIFACT: briefs/reply-guilt-math-brief.md
+ARTIFACT: briefs/group-chat-shame-brief.md
+ARTIFACT: briefs/index.md
+ARTIFACT: content-ideas.csv
+```

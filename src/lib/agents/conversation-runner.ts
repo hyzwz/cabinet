@@ -4,6 +4,10 @@ import type { ConversationMeta } from "@/types/conversations";
 import { readPage } from "../storage/page-io";
 import { DATA_DIR } from "../storage/path-utils";
 import {
+  defaultAdapterTypeForProvider,
+  resolveExecutionProviderId,
+} from "./adapters";
+import {
   appendConversationTranscript,
   createConversation,
   finalizeConversation,
@@ -26,6 +30,8 @@ interface StartConversationInput {
   trigger: ConversationMeta["trigger"];
   prompt: string;
   providerId?: string;
+  adapterType?: string;
+  adapterConfig?: Record<string, unknown>;
   mentionedPaths?: string[];
   jobId?: string;
   jobName?: string;
@@ -118,6 +124,8 @@ export async function buildManualConversationPrompt(input: {
   prompt: string;
   title: string;
   cwd?: string;
+  adapterType: string;
+  adapterConfig?: Record<string, unknown>;
   providerId: string;
   cabinetPath?: string;
 }> {
@@ -142,11 +150,27 @@ export async function buildManualConversationPrompt(input: {
     `User request:\n${input.userMessage}${mentionContext}`,
   ].join("\n");
 
+  const defaultProviderId = getDefaultProviderId();
+
   return {
     prompt,
     title: makeTitle(input.userMessage),
     cwd,
-    providerId: persona?.provider || getDefaultProviderId(),
+    adapterType:
+      persona?.adapterType ||
+      defaultAdapterTypeForProvider(
+        resolveExecutionProviderId({
+          adapterType: persona?.adapterType,
+          providerId: persona?.provider,
+          defaultProviderId,
+        })
+      ),
+    adapterConfig: persona?.adapterConfig,
+    providerId: resolveExecutionProviderId({
+      adapterType: persona?.adapterType,
+      providerId: persona?.provider,
+      defaultProviderId,
+    }),
     cabinetPath: input.cabinetPath,
   };
 }
@@ -161,6 +185,8 @@ export async function buildEditorConversationPrompt(input: {
   title: string;
   cwd?: string;
   mentionedPaths: string[];
+  adapterType: string;
+  adapterConfig?: Record<string, unknown>;
   providerId: string;
 }> {
   const persona =
@@ -191,24 +217,47 @@ export async function buildEditorConversationPrompt(input: {
     `User request:\n${input.userMessage}${mentionContext}`,
   ].join("\n");
 
+  const defaultProviderId = getDefaultProviderId();
+
   return {
     prompt,
     title: makeTitle(input.userMessage),
     cwd,
     mentionedPaths: combinedMentionedPaths,
-    providerId: persona?.provider || getDefaultProviderId(),
+    adapterType:
+      persona?.adapterType ||
+      defaultAdapterTypeForProvider(
+        resolveExecutionProviderId({
+          adapterType: persona?.adapterType,
+          providerId: persona?.provider,
+          defaultProviderId,
+        })
+      ),
+    adapterConfig: persona?.adapterConfig,
+    providerId: resolveExecutionProviderId({
+      adapterType: persona?.adapterType,
+      providerId: persona?.provider,
+      defaultProviderId,
+    }),
   };
 }
 
 export async function startConversationRun(
   input: StartConversationInput
 ): Promise<ConversationMeta> {
+  const resolvedProviderId = input.providerId || getDefaultProviderId();
+  const resolvedAdapterType =
+    input.adapterType || defaultAdapterTypeForProvider(resolvedProviderId);
+
   const meta = await createConversation({
     agentSlug: input.agentSlug,
     cabinetPath: input.cabinetPath,
     title: input.title,
     trigger: input.trigger,
     prompt: input.prompt,
+    providerId: resolvedProviderId,
+    adapterType: resolvedAdapterType,
+    adapterConfig: input.adapterConfig,
     mentionedPaths: input.mentionedPaths,
     jobId: input.jobId,
     jobName: input.jobName,
@@ -218,7 +267,9 @@ export async function startConversationRun(
     await createDaemonSession({
       id: meta.id,
       prompt: input.prompt,
-      providerId: input.providerId,
+      providerId: resolvedProviderId,
+      adapterType: resolvedAdapterType,
+      adapterConfig: input.adapterConfig,
       cwd: input.cwd,
       timeoutSeconds: input.timeoutSeconds,
     });
@@ -346,6 +397,7 @@ async function processPostActions(
 
 export async function startJobConversation(job: JobConfig): Promise<JobRun> {
   const persona = job.agentSlug ? await readPersona(job.agentSlug, job.cabinetPath) : null;
+  const defaultProviderId = getDefaultProviderId();
   const jobPrompt = substituteTemplateVars(job.prompt, job);
   const baseCwd = job.cabinetPath ? path.join(DATA_DIR, job.cabinetPath) : DATA_DIR;
   const cwd =
@@ -372,7 +424,22 @@ export async function startJobConversation(job: JobConfig): Promise<JobRun> {
     title: job.name,
     trigger: "job",
     prompt,
-    providerId: job.provider || persona?.provider || getDefaultProviderId(),
+    adapterType:
+      job.adapterType ||
+      persona?.adapterType ||
+      defaultAdapterTypeForProvider(
+        resolveExecutionProviderId({
+          adapterType: job.adapterType || persona?.adapterType,
+          providerId: job.provider || persona?.provider,
+          defaultProviderId,
+        })
+      ),
+    adapterConfig: job.adapterConfig || persona?.adapterConfig,
+    providerId: resolveExecutionProviderId({
+      adapterType: job.adapterType || persona?.adapterType,
+      providerId: job.provider || persona?.provider,
+      defaultProviderId,
+    }),
     jobId: job.id,
     jobName: job.name,
     cabinetPath: job.cabinetPath,

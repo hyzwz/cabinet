@@ -3,6 +3,7 @@ name: Weekly TikTok Performance Digest
 enabled: true
 schedule: 0 9 * * 1
 provider: claude-code
+adapterType: claude_local
 ownerAgent: image-creator
 agentSlug: image-creator
 timeout: 600

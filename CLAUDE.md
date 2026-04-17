@@ -2,7 +2,7 @@
 
 ## What is this project?
 
-Cabinet is an AI-first self-hosted knowledge base and startup OS. All content lives as markdown files on disk. The web UI provides WYSIWYG editing, a collapsible tree sidebar, drag-and-drop page organization, and an AI panel that can edit pages via Claude CLI.
+Cabinet is an AI-first self-hosted knowledge base and startup OS. All content lives as markdown files on disk. The web UI provides WYSIWYG editing, a collapsible tree sidebar, drag-and-drop page organization, structured AI runs for tasks/jobs/heartbeats, and interactive `WebTerminal` surfaces for direct CLI sessions.
 
 **Core philosophy:** Humans define intent. Agents do the work. The knowledge base is the shared memory between both.
 
@@ -15,7 +15,7 @@ Cabinet is an AI-first self-hosted knowledge base and startup OS. All content li
 - **Fonts:** Inter (sans) + JetBrains Mono (code)
 - **Icons:** Lucide (no emoji in system chrome)
 - **Markdown:** gray-matter (frontmatter), unified/remark (MD→HTML), turndown (HTML→MD)
-- **AI:** Claude CLI headless mode (`claude -p`) for page editing
+- **AI:** Claude Code and Codex CLI via the adapter runtime; `WebTerminal` stays in the product for interactive sessions
 
 ## Architecture
 
@@ -26,28 +26,30 @@ src/
   app/api/upload/[...path]/  → POST file upload to page directory
   app/api/assets/[...path]/  → GET/PUT static file serving + raw file writes
   app/api/search/            → GET full-text search
-  app/api/tasks/             → GET/POST task board CRUD
-  app/api/agents/            → GET/POST agent sessions
-  app/api/jobs/              → GET/POST scheduled jobs
+  app/api/agents/conversations/ → Manual task/conversation creation + listing
+  app/api/agents/providers/  → Provider, model, adapter metadata
+  app/api/agents/tasks/      → Task board data
+  app/api/agents/scheduler/  → Scheduler control/status
   app/api/git/               → Git log, diff, commit endpoints
-  app/api/ai/edit/           → POST instruction → Claude edits page
   stores/                    → Zustand (tree, editor, ai-panel, task, app)
   components/sidebar/        → Tree navigation, drag-and-drop, context menu
   components/editor/         → Tiptap WYSIWYG + toolbar, website/PDF/CSV viewers
   components/ai-panel/       → Right-side AI chat panel
-  components/tasks/          → Kanban board
-  components/agents/         → Agent dashboard
+  components/tasks/          → Task board + task detail panel
+  components/agents/         → Agents workspace + live/result conversation views
   components/jobs/           → Jobs manager UI
   components/terminal/       → xterm.js web terminal
+  components/composer/       → Shared composer + task runtime picker
   components/search/         → Cmd+K search dialog
   components/layout/         → App shell, header
   lib/storage/               → Filesystem ops (path-utils, page-io, tree-builder, task-io)
   lib/markdown/              → MD↔HTML conversion
   lib/git/                   → Git service (auto-commit, history, diff)
-  lib/agents/                → Agent session manager
+  lib/agents/                → Adapter runtime, conversation runner, personas, providers
   lib/jobs/                  → Job scheduler (node-cron)
 server/
-  terminal-server.ts         → Standalone WebSocket server for PTY sessions
+  cabinet-daemon.ts          → Unified daemon for structured runs, PTY sessions, scheduler, events
+  terminal-server.ts         → Standalone PTY WebSocket server kept for focused terminal debugging/legacy use
 data/                        → Content directory (KB pages, tasks, jobs)
 ```
 
@@ -60,20 +62,22 @@ data/                        → Content directory (KB pages, tasks, jobs)
 5. **shadcn/ui uses base-ui** (not Radix) — DialogTrigger, ContextMenuTrigger etc. do NOT have `asChild`
 6. **Dark mode default** — theme toggle available, use `next-themes` with `attribute="class"`
 7. **Auto-save** — debounced 500ms after last keystroke in editor-store
-8. **AI edits** — Claude edits files DIRECTLY using its tools (read/edit), NOT by returning full content as stdout. The `/api/ai/edit` endpoint gives Claude the file path and instruction — Claude uses its file editing tools to make targeted changes.
-9. **Version restore** — users can restore any page to a previous git commit via the Version History panel
-10. **Embedded apps** — dirs with `index.html` + no `index.md` render as iframes. Add `.app` marker for full-screen mode (sidebar + AI panel auto-collapse)
-11. **Linked repos** — `.repo.yaml` in a data dir links it to a Git repo (local path + remote URL). Agents use this to read/search source code in context. See `data/CLAUDE.md` for full spec.
+8. **AI runs use a mixed runtime model** — tasks/jobs/heartbeats default to structured adapters; `WebTerminal` remains for interactive sessions and experimental legacy PTY flows.
+9. **Do not assume the terminal is being removed** — the product direction is away from terminal-first task execution, while keeping terminal functionality for direct sessions and future features such as Cabinet-managed tmux-like workflows.
+10. **Version restore** — users can restore any page to a previous git commit via the Version History panel
+11. **Embedded apps** — dirs with `index.html` + no `index.md` render as iframes. Add `.app` marker for full-screen mode (sidebar + AI panel auto-collapse)
+12. **Linked repos** — `.repo.yaml` in a data dir links it to a Git repo (local path + remote URL). Agents use this to read/search source code in context. See `data/CLAUDE.md` for full spec.
 
 ## AI Editing Behavior (CRITICAL)
 
-When the AI panel sends an edit request:
+When Cabinet starts an AI edit or task run:
 
-1. **Claude gets the file path and instruction** — it should READ the file, then make TARGETED edits
-2. **NEVER replace the entire file** — only modify the specific parts the user asked about
-3. **PRESERVE existing content** — "add X" means INSERT, not REPLACE
-4. **The output shown in the AI panel** is Claude's summary of what it changed, NOT the file content
-5. **If content gets corrupted** — users can restore from Version History (clock icon → select commit → Restore)
+1. **The request becomes a conversation** with `providerId`, `adapterType`, and optional adapter config such as model or effort.
+2. **Detached runs** go through `/api/agents/conversations` → `conversation-runner` → `cabinet-daemon`.
+3. **Structured adapters are the default** for detached Claude/Codex runs; legacy PTY adapters remain available as experimental escape hatches.
+4. **Interactive editor/live surfaces may still mount `WebTerminal`** when terminal feedback matters.
+5. **Models should edit targeted files directly when useful** and reflect durable value in KB files, not only transcript text.
+6. **If content gets corrupted** — users can restore from Version History (clock icon → select commit → Restore)
 
 The AI panel supports `@` mentions — users type `@PageName` to attach other pages as context. The mentioned pages' content is fetched and appended to the prompt so Claude has full context.
 
@@ -82,7 +86,8 @@ The AI panel supports `@` mentions — users type `@PageName` to attach other pa
 
 ```bash
 npm run dev          # Start Next.js dev server on localhost:3000
-npm run dev:terminal # Start terminal WebSocket server on localhost:3001
+npm run dev:daemon   # Start unified daemon on localhost:3001
+npm run dev:terminal # Start standalone terminal WebSocket server on localhost:3001 (focused PTY/legacy debugging)
 npm run dev:all      # Start both servers
 npm run debug:chrome # Launch Chrome with CDP on localhost:9222 for frontend debugging
 npm run build        # Production build

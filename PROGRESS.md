@@ -83,6 +83,35 @@
 [2026-04-13] Pipeline Conductor first heartbeat: stood up 3 missing agent personas (conductor, evaluator, cv-tailor). Assessed pipeline state — Scanner has populated 50 roles across 14 companies (Anthropic, Stripe, Figma, Vercel, Linear, Supabase, Databricks, Airtable, Scale AI, Airbnb, dbt Labs, Brex, Resend, Clerk), all in "Discovered" status with zero evaluations. Identified critical blocker: master CV and proof points are still templates, blocking all Block B evaluations and downstream CV tailoring. Updated career-ops hub with accurate pipeline health metrics and agent roster.
 
 [2026-04-15] Added the demo i18n foundation: a lightweight client-side locale provider with persisted `zh`/`en` state, English fallback message lookup, and automatic `html lang` synchronization. Added a visible language switcher next to the theme control across shared header chrome, and wired the login surface to use localized copy before authentication without affecting theme persistence.
+[2026-04-16] Claude Code model labels now include version numbers in the runtime picker ("Claude Opus 4.7", "Claude Sonnet 4.6", "Claude Haiku 4.5"), with Opus listed first.
+
+[2026-04-16] Runtime picker: fixed gap between tabs and model table by wrapping the TabsList in a flex container, eliminating the CSS inline-flex baseline descender space that was adding ~4px below the tab buttons. Inactive tabs now use bg-muted/60 so the active tab stands out clearly.
+
+[2026-04-16] COO heartbeat for Text Your Mom: delivered mid-week operating review (Apr 14 week). Audited Tuesday Proof-of-Life — all three cabinets missed (app-dev, TikTok, Reddit). Identified TikTok image-creator produced two script-ready briefs today (first marketing output ever). Reddit remains dark with zero job runs. Created content-calendar/index.md for TikTok, appended COO review to company/operations, updated COO memory, and sent urgent messages to CEO, Reddit researcher, and DevOps agent.
+
+[2026-04-16] Models picker: renamed "Task Model" → "Selected Model", collapsed model info into a single row (icon + name + Provider · Effort with effort-toned colors), header row transparent (no box), tabs row retains background styling.
+
+[2026-04-16] Models picker: removed bottom margin (mb-1.5) from the selected model banner row.
+
+[2026-04-16] Models picker: provider tab backgrounds set to bg-background (matching the table) using !important overrides to beat line-variant transparent base styles; removed all borders from tabs.
+
+[2026-04-16] Resume Tailor heartbeat for hila-finds-job: audited master resume — found it still contains placeholder content with a critical career target mismatch (summary says EM/Director of Engineering but all 12 pipeline jobs are PM roles). Created detailed tailoring briefs for both "Saved" jobs (Figma Senior PM Collaboration and dbt Labs Senior PM Core) with keyword maps, gap analyses, cover letter angles, and next-step checklists. Flagged the EM→PM narrative gap as a blocker on the master resume. Both briefs ready to generate tailored resumes the moment real experience is entered.
+
+[2026-04-16] Networking Scout heartbeat for hila-finds-job: audited all 13 contacts against pipeline state. Created outreach-drafts-apr-16.md with 7 personalized, ready-to-send messages (Sarah Lin follow-up, Marcus Stripe check-in, David Park first touch, Alex Rivera mock-interview ask, Dana Kim post-Round-2 thank you, Jake Wilson post-screen check-in, Chris Donovan dormant reconnect). Updated networking/index.md with this week's priority table. Flagged contacts not to contact this week to avoid over-messaging active processes.
+
+[2026-04-16] DevOps daily bug triage for Text Your Mom app-development cabinet. Updated bug-triage.csv with fix targets, DevOps risk framing, and CTO-confirmed root cause notes for all 5 bugs. RT-4 (reminder 2h late) flagged as P2 blocker with zero delivery telemetry; PC-3 (paywall dismiss) and OB-5 (nickname) confirmed for this sprint. Updated DevOps agent context memory.
+
+[2026-04-16] Michael Burry heartbeat: upgraded NVDA bear thesis from watching (Apr 14, conviction 3) to active bear signal (conviction 4) — specific catalyst is Blackwell hyperscaler uptake data at Q1 FY2027 earnings ~late May 2026; 57 Buy / 0 Sell consensus, Google TPU v6 / Amazon Trainium 2 / Microsoft Maia already live in production, DCF 25% premium, 37% downside on estimate + multiple compression. Initiated META bear signal (conviction 3) focused on cash flow arithmetic: $115-135B capex committed yields ~negative FCF in Q1 2026; FCF/NI already 0.72x; Reality Labs $24B/year annualized under unchecked dual-class governance. Both signals appended to market-analysis/signals.csv with catalyst and timeframe per Burry methodology.
+
+[2026-04-16] Benjamin Graham heartbeat: conducted NCAV and balance sheet quality screens on AAPL, NVDA, and META. AAPL: negative NCAV (-$138B), P/B 48x — neutral, conviction 2. NVDA: trading at ~36x estimated NCAV, P/E 56x, pure growth speculation — bearish, conviction 4. META: NCAV near zero, P/E 23x, DCF-based cheapness not Graham cheapness — neutral, conviction 2. All three signals appended to market-analysis/signals.csv.
+
+[2026-04-16] Warren Buffett heartbeat: evaluated NVDA through the four filters. CUDA switching-cost moat acknowledged, Jensen Huang rated excellent capital allocator, but 40%+ hyperscaler concentration and 56x P/E with 25% DCF premium leaves no margin of safety — neutral signal, conviction 2. Signal appended to market-analysis/signals.csv.
+
+[2026-04-16] Charlie Munger heartbeat: applied inversion analysis to NVDA and META. NVDA flagged bearish — lollapalooza consensus (57 Buy / 0 Sell), 25% DCF premium, hyperscaler silicon competition risk. META flagged neutral — PEG attractive but dual-class governance and $115-135B capex bet create unacceptable minority shareholder risk. Signals appended to market-analysis/signals.csv.
+
+[2026-04-16] Models picker: replaced generic Lucide icons in ProviderGlyph with brand images — Claude AI symbol SVG for Claude Code (icon="sparkles") and ChatGPT logo PNG for Codex CLI (icon="bot").
+
+[2026-04-16] Peter Lynch heartbeat: wrote three signals to market-analysis/signals.csv using corrected prices from fundamentals analyst (AAPL $260.48, NVDA $188.63, META $629.86). NVDA neutral (PEG 0.77 trailing / 1.6 forward, customer concentration disqualifier, fully discovered by Wall Street). META downgraded from bullish to neutral — corrected price re-rates PEG from 0.96 to 1.17, hold existing position but do not add, stalwart sell trigger at P/E 36x. AAPL downgraded to bearish — corrected price re-rates PEG to 3.8 (stalwart sell rule triggered at P/E 42x vs 16.5x threshold).
 
 [2026-04-14] CLI: `cabinetai run` is now fully all-in-one — no `create` needed first. Extracted scaffold logic into `cabinetai/src/lib/scaffold.ts` and added `resolveOrBootstrapCabinetRoot()` which auto-creates the cabinet structure (`.cabinet`, `.agents/`, `.jobs/`, `.cabinet-state/`) in the current directory if none is found. `ensureApp()` then detects and installs the web app if needed. Updated Quick Start in README and CABINETAI.md to reflect the single-command flow.
 
@@ -444,3 +473,9 @@
 [2026-04-16] 统一了中文 i18n 术语，将 agents/jobs/heartbeats 在已覆盖界面中改为 AI 代理、任务、心跳，并同步修正相关测试期望与 agents workspace 的触发标签类型问题。
 [2026-04-16] 修正中文术语映射：task 统一为任务，jobs 统一为定时任务，并同步更新相关 i18n 文案与测试期望。
 [2026-04-16] 将今天中国自然灾害信息整理为知识库简报，汇总了四川资中地震、广西桂林地质灾害黄色预警，以及多省暴雨和强对流预警，并附上官方来源链接。
+
+[2026-04-15] Updated stale runtime docs across `README.md`, `AI-claude-editor.md`, `CLAUDE.md`, `AI_PROVIDER_RUNTIME_PROGRESS.md`, and `data/getting-started/index.md` to reflect the current adapter-based execution model. Documented that tasks/jobs/heartbeats now default to structured transcript-driven runs, listed the remaining migration work, and clarified that `WebTerminal` is being kept intentionally for interactive and future tmux-like Cabinet features.
+
+[2026-04-16] Cathie Wood heartbeat: applied disruptive innovation lens to AAPL and META. AAPL rated bullish conviction 3 — Apple Intelligence + health platform convergence is compelling but AAPL is a platform defender, not early-stage disruptor; 5-year bull case $350. META rated bullish conviction 5 — sits at exact AI × spatial computing × social convergence ARK targets; $115-135B capex is Wright's Law in action; 5-year bull case $1,400. Both signals appended to market-analysis/signals.csv.
+
+[2026-04-16] Image Creator heartbeat: designed 2 TikTok carousels from Script Writer briefs. Carousel 01 ("Text your mom before she sends ?", 5 slides) uses lock-screen mockup + iMessage chat bubble + giant red "?" aesthetic. Carousel 02 ("The fake mental math of reply guilt", 6 slides) uses iOS Screen Time stats card + progress bar + timer CTA aesthetic. Both saved to data/example-text-your-mom/marketing/tiktok/carousels/ and content-ideas.csv updated to "Designed" status.

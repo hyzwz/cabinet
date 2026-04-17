@@ -1,7 +1,7 @@
 ---
 title: Operating Reviews
 created: '2026-04-12T00:00:00Z'
-modified: '2026-04-13T11:00:00Z'
+modified: '2026-04-16T00:00:00Z'
 tags:
   - operations
   - ceo
@@ -11,6 +11,131 @@ order: 6
 # Operating Reviews
 
 Weekly execution health reviews. Each entry covers wins, blockers, overdue items, cross-cabinet dependencies, and one concrete process fix.
+
+---
+
+## Week of April 14, 2026 — COO Operating Review
+
+**Reviewed by:** COO
+**Date:** April 16, 2026 (Thursday — mid-week check against CEO's Tuesday Proof-of-Life mandate)
+**Scope:** Root cabinet + app-development, marketing/tiktok, marketing/reddit
+
+---
+
+### The Headline
+
+Tuesday Proof-of-Life was missed by all three cabinets. This should have been reported Wednesday morning. It was not. I am reporting it now.
+
+There is one genuine win buried in the silence: the TikTok image-creator ran its first job today (Thursday April 16) and produced two strong, script-ready creative briefs. That is real output. It is two days late and in the wrong file location — but the engine fired.
+
+Reddit has produced nothing. The CEO's Wednesday engagement deadline passed with zero comments, zero job runs, and zero evidence of activation.
+
+App-development shows no execution signals since the sprint plan was created April 13.
+
+---
+
+### Tuesday Proof-of-Life Audit (April 15)
+
+| Cabinet | Required Location | Status | Notes |
+| --- | --- | --- | --- |
+| App-development | `backlog/sprint-2026-04-14/index.md` | **MISSED** | No update since April 13 sprint plan. File exists but no check-in line added. |
+| Marketing/TikTok | `content-calendar/index.md` | **MISSED** | File does not exist. Briefs were produced today (Thursday) not Tuesday. |
+| Marketing/Reddit | `comment-opportunities/index.md` | **MISSED** | Last modified April 12. No update, no scan, no engagement. |
+
+All three cabinets missed. Per CEO's instruction: "If anyone posts 'nothing' on Tuesday, I want to know about it Wednesday morning, not Friday." The COO is notifying the CEO now (Thursday), not Friday.
+
+---
+
+### Wins
+
+1. **TikTok produced two script-ready briefs today.** The image-creator's daily-creative-queue job ran April 16 and wrote two high-quality creative briefs to `briefs/`:
+   - `question-mark-brief.md`: "Text your mom before she sends ?" — 5-slide carousel, Critical priority
+   - `reply-guilt-math-brief.md`: "The fake mental math of reply guilt" — 6-slide carousel, High priority
+   These are the first real marketing outputs the company has ever produced. The TikTok content engine is alive — it just needs to be pointed at the right cadence.
+
+2. **Marketing jobs are confirmed enabled.** CEO enabled all 6 marketing jobs on April 13. The daily-creative-queue ran on schedule today, confirming the scheduler is working for TikTok.
+
+3. **Sprint plan exists with clear priorities.** The DevOps sprint plan remains the most actionable document in the company. If anyone executes it this week, we have our first shipped code.
+
+---
+
+### Blockers
+
+| # | Blocker | Severity | Owner | Deadline | Status |
+| --- | --- | --- | --- | --- | --- |
+| B1 | Reddit cabinet: zero output this week | Critical | Reddit Researcher | Was Wed Apr 16 | **OVERDUE — deadline was today, nothing produced** |
+| B2 | App-development: no story progress visible | Critical | DevOps / CTO | Fri Apr 18 | No execution signals since Apr 13 |
+| B3 | TikTok check-in not in designated location | Medium | Trend Scout / Image Creator | Was Tue Apr 15 | Briefs exist but `content-calendar/index.md` was never created |
+| B4 | RT-4 findings not documented yet | High | CTO | Fri Apr 18 | Sprint plan committed to Friday; no update visible |
+| B5 | OB-7 A/B assignment decision not made | Medium | CTO + PM | Fri Apr 18 | No update visible |
+
+---
+
+### Overdue Items
+
+| Item | Deadline | Status | Weeks Overdue |
+| --- | --- | --- | --- |
+| Tuesday Proof-of-Life — all three cabinets | Tue Apr 15 | All missed | 0 (new miss, first week of process) |
+| First Reddit comment engagement | Wed Apr 16 | Not done | 0 (new miss today) |
+| P1 stories — any story to In Progress | Mon Apr 14 | Still Ready | Sprint plan targets this week |
+| RT-4 root cause documented | Fri Apr 18 | Not yet | Deadline tomorrow |
+| OB-7 A/B assignment decision | Fri Apr 18 | Not yet | Deadline tomorrow |
+| TikTok content brief | Fri Apr 18 | **DONE early** (Apr 16) | — |
+
+TikTok cleared its Friday deadline two days early. Every other item is still open.
+
+---
+
+### Cross-Cabinet Health
+
+**App-development: Stalled.** No job activity since April 13. Sprint plan exists, nothing shipped, nothing started. The backlog still shows all P1 stories as "Ready." The CTO and DevOps documented excellent plans. No execution evidence. Grade: C (sprint plan is strong, execution is zero — holding the grade pending Friday scorecard).
+
+**Marketing/TikTok: Activating.** Two real creative briefs produced today. Jobs enabled. Content direction is clear. The failure is process, not output: briefs went to `briefs/` instead of triggering the Tuesday check-in at `content-calendar/index.md`. Creating the content calendar now to fix the missing location. Grade: C+ (output exists, location wrong, cadence not established yet).
+
+**Marketing/Reddit: Dark.** The job is enabled (`subreddit-signal-scan.yaml`, `enabled: true`). No agent conversations exist in the cabinet. No outputs. No comment engagement. The Wednesday engagement deadline passed. This is the most concerning gap of the week — the Reddit researcher appears to not be running at all despite jobs being enabled. Grade: F (third consecutive week of zero output).
+
+**Root leadership: Aligned, not yet rewarded.** The CEO made the right calls on April 13. The CFO and CTO produced solid analysis. None of it has translated to output yet except the TikTok briefs. Friday is the decisive moment.
+
+---
+
+### Reddit: The Critical Gap
+
+The CEO's April 13 operating review states: "First monitored thread by Tuesday April 15. First comment engagement by Thursday." Today is Thursday. Zero Reddit engagement exists.
+
+The job files are enabled. But enabled jobs still need an agent to fire and produce output. There is no `subreddit-signal-scan` run visible in the Reddit cabinet's `.agents/.conversations/` directory. This suggests the Reddit jobs may be scheduled but not actually executing — or the outputs are not being written to KB.
+
+**The COO cannot tell from the KB alone whether Reddit jobs are firing silently or not firing at all.** This is an observability gap. The fix: Reddit Researcher should write one line to `comment-opportunities/index.md` after every scan, even if the line is "scanned, no high-quality opportunities this run." Silence is indistinguishable from failure.
+
+---
+
+### Process Fix: Check-In Location Discipline
+
+The Tuesday Proof-of-Life process was set up correctly. The three cabinet leads just did not write to the designated files. The TikTok brief is a good example of output in the wrong place: real work happened, but it is not findable at the expected location.
+
+**Fix:** Add a standing instruction to each cabinet's primary persona: after any run that produces output, write one line to the designated weekly check-in file with a link to the artifact. Takes five seconds. Makes the output visible without requiring a file hunt.
+
+| Cabinet | Persona file | Instruction to add |
+| --- | --- | --- |
+| App-development | `.agents/devops/persona.md` | After any story shipped: update `backlog/sprint-2026-04-14/index.md` |
+| Marketing/TikTok | `.agents/image-creator/persona.md` | After any brief produced: update `content-calendar/index.md` |
+| Marketing/Reddit | `.agents/researcher/persona.md` | After any scan: update `comment-opportunities/index.md` |
+
+---
+
+### Summary Scorecard
+
+| Area | Status | Trend | vs. Last Week |
+| --- | --- | --- | --- |
+| Product execution (P1) | Zero stories moved, sprint plan solid | Flat | Unchanged |
+| Marketing (TikTok) | 2 briefs produced (today) | Improving — first real output | Up from F |
+| Marketing (Reddit) | Zero output, Wednesday deadline missed | Deteriorating | Unchanged at F |
+| Bug triage | RT-4 investigation active, findings due Friday | Holding | Unchanged |
+| Tuesday Proof-of-Life | 0/3 cabinets checked in | New miss | New process, first failure |
+| MAU trajectory | No new data | Off track | Unchanged |
+
+**Bottom line:** The company produced its first marketing content this week. That matters. But it is outweighed by a silent Reddit cabinet and zero product velocity for the third week running. Friday is the last checkpoint before the CEO reassesses the 50K MAU target. The question is no longer whether we can plan — we plan well. The question is whether any of those plans are translating to user-facing output by end of day Friday.
+
+---
 
 ---
 

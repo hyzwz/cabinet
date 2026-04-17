@@ -1,19 +1,13 @@
 import fs from "fs";
-import { execSync, spawn } from "child_process";
+import { spawn } from "child_process";
 import type { AgentProvider } from "./provider-interface";
-import { getNvmNodeBin } from "./nvm-path";
+import {
+  ADAPTER_RUNTIME_PATH,
+  resolveCommandFromCandidates,
+  withAdapterRuntimeEnv,
+} from "./adapters/utils";
 
-const nvmBin = getNvmNodeBin();
-
-export const RUNTIME_PATH = [
-  ...(nvmBin ? [nvmBin] : []),
-  `${process.env.HOME || ""}/.local/bin`,
-  `${process.env.HOME || ""}/.bun/bin`,
-  `${process.env.HOME || ""}/.hermes/bin`,
-  "/usr/local/bin",
-  "/opt/homebrew/bin",
-  process.env.PATH || "",
-].filter(Boolean).join(":");
+export const RUNTIME_PATH = ADAPTER_RUNTIME_PATH;
 
 export function resolveCliCommand(provider: AgentProvider): string {
   const candidates = [
@@ -21,27 +15,11 @@ export function resolveCliCommand(provider: AgentProvider): string {
     provider.command,
   ].filter((candidate): candidate is string => !!candidate);
 
-  for (const candidate of candidates) {
-    if (candidate.includes("/") && fs.existsSync(candidate)) {
-      return candidate;
-    }
-  }
+  const resolved = resolveCommandFromCandidates(candidates, process.env);
+  if (resolved) return resolved;
 
   for (const candidate of candidates) {
-    if (candidate.includes("/")) continue;
-    try {
-      const resolved = execSync(`command -v ${candidate}`, {
-        encoding: "utf8",
-        env: { ...process.env, PATH: RUNTIME_PATH },
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim();
-
-      if (resolved) {
-        return resolved;
-      }
-    } catch {
-      // Ignore and keep trying.
-    }
+    if (candidate.includes("/") && fs.existsSync(candidate)) return candidate;
   }
 
   if (!provider.command) {
@@ -61,12 +39,8 @@ export async function checkCliProviderAvailable(provider: AgentProvider): Promis
       return;
     }
 
-    const versionArgs = provider.id === "codex-cli" ? ["--version"] : ["--version"];
-    const proc = spawn(command, versionArgs, {
-      env: {
-        ...process.env,
-        PATH: RUNTIME_PATH,
-      },
+    const proc = spawn(command, ["--version"], {
+      env: withAdapterRuntimeEnv(process.env),
       stdio: ["ignore", "pipe", "pipe"],
     });
 

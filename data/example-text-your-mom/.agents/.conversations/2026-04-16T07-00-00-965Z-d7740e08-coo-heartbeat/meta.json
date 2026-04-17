@@ -1,0 +1,24 @@
+{
+  "id": "2026-04-16T07-00-00-965Z-d7740e08-coo-heartbeat",
+  "agentSlug": "coo",
+  "cabinetPath": "example-text-your-mom",
+  "title": "COO heartbeat",
+  "trigger": "heartbeat",
+  "status": "completed",
+  "startedAt": "2026-04-16T07:00:00.965Z",
+  "providerId": "claude-code",
+  "adapterType": "claude_local",
+  "promptPath": "example-text-your-mom/.agents/.conversations/2026-04-16T07-00-00-965Z-d7740e08-coo-heartbeat/prompt.md",
+  "transcriptPath": "example-text-your-mom/.agents/.conversations/2026-04-16T07-00-00-965Z-d7740e08-coo-heartbeat/transcript.txt",
+  "mentionedPaths": [],
+  "artifactPaths": [
+    "company/operations/index.md",
+    ".agents/.messages/ceo/2026-04-16T08-00-00-000Z_from_coo.md",
+    "marketing/reddit/.agents/.messages/researcher/2026-04-16T08-00-00-000Z_from_coo.md",
+    "app-development/.agents/.messages/devops/2026-04-16T08-00-00-000Z_from_coo.md"
+  ],
+  "completedAt": "2026-04-16T07:05:49.441Z",
+  "exitCode": 0,
+  "summary": "COO mid-week operating review — Tuesday PoL missed by all 3 cabinets, TikTok produced first-ever creative briefs, Reddit remains completely dark.",
+  "contextSummary": "Week of Apr 14 — marketing jobs enabled, TikTok firing (Thursday), Reddit silent. Friday is CEO's hard checkpoint. App-dev has zero execution signals."
+}

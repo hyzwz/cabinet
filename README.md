@@ -87,7 +87,7 @@ Cabinet is built around a few principles that we think matter deeply for the fut
 | **AI Agents** | Each has goals, skills, scheduled jobs. Watch them work like a real team. |
 | **Scheduled Jobs** | Cron-based agent automation. Reddit scout every 6 hours. Weekly reports on Monday. |
 | **Embedded HTML Apps** | Drop an `index.html` in any folder — it renders as an iframe. Full-screen mode. |
-| **Web Terminal** | Full local AI CLI terminal in the browser. xterm.js + node-pty. |
+| **Web Terminal** | Interactive local AI CLI terminal in the browser. Kept for direct sessions, debugging, and future terminal-native features such as tmux-style Cabinet workflows. |
 | **File-Based Everything** | No database. Markdown on disk. Your data is always yours, always portable. |
 | **Git-Backed History** | Every save auto-commits. Full diff viewer. Restore any page to any point in time. |
 | **Missions & Tasks** | Break goals into missions. Track progress with Kanban boards. |
@@ -144,6 +144,17 @@ Cabinet ships with 20 pre-built agent templates. Each has a role, recurring jobs
 
 ---
 
+## AI Runtime Today
+
+Cabinet no longer treats the browser terminal as the only way to run AI work.
+
+- **Tasks, jobs, and heartbeats** now run through a provider adapter layer with persisted conversations and transcript-driven live views.
+- **Per-run overrides** can choose provider, model, and reasoning effort, while personas and jobs can still inherit defaults.
+- **Current defaults** are structured local adapters: `claude_local` for Claude Code and `codex_local` for Codex CLI.
+- **The web terminal is staying** as a first-class interactive surface for direct CLI sessions and future terminal-native features such as Cabinet-managed tmux-like workspaces.
+
+---
+
 ## Architecture
 
 ```
@@ -187,7 +198,7 @@ cp .env.example .env.local
 
 ```bash
 npm run dev          # Next.js dev server (port 3000)
-npm run dev:daemon   # Terminal + job scheduler (port 3001)
+npm run dev:daemon   # Unified daemon: structured runs, terminal sessions, WebSockets, scheduler (port 3001)
 npm run dev:all      # Both servers
 npm run build        # Production build
 npm run start        # Production mode (both servers)

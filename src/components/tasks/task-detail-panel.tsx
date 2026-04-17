@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { useState } from "react";
+import { BrainCircuit, X } from "lucide-react";
 import { useAppStore } from "@/stores/app-store";
-import { WebTerminal } from "@/components/terminal/web-terminal";
-import { ConversationResultView } from "@/components/agents/conversation-result-view";
+import { ConversationSessionView } from "@/components/agents/conversation-session-view";
 import { Button } from "@/components/ui/button";
-import { useLocale } from "@/components/i18n/locale-provider";
-import type { ConversationDetail, ConversationStatus } from "@/types/conversations";
+import { formatEffortName } from "@/lib/agents/runtime-options";
+import type {
+  ConversationDetail,
+  ConversationMeta,
+  ConversationStatus,
+} from "@/types/conversations";
 import { openArtifactPath } from "@/lib/navigation/open-artifact-path";
 
 function StatusDot({ status }: { status: ConversationStatus }) {
@@ -23,15 +26,15 @@ function StatusDot({ status }: { status: ConversationStatus }) {
   return <span className="inline-flex h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40" />;
 }
 
-function formatRelative(iso: string | undefined, t: (key: import("@/lib/i18n/messages").MessageKey) => string): string {
-  if (!iso) return t("time.justNow");
+function formatRelative(iso?: string): string {
+  if (!iso) return "just now";
   const delta = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(delta / 60000);
-  if (minutes < 1) return t("time.justNow");
-  if (minutes < 60) return t("time.minutesAgo").replace("{count}", String(minutes));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t("time.hoursAgo").replace("{count}", String(hours));
-  return t("time.daysAgo").replace("{count}", String(Math.floor(hours / 24)));
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
 function startCase(value: string | undefined, fallback = "General"): string {
@@ -41,60 +44,86 @@ function startCase(value: string | undefined, fallback = "General"): string {
   return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 }
 
+function readConversationModel(meta: Pick<ConversationMeta, "adapterConfig">): string | null {
+  const config = meta.adapterConfig;
+  if (!config || typeof config !== "object") return null;
+  const model = config.model;
+  return typeof model === "string" && model.trim() ? model.trim() : null;
+}
+
+function readConversationEffort(meta: Pick<ConversationMeta, "adapterConfig">): string | null {
+  const config = meta.adapterConfig;
+  if (!config || typeof config !== "object") return null;
+  const effort =
+    typeof config.effort === "string" && config.effort.trim()
+      ? config.effort
+      : typeof config.reasoningEffort === "string" && config.reasoningEffort.trim()
+        ? config.reasoningEffort
+        : null;
+
+  return effort ? formatEffortName(effort) : null;
+}
+
+function formatProviderLabel(providerId?: string): string | null {
+  if (!providerId) return null;
+
+  return providerId
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((segment) => {
+      const upper = segment.toUpperCase();
+      if (upper === "API" || upper === "CLI") return upper;
+      return segment.charAt(0).toUpperCase() + segment.slice(1);
+    })
+    .join(" ");
+}
+
+function buildRuntimeLabel(
+  meta: Pick<ConversationMeta, "adapterConfig" | "providerId">
+): string | null {
+  const model = readConversationModel(meta);
+  const effort = readConversationEffort(meta);
+  const provider = formatProviderLabel(meta.providerId);
+
+  if (model && provider && effort) return `${model} · ${provider} · ${effort}`;
+  if (model && provider) return `${model} · ${provider}`;
+  if (model && effort) return `${model} · ${effort}`;
+  if (model) return model;
+  if (provider && effort) return `${provider} · ${effort}`;
+  if (provider) return `${provider} · default model`;
+  return null;
+}
+
 export function TaskDetailPanel() {
   const conversation = useAppStore((s) => s.taskPanelConversation);
   const setTaskPanelConversation = useAppStore((s) => s.setTaskPanelConversation);
-
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
-  const [loading, setLoading] = useState(false);
-  const { t } = useLocale();
-
-  // Fetch full detail when a completed/failed conversation is selected
-  useEffect(() => {
-    if (!conversation || conversation.status === "running") {
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (conversation.cabinetPath) {
-        params.set("cabinetPath", conversation.cabinetPath);
-      }
-      try {
-        const response = await fetch(
-          `/api/agents/conversations/${conversation.id}?${params.toString()}`
-        );
-        const data = response.ok ? ((await response.json()) as ConversationDetail) : null;
-        if (!cancelled && data) {
-          setDetail(data);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [conversation?.id, conversation?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!conversation) return null;
+  const activeConversation = detail?.meta.id === conversation.id ? detail.meta : conversation;
+  const runtimeLabel = buildRuntimeLabel(activeConversation);
 
   return (
     <div className="flex h-full w-[420px] shrink-0 flex-col border-l border-border/70 bg-background">
       <div className="flex items-center gap-2 border-b border-border/70 px-4 py-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <StatusDot status={conversation.status} />
+            <StatusDot status={activeConversation.status} />
             <p className="truncate text-[13px] font-medium text-foreground">
-              {conversation.title}
+              {activeConversation.title}
             </p>
           </div>
           <p className="mt-0.5 truncate pl-4 text-[11px] text-muted-foreground">
-            {startCase(conversation.agentSlug)}
+            {startCase(activeConversation.agentSlug)}
             {" · "}
-            {formatRelative(conversation.startedAt, t)}
+            {formatRelative(activeConversation.startedAt)}
           </p>
+          {runtimeLabel ? (
+            <div className="mt-1 flex items-center gap-1.5 pl-4 text-[11px] text-muted-foreground">
+              <BrainCircuit className="size-3.5 shrink-0" />
+              <p className="truncate">{runtimeLabel}</p>
+            </div>
+          ) : null}
         </div>
         <Button
           variant="ghost"
@@ -107,33 +136,13 @@ export function TaskDetailPanel() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {conversation.status === "running" ? (
-          <WebTerminal
-            sessionId={conversation.id}
-            displayPrompt={conversation.title}
-            reconnect
-            themeSurface="page"
-            onClose={() => {
-              // Session ended — could refresh, but panel stays open
-            }}
-          />
-        ) : loading ? (
-          <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            {t("tasks.detail.loading")}
-          </div>
-        ) : detail ? (
-          <ConversationResultView
-            detail={detail}
-            onOpenArtifact={(artifactPath) => {
-              void openArtifactPath(artifactPath, { type: "page" });
-            }}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            {t("tasks.detail.loadError")}
-          </div>
-        )}
+        <ConversationSessionView
+          conversation={conversation}
+          onDetailChange={setDetail}
+          onOpenArtifact={(artifactPath) => {
+            void openArtifactPath(artifactPath, { type: "page" });
+          }}
+        />
       </div>
     </div>
   );

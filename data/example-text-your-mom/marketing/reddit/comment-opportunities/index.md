@@ -1,7 +1,7 @@
 ---
 title: Comment Opportunities
 created: '2026-04-11T00:00:00Z'
-modified: '2026-04-12T00:00:00Z'
+modified: '2026-04-16T00:00:00Z'
 tags:
   - reddit
   - comments
@@ -77,3 +77,54 @@ This is where the cabinet stores high-empathy opportunities for useful participa
 **Approach:** Short, warm, one-punch. *"The worst part is it compounds — the longer you wait, the bigger the reply has to feel, so you wait even longer. The only way out is a terrible two-word text that you send anyway."* That's the whole reply. Measure the response to the phrase "terrible two-word text."
 
 **Message test:** Does "terrible two-word text" read as permission-giving or like advice to be worse? This has direct implications for how we frame the low-friction reply nudge in the app.
+
+---
+
+## Ready-to-Post Drafts — April 16
+
+These are clean, post-ready versions distilled from the strategy above. No product mention in any of them. Track upvotes and reply sentiment as message tests.
+
+---
+
+### Draft A — Reply Guilt Spiral
+*For: r/Anxiety, r/relationships — threads about procrastinating on replies*
+
+> The longer you wait, the bigger the reply has to feel. So you wait longer. And now it's been three weeks and you've convinced yourself you need to send a whole apology instead of just saying hey. You don't. A bad text is better than no text every single time.
+
+**Testing:** Does "bad text is better than no text" resonate or feel like an excuse? Does naming the spiral help people or embarrass them?
+
+---
+
+### Draft B — Staying In Touch With Family
+*For: r/Adulting, r/selfimprovement — threads asking for practical systems*
+
+> I stopped thinking of it as "staying in touch" and started thinking of it as just sending one low-stakes thing before I forget. A dumb meme, a one-liner, a photo of something they'd like. The bar being low is the whole point — a small weird text is infinitely better than a perfectly written one you never send.
+
+**Testing:** Does "low bar" read as relief or lazy? Watch whether people reply asking "how do you remember to do it" — that's the direct product question.
+
+---
+
+### Draft C — "I Feel Like a Bad Kid"
+*For: r/relationships — guilt threads about not calling parents*
+
+> Caring this much about it is kind of evidence you're not a bad kid. A bad kid wouldn't be up at midnight reading this thread.
+
+**Testing:** Does this land as validating or too easy? If it gets upvoted and someone replies "I needed to hear this," the character-vs-system reframe is working.
+
+---
+
+### Draft D — "Why Don't Reminder Apps Work for Relationship Stuff?"
+*For: r/productivity — threads about calendar reminders feeling wrong*
+
+> Most reminder apps are great for things that don't have feelings attached to them. "Call mom" on a task list just turns mom into a task. She becomes something to close, not someone to actually talk to. I don't think the tool is wrong, I think the category is wrong.
+
+**Testing:** Does "mom as a task" land? What does the community say they actually want instead? Their words are future copy.
+
+---
+
+### Draft E — "I'm the Worst Texter" Confession
+*For: r/Adulting, r/relationships — relatable self-deprecating threads*
+
+> The worst part is it compounds. The longer you wait, the bigger the reply has to feel, so you wait longer. The only way out is a terrible two-word text that you send anyway. "hey sorry" has saved more relationships than any long apology ever written.
+
+**Testing:** Does "terrible two-word text" read as permission-giving? Does "hey sorry" feel real or dismissive?

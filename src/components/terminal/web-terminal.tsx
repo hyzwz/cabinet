@@ -11,6 +11,7 @@ interface WebTerminalProps {
   reconnect?: boolean; // If true, connect without sending prompt (session already exists on server)
   themeSurface?: "terminal" | "page";
   providerId?: string;
+  adapterType?: string;
   onClose: () => void;
 }
 
@@ -77,6 +78,7 @@ export function WebTerminal({
   prompt,
   displayPrompt,
   providerId,
+  adapterType,
   reconnect,
   themeSurface = "terminal",
   onClose,
@@ -272,6 +274,7 @@ export function WebTerminal({
             const params = new URLSearchParams({ id, token: auth.token });
             if (prompt && !reconnect) params.set("prompt", prompt);
             if (providerId && !reconnect) params.set("providerId", providerId);
+            if (adapterType && !reconnect) params.set("adapterType", adapterType);
 
             const wsOrigin =
               auth.wsOrigin ||
@@ -413,7 +416,7 @@ export function WebTerminal({
       xtermRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [sessionId, prompt, displayPrompt, providerId, reconnect, themeSurface, retryKey]);
+  }, [sessionId, prompt, displayPrompt, providerId, adapterType, reconnect, themeSurface, retryKey]);
 
   const surfaceBackground = themeSurface === "page" ? "var(--background)" : "var(--terminal-bg)";
   const surfaceForeground = themeSurface === "page" ? "var(--foreground)" : "var(--terminal-fg)";

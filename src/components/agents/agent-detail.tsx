@@ -559,6 +559,7 @@ function SessionsTab({
     prompt: string;
     userMessage: string;
     providerId: string;
+    adapterType?: string;
   } | null>(null);
   const { t, format } = useLocale();
 
@@ -575,6 +576,7 @@ function SessionsTab({
       prompt: fullPrompt,
       userMessage,
       providerId: persona.provider,
+      adapterType: persona.adapterType,
     });
     setSelectedIndex(null);
     setPrompt("");
@@ -704,6 +706,7 @@ function SessionsTab({
                 prompt={liveSession.prompt}
                 themeSurface="page"
                 providerId={liveSession.providerId}
+                adapterType={liveSession.adapterType}
                 onClose={handleSessionEnd}
               />
             </div>

@@ -3,6 +3,7 @@ name: Subreddit Signal Scan
 enabled: true
 schedule: 0 8 * * 1-5
 provider: claude-code
+adapterType: claude_local
 ownerAgent: researcher
 agentSlug: researcher
 timeout: 600

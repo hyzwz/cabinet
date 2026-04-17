@@ -16,6 +16,12 @@ import { useLocale } from "@/components/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 import { Plus, Save, Trash2 } from "lucide-react";
 import type { GoalMetric, ProviderInfo } from "@/types/agents";
+import {
+  formatAdapterOptionLabel,
+  getAdapterOptionsForProvider,
+  getDefaultAdapterTypeForProviderInfo,
+  resolveAdapterTypeForProvider,
+} from "@/lib/agents/adapter-options";
 
 interface GoalInput {
   metric: string;
@@ -48,6 +54,7 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
   const [type, setType] = useState<"specialist" | "lead">("specialist");
   const [heartbeat, setHeartbeat] = useState("0 */4 * * *");
   const [provider, setProvider] = useState("claude-code");
+  const [adapterType, setAdapterType] = useState<string | undefined>(undefined);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const { t } = useLocale();
   const [defaultProvider, setDefaultProvider] = useState("claude-code");
@@ -57,6 +64,11 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState(false);
+  const adapterOptions = getAdapterOptionsForProvider(
+    providers,
+    provider || defaultProvider,
+    defaultProvider
+  );
 
   // Load agent data when dialog opens
   useEffect(() => {
@@ -67,7 +79,10 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
     fetch("/api/agents/providers")
       .then((r) => r.json())
       .then((data) => {
-        setProviders((data.providers || []).filter((entry: ProviderInfo) => entry.type === "cli" && entry.enabled));
+        const nextProviders = (data.providers || []).filter(
+          (entry: ProviderInfo) => entry.type === "cli" && entry.enabled
+        );
+        setProviders(nextProviders);
         setDefaultProvider(data.defaultProvider || "claude-code");
       })
       .catch(() => {});
@@ -83,6 +98,7 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
         setType(p.type || "specialist");
         setHeartbeat(p.heartbeat || "0 */4 * * *");
         setProvider(p.provider || defaultProvider);
+        setAdapterType(p.adapterType || undefined);
         setChannels(p.channels || ["general"]);
         setBody(p.body || "");
         setGoals(
@@ -123,6 +139,7 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
         type,
         heartbeat,
         provider,
+        adapterType,
         goals: goalsFmt,
         channels,
         body,
@@ -279,7 +296,18 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
               <label className="text-[12px] font-medium">{t("mission.dialog.provider")}</label>
               <select
                 value={provider}
-                onChange={(e) => { setProvider(e.target.value); markDirty(); }}
+                onChange={(e) => {
+                  setProvider(e.target.value);
+                  setAdapterType(
+                    resolveAdapterTypeForProvider(
+                      providers,
+                      e.target.value,
+                      undefined,
+                      defaultProvider
+                    )
+                  );
+                  markDirty();
+                }}
                 className="w-full h-8 text-[12px] rounded-md border border-input bg-background px-2"
               >
                 {(providers.length > 0
@@ -292,6 +320,33 @@ export function EditAgentDialog({ open, onOpenChange, slug, onSaved }: EditAgent
                 ))}
               </select>
             </div>
+            {adapterOptions.length > 0 ? (
+              <div className="space-y-1">
+                <label className="text-[12px] font-medium">Runtime</label>
+                <select
+                  value={
+                    adapterType ||
+                    getDefaultAdapterTypeForProviderInfo(
+                      providers,
+                      provider,
+                      defaultProvider
+                    ) ||
+                    ""
+                  }
+                  onChange={(e) => {
+                    setAdapterType(e.target.value);
+                    markDirty();
+                  }}
+                  className="w-full h-8 text-[12px] rounded-md border border-input bg-background px-2"
+                >
+                  {adapterOptions.map((adapter) => (
+                    <option key={adapter.type} value={adapter.type}>
+                      {formatAdapterOptionLabel(adapter)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
           </div>
 
           {/* Schedule */}

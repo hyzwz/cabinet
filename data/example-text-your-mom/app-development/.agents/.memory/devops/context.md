@@ -1,5 +1,5 @@
 ---
-updated: '2026-04-13'
+updated: '2026-04-16'
 ---
 # DevOps Agent Context
 
@@ -24,10 +24,23 @@ First working heartbeat on April 13. Oriented on full cabinet state. Created OB-
 - What CI/CD exists for building and signing? (Unknown — will surface during OB-2 dry run)
 
 ## Focus for Next Heartbeat
-- Check for CTO response on tooling/telemetry
-- Check for QA response on testing coordination
-- If OB-2 is in progress: verify monitoring baselines are captured
-- If RT-4 findings are available: assess impact on release checklist and P2 timeline
+- Confirm RT-4 findings from CTO (due Apr 18) — assess P2 timeline impact
+- Check whether PC-3 and OB-5 have landed; verify conversion and onboarding drop-off rates are stable
+- Confirm OB-2 pipeline dry run has been completed and release checklist updated
+- Check for CTO response on analytics/crash tooling and delivery telemetry
+
+
+## 2026-04-16 — Daily Bug Triage
+Reviewed all 5 bugs in bug-triage.csv. Enriched with DevOps severity guidance, fix targets, and risk framing. Updated CSV in place.
+
+**Triage summary (by priority):**
+1. **RT-4 (Critical) — Reminder 2h late** — Highest risk item in the entire product. Blocks P2. CTO investigation due April 18. Architecture risk: if fix requires server-side push migration, P2 expands by 2+ sprints. Zero delivery telemetry until fixed.
+2. **PC-3 (High) — Paywall dismiss clipped** — Ship this sprint. Bounded fix (<1 day). App Store compliance + conversion risk. Already in sprint plan.
+3. **SK-2 (High) — Streak resets on timezone change** — Defer to P3, but do not let it slip past. Must ship with SK-6 test suite. Silent churn risk.
+4. **OB-5 (Medium) — Nickname not shown in setup** — Ship this sprint with OB-6 analytics. Low operational risk.
+5. **Reply flicker (Low)** — Backlog. No trust impact.
+
+**Standing risk:** No server-side delivery logs. Reminders are still device-local. Tier 1 monitoring (delivery success rate, latency) is unmeasurable until RT-4 fix lands.
 
 
 ## 2026-04-13T10:56:21.820Z

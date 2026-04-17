@@ -1,7 +1,7 @@
 ---
 title: Getting Started
 created: '2026-04-12T00:00:00.000Z'
-modified: '2026-04-14T16:30:21.214Z'
+modified: '2026-04-15T00:00:00.000Z'
 tags:
   - guide
   - onboarding
@@ -26,9 +26,9 @@ Cabinet treats specific file formats as first-class views. Everything else can s
 
 -   **WYSIWYG Editor** — Rich text editing with toolbar, tables, code blocks, and markdown source toggle
     
--   **AI Editor Panel** — Right-side panel where Claude edits pages directly. Use `@PageName` to attach context
+-   **AI Editor Panel** — Right-side panel for live AI editing sessions. Today this remains terminal-backed for interactive runs and page-focused workflows
     
--   **Agent Dashboard** — Run AI agents on tasks, monitor sessions, view transcripts
+-   **Agent Dashboard** — Run AI agents on tasks, monitor sessions, and view native live transcripts for detached runs
     
 -   **Scheduled Jobs** — Cron-based automation with YAML configs under `.jobs/`
     
@@ -36,7 +36,7 @@ Cabinet treats specific file formats as first-class views. Everything else can s
     
 -   **Kanban Tasks** — Board and list views (Backlog → In Progress → Review → Done)
     
--   **Web Terminal** — Full Claude Code terminal in the browser (xterm.js + node-pty)
+-   **Web Terminal** — Interactive browser terminal for direct CLI sessions and future Cabinet-managed terminal features such as tmux-like workflows
     
 -   **Search** — `Cmd+K` full-text search across all pages
     

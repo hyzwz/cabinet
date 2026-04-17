@@ -3,6 +3,7 @@ name: Release Readiness Review
 enabled: true
 schedule: 0 15 * * 4
 provider: claude-code
+adapterType: claude_local
 ownerAgent: devops
 agentSlug: devops
 timeout: 600

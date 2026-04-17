@@ -3,6 +3,7 @@ name: Daily Bug Triage
 enabled: true
 schedule: 0 10 * * 1-5
 provider: claude-code
+adapterType: claude_local
 ownerAgent: devops
 agentSlug: devops
 timeout: 600

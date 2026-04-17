@@ -34,6 +34,16 @@ import {
   resolveProviderId,
 } from "../src/lib/agents/provider-runtime";
 import {
+  agentAdapterRegistry,
+  resolveLegacyExecutionProviderId,
+} from "../src/lib/agents/adapters";
+import {
+  consumeClaudeStreamJson,
+  createClaudeStreamAccumulator,
+  flushClaudeStreamJson,
+  type ClaudeStreamAccumulator,
+} from "../src/lib/agents/adapters/claude-stream";
+import {
   getConfiguredDefaultProviderId,
   isProviderEnabled,
   readProviderSettings,
@@ -123,15 +133,27 @@ const enrichedPath = [
 
 // ===== PTY Terminal Server =====
 
-interface PtySession {
+type SessionResolutionStatus = "completed" | "failed";
+
+interface BaseSession {
   id: string;
+  kind: "pty" | "structured";
   providerId: string;
-  pty: pty.IPty;
+  adapterType?: string;
   ws: WebSocket | null;
   createdAt: Date;
   output: string[];
   exited: boolean;
   exitCode: number | null;
+  resolvedStatus?: SessionResolutionStatus;
+  resolvingStatus?: boolean;
+  stopFallbackTimer?: NodeJS.Timeout;
+  stop: (signal?: NodeJS.Signals) => void;
+}
+
+interface PtySession extends BaseSession {
+  kind: "pty";
+  pty: pty.IPty;
   timeoutHandle?: NodeJS.Timeout;
   initialPrompt?: string;
   initialPromptSent?: boolean;
@@ -139,16 +161,23 @@ interface PtySession {
   promptSubmittedOutputLength?: number;
   autoExitRequested?: boolean;
   autoExitFallbackTimer?: NodeJS.Timeout;
-  resolvedStatus?: "completed" | "failed";
-  resolvingStatus?: boolean;
   claudeCompletionTimer?: NodeJS.Timeout;
   readyStrategy?: "claude";
   outputMode?: "plain" | "claude-stream-json";
-  structuredOutputBuffer?: string;
-  streamedText?: string;
+  structuredOutput?: ClaudeStreamAccumulator;
 }
 
-const sessions = new Map<string, PtySession>();
+interface StructuredSession extends BaseSession {
+  kind: "structured";
+  timeoutHandle?: NodeJS.Timeout;
+  pid?: number;
+  processGroupId?: number | null;
+  startedAt?: string;
+}
+
+type ActiveSession = PtySession | StructuredSession;
+
+const sessions = new Map<string, ActiveSession>();
 const completedOutput = new Map<string, { output: string; completedAt: number }>();
 const CLAUDE_AUTO_EXIT_GRACE_MS = 1200;
 
@@ -267,6 +296,12 @@ function clearClaudeCompletionTimer(session: PtySession): void {
   delete session.claudeCompletionTimer;
 }
 
+function clearSessionStopFallbackTimer(session: ActiveSession): void {
+  if (!session.stopFallbackTimer) return;
+  clearTimeout(session.stopFallbackTimer);
+  delete session.stopFallbackTimer;
+}
+
 function completeClaudeSession(session: PtySession, output: string): void {
   if (session.exited || session.autoExitRequested || session.resolvedStatus) {
     return;
@@ -294,132 +329,24 @@ function completeClaudeSession(session: PtySession, output: string): void {
   }, 1500);
 }
 
-function extractClaudeDeltaText(payload: unknown): string {
-  if (!payload || typeof payload !== "object") return "";
-
-  const parsed = payload as {
-    type?: string;
-    event?: {
-      type?: string;
-      delta?: { type?: string; text?: string };
-    };
-  };
-
-  if (
-    parsed.type === "stream_event" &&
-    parsed.event?.type === "content_block_delta" &&
-    parsed.event.delta?.type === "text_delta"
-  ) {
-    return parsed.event.delta.text || "";
-  }
-
-  return "";
-}
-
-function extractClaudeToolResultText(payload: unknown): string {
-  if (!payload || typeof payload !== "object") return "";
-
-  const parsed = payload as {
-    type?: string;
-    tool_use_result?: {
-      stdout?: string;
-      stderr?: string;
-    };
-  };
-
-  if (parsed.type === "user" && parsed.tool_use_result) {
-    return [parsed.tool_use_result.stdout, parsed.tool_use_result.stderr]
-      .filter((value) => typeof value === "string" && value.trim())
-      .join("\n");
-  }
-
-  return "";
-}
-
-function extractClaudeFinalText(payload: unknown): string {
-  if (!payload || typeof payload !== "object") return "";
-
-  const parsed = payload as {
-    type?: string;
-    result?: string;
-    message?: { content?: Array<{ type?: string; text?: string }> };
-  };
-
-  if (parsed.type === "assistant") {
-    return (
-      parsed.message?.content
-        ?.filter((item) => item?.type === "text" && typeof item.text === "string")
-        .map((item) => item.text || "")
-        .join("") || ""
-    );
-  }
-
-  if (parsed.type === "result" && typeof parsed.result === "string") {
-    return parsed.result;
-  }
-
-  return "";
-}
-
 function consumeStructuredOutput(session: PtySession, chunk: string): string {
   if (session.outputMode !== "claude-stream-json") {
     return chunk;
   }
 
-  session.structuredOutputBuffer = `${session.structuredOutputBuffer || ""}${chunk}`;
-  const lines = session.structuredOutputBuffer.split(/\r?\n/);
-  session.structuredOutputBuffer = lines.pop() || "";
-
-  let display = "";
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    try {
-      const payload = JSON.parse(trimmed);
-      const deltaText = extractClaudeDeltaText(payload);
-      const toolText = extractClaudeToolResultText(payload);
-      const finalText =
-        (session.streamedText || "").length === 0
-          ? extractClaudeFinalText(payload)
-          : "";
-
-      if (deltaText) {
-        display += deltaText;
-        continue;
-      }
-
-      if (toolText) {
-        display += toolText.endsWith("\n") ? toolText : `${toolText}\n`;
-        continue;
-      }
-
-      if (finalText) {
-        display += finalText;
-      }
-    } catch {
-      // Ignore malformed partial lines and non-JSON diagnostics.
-    }
+  if (!session.structuredOutput) {
+    session.structuredOutput = createClaudeStreamAccumulator();
   }
 
-  return display;
+  return consumeClaudeStreamJson(session.structuredOutput, chunk);
 }
 
 function flushStructuredOutput(session: PtySession): string {
-  if (session.outputMode !== "claude-stream-json" || !session.structuredOutputBuffer) {
+  if (session.outputMode !== "claude-stream-json" || !session.structuredOutput) {
     return "";
   }
 
-  const buffered = session.structuredOutputBuffer;
-  session.structuredOutputBuffer = "";
-
-  try {
-    if ((session.streamedText || "").length > 0) {
-      return "";
-    }
-    return extractClaudeFinalText(JSON.parse(buffered.trim()));
-  } catch {
-    return "";
-  }
+  return flushClaudeStreamJson(session.structuredOutput);
 }
 
 function submitInitialPrompt(session: PtySession): void {
@@ -449,6 +376,21 @@ async function syncConversationChunk(sessionId: string, chunk: string): Promise<
   const plainChunk = stripAnsi(chunk);
   if (!plainChunk) return;
   await appendConversationTranscript(sessionId, plainChunk, meta.cabinetPath);
+}
+
+function emitSessionOutput(
+  session: ActiveSession,
+  chunk: string,
+  onData?: (chunk: string) => void
+): void {
+  if (!chunk) return;
+
+  session.output.push(chunk);
+  void syncConversationChunk(session.id, chunk).catch(() => {});
+  if (session.ws && session.ws.readyState === WebSocket.OPEN) {
+    session.ws.send(chunk);
+  }
+  onData?.(chunk);
 }
 
 function maybeAutoExitClaudeSession(session: PtySession): void {
@@ -500,7 +442,7 @@ function maybeAutoExitClaudeSession(session: PtySession): void {
   }, CLAUDE_AUTO_EXIT_GRACE_MS);
 }
 
-async function finalizeSessionConversation(session: PtySession): Promise<void> {
+async function finalizeSessionConversation(session: ActiveSession): Promise<void> {
   const meta = await readConversationMeta(session.id);
   if (!meta) return;
 
@@ -514,6 +456,83 @@ async function finalizeSessionConversation(session: PtySession): Promise<void> {
     exitCode: session.resolvedStatus === "completed" ? 0 : session.exitCode,
     output: plain,
   }, meta.cabinetPath);
+}
+
+function sessionStatus(session: ActiveSession): "running" | "completed" | "failed" {
+  if (session.resolvedStatus) {
+    return session.resolvedStatus;
+  }
+
+  if (!session.exited) {
+    return "running";
+  }
+
+  return session.exitCode === 0 ? "completed" : "failed";
+}
+
+function signalStructuredProcess(
+  pid: number | undefined,
+  processGroupId: number | null | undefined,
+  signal: NodeJS.Signals
+): void {
+  if (process.platform !== "win32" && processGroupId && processGroupId > 0) {
+    try {
+      process.kill(-processGroupId, signal);
+      return;
+    } catch {
+      // Fall back to the direct child signal below.
+    }
+  }
+
+  if (typeof pid === "number" && pid > 0) {
+    process.kill(pid, signal);
+  }
+}
+
+function attachSessionInput(session: ActiveSession, msg: string): void {
+  if (session.kind !== "pty") {
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(msg);
+    if (parsed.type === "resize" && parsed.cols && parsed.rows) {
+      session.pty.resize(parsed.cols, parsed.rows);
+      return;
+    }
+  } catch {
+    // Not JSON, treat as terminal input.
+  }
+
+  session.pty.write(msg);
+}
+
+function attachSessionSocket(session: ActiveSession, ws: WebSocket): void {
+  session.ws = ws;
+
+  const replay = session.output.join("");
+  if (replay && ws.readyState === WebSocket.OPEN) {
+    ws.send(replay);
+  }
+
+  if (session.exited) {
+    ws.send(`\r\n\x1b[90m[Process exited with code ${session.exitCode}]\x1b[0m\r\n`);
+    const raw = session.output.join("");
+    const plain = stripAnsi(raw);
+    completedOutput.set(session.id, { output: plain, completedAt: Date.now() });
+    sessions.delete(session.id);
+    ws.close();
+    return;
+  }
+
+  ws.on("message", (data: Buffer) => {
+    attachSessionInput(session, data.toString());
+  });
+
+  ws.on("close", () => {
+    console.log(`Session ${session.id} detached (WebSocket closed, session kept alive)`);
+    session.ws = null;
+  });
 }
 
 // Cleanup old completed output every 5 minutes
@@ -545,59 +564,22 @@ function handlePtyConnection(ws: WebSocket, req: http.IncomingMessage): void {
   const sessionId = url.searchParams.get("id") || `session-${Date.now()}`;
   const prompt = url.searchParams.get("prompt");
   const providerId = url.searchParams.get("providerId") || undefined;
+  const adapterType = url.searchParams.get("adapterType") || undefined;
 
   // Check if this is a reconnection to an existing session
   const existing = sessions.get(sessionId);
   if (existing) {
     console.log(`Session ${sessionId} reconnected (exited=${existing.exited})`);
-    existing.ws = ws;
-
-    // Replay all buffered output so the client sees the full history
-    const replay = existing.output.join("");
-    if (replay && ws.readyState === WebSocket.OPEN) {
-      ws.send(replay);
-    }
-
-    // If the process already exited while detached, notify and clean up
-    if (existing.exited) {
-      ws.send(`\r\n\x1b[90m[Process exited with code ${existing.exitCode}]\x1b[0m\r\n`);
-      const raw = existing.output.join("");
-      const plain = stripAnsi(raw);
-      completedOutput.set(sessionId, { output: plain, completedAt: Date.now() });
-      sessions.delete(sessionId);
-      ws.close();
-      return;
-    }
-
-    // Wire up input from the new WebSocket to the existing PTY
-    ws.on("message", (data: Buffer) => {
-      const msg = data.toString();
-      try {
-        const parsed = JSON.parse(msg);
-        if (parsed.type === "resize" && parsed.cols && parsed.rows) {
-          existing.pty.resize(parsed.cols, parsed.rows);
-          return;
-        }
-      } catch {
-        // Not JSON, treat as terminal input
-      }
-      existing.pty.write(msg);
-    });
-
-    // On disconnect again, just detach — don't kill
-    ws.on("close", () => {
-      console.log(`Session ${sessionId} detached (WebSocket closed, PTY kept alive)`);
-      existing.ws = null;
-    });
-
+    attachSessionSocket(existing, ws);
     return;
   }
 
-  // New session — spawn PTY
+  // New session — spawn PTY or structured adapter execution
   try {
-    createDetachedSession({
+    createSession({
       sessionId,
       providerId,
+      adapterType,
       prompt: prompt || undefined,
     });
   } catch (err: unknown) {
@@ -609,40 +591,15 @@ function handlePtyConnection(ws: WebSocket, req: http.IncomingMessage): void {
     return;
   }
   const session = sessions.get(sessionId)!;
-  session.ws = ws;
   console.log(`Session ${sessionId} started (${prompt ? "agent" : "interactive"} mode)`);
-
-  const replay = session.output.join("");
-  if (replay && ws.readyState === WebSocket.OPEN) {
-    ws.send(replay);
-  }
-
-  // WebSocket input → PTY
-  ws.on("message", (data: Buffer) => {
-    const msg = data.toString();
-    try {
-      const parsed = JSON.parse(msg);
-      if (parsed.type === "resize" && parsed.cols && parsed.rows) {
-        session.pty.resize(parsed.cols, parsed.rows);
-        return;
-      }
-    } catch {
-      // Not JSON, treat as terminal input
-    }
-    session.pty.write(msg);
-  });
-
-  // On WebSocket close: DETACH, don't kill the PTY
-  ws.on("close", () => {
-    console.log(`Session ${sessionId} detached (WebSocket closed, PTY kept alive)`);
-    session.ws = null;
-  });
-
+  attachSessionSocket(session, ws);
 }
 
 function createDetachedSession(input: {
   sessionId: string;
   providerId?: string;
+  adapterType?: string;
+  adapterConfig?: Record<string, unknown>;
   prompt?: string;
   cwd?: string;
   timeoutSeconds?: number;
@@ -650,19 +607,23 @@ function createDetachedSession(input: {
   launchMode?: "session" | "one-shot";
 }): PtySession {
   const cwd = resolveSessionCwd(input.cwd);
+  const executionProviderId = resolveLegacyExecutionProviderId({
+    adapterType: input.adapterType,
+    providerId: input.providerId,
+  });
   let launch =
     input.launchMode === "one-shot" && input.prompt?.trim()
       ? getOneShotLaunchSpec({
-          providerId: input.providerId,
+          providerId: executionProviderId,
           prompt: input.prompt,
           workdir: cwd,
         })
       : getSessionLaunchSpec({
-          providerId: input.providerId,
+          providerId: executionProviderId,
           prompt: input.prompt,
           workdir: cwd,
         });
-  const resolvedProviderId = resolveProviderId(input.providerId);
+  const resolvedProviderId = resolveProviderId(executionProviderId);
 
   if (
     input.launchMode === "one-shot" &&
@@ -710,13 +671,20 @@ function createDetachedSession(input: {
 
   const session: PtySession = {
     id: input.sessionId,
+    kind: "pty",
     providerId: resolvedProviderId,
+    adapterType: input.adapterType,
     pty: term,
     ws: null,
     createdAt: new Date(),
     output: [],
     exited: false,
     exitCode: null,
+    stop: (signal = "SIGTERM") => {
+      try {
+        term.kill(signal);
+      } catch {}
+    },
     initialPrompt: launch.initialPrompt?.trim() || undefined,
     initialPromptSent: false,
     promptSubmittedOutputLength: 0,
@@ -726,16 +694,17 @@ function createDetachedSession(input: {
       input.launchMode === "one-shot" && resolvedProviderId === "claude-code"
         ? "claude-stream-json"
         : "plain",
-    structuredOutputBuffer: "",
-    streamedText: "",
+    structuredOutput:
+      input.launchMode === "one-shot" && resolvedProviderId === "claude-code"
+        ? createClaudeStreamAccumulator()
+        : undefined,
   };
   sessions.set(input.sessionId, session);
 
   term.onData((data: string) => {
     const displayChunk = consumeStructuredOutput(session, data);
     if (displayChunk) {
-      session.output.push(displayChunk);
-      session.streamedText = `${session.streamedText || ""}${displayChunk}`;
+      emitSessionOutput(session, displayChunk, input.onData);
     }
     if (
       session.initialPrompt &&
@@ -746,19 +715,13 @@ function createDetachedSession(input: {
       submitInitialPrompt(session);
     }
     maybeAutoExitClaudeSession(session);
-    if (displayChunk) {
-      void syncConversationChunk(input.sessionId, displayChunk).catch(() => {});
-      if (session.ws && session.ws.readyState === WebSocket.OPEN) {
-        session.ws.send(displayChunk);
-      }
-    }
-    input.onData?.(displayChunk);
   });
 
   term.onExit(({ exitCode }) => {
     console.log(`Session ${input.sessionId} PTY exited with code ${exitCode}`);
     session.exited = true;
     session.exitCode = exitCode;
+    clearSessionStopFallbackTimer(session);
     if (session.timeoutHandle) {
       clearTimeout(session.timeoutHandle);
       delete session.timeoutHandle;
@@ -775,9 +738,7 @@ function createDetachedSession(input: {
 
     const trailingDisplay = flushStructuredOutput(session);
     if (trailingDisplay) {
-      session.output.push(trailingDisplay);
-      session.streamedText = `${session.streamedText || ""}${trailingDisplay}`;
-      void syncConversationChunk(input.sessionId, trailingDisplay).catch(() => {});
+      emitSessionOutput(session, trailingDisplay, input.onData);
     }
 
     const plain = stripAnsi(session.output.join(""));
@@ -816,6 +777,148 @@ function createDetachedSession(input: {
   }
 
   return session;
+}
+
+function createStructuredSession(input: {
+  sessionId: string;
+  providerId?: string;
+  adapterType: string;
+  adapterConfig?: Record<string, unknown>;
+  prompt?: string;
+  cwd?: string;
+  timeoutSeconds?: number;
+  onData?: (chunk: string) => void;
+}): StructuredSession {
+  const adapter = agentAdapterRegistry.get(input.adapterType);
+  if (!adapter) {
+    throw new Error(`Unknown adapter type: ${input.adapterType}`);
+  }
+  if (!adapter.execute) {
+    throw new Error(`Adapter ${input.adapterType} does not implement detached execution.`);
+  }
+  const prompt = input.prompt;
+  if (!prompt?.trim()) {
+    throw new Error(
+      `Adapter ${input.adapterType} requires a prompt. Interactive structured sessions are not supported yet.`
+    );
+  }
+  const execute = adapter.execute;
+
+  const cwd = resolveSessionCwd(input.cwd);
+  const session: StructuredSession = {
+    id: input.sessionId,
+    kind: "structured",
+    providerId: adapter.providerId || input.providerId || "unknown",
+    adapterType: input.adapterType,
+    ws: null,
+    createdAt: new Date(),
+    output: [],
+    exited: false,
+    exitCode: null,
+    stop: (signal = "SIGTERM") => {
+      try {
+        signalStructuredProcess(session.pid, session.processGroupId, signal);
+      } catch {}
+    },
+  };
+  sessions.set(input.sessionId, session);
+
+  void (async () => {
+    try {
+      const result = await execute({
+        runId: input.sessionId,
+        adapterType: input.adapterType,
+        config: input.adapterConfig || {},
+        prompt,
+        cwd,
+        timeoutMs:
+          typeof input.timeoutSeconds === "number" && input.timeoutSeconds > 0
+            ? input.timeoutSeconds * 1000
+            : undefined,
+        sessionId: input.sessionId,
+        sessionParams: null,
+        onLog: async (_stream, chunk) => {
+          emitSessionOutput(session, chunk, input.onData);
+        },
+        onSpawn: async (meta) => {
+          session.pid = meta.pid;
+          session.processGroupId = meta.processGroupId;
+          session.startedAt = meta.startedAt;
+        },
+      });
+
+      session.exited = true;
+      session.exitCode = result.exitCode;
+      session.resolvedStatus =
+        result.exitCode === 0 && !result.timedOut ? "completed" : "failed";
+      clearSessionStopFallbackTimer(session);
+
+      if (!session.output.length && result.output) {
+        emitSessionOutput(session, result.output, input.onData);
+      }
+
+      const plain = stripAnsi(session.output.join(""));
+      completedOutput.set(input.sessionId, { output: plain, completedAt: Date.now() });
+      await finalizeSessionConversation(session).catch(() => {});
+
+      if (session.ws && session.ws.readyState === WebSocket.OPEN) {
+        sessions.delete(input.sessionId);
+        session.ws.close();
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      emitSessionOutput(session, `${message}\n`, input.onData);
+      session.exited = true;
+      session.exitCode = 1;
+      session.resolvedStatus = "failed";
+      clearSessionStopFallbackTimer(session);
+      const plain = stripAnsi(session.output.join(""));
+      completedOutput.set(input.sessionId, { output: plain, completedAt: Date.now() });
+      await finalizeSessionConversation(session).catch(() => {});
+
+      if (session.ws && session.ws.readyState === WebSocket.OPEN) {
+        sessions.delete(input.sessionId);
+        session.ws.close();
+      }
+    }
+  })();
+
+  return session;
+}
+
+function createSession(input: {
+  sessionId: string;
+  providerId?: string;
+  adapterType?: string;
+  adapterConfig?: Record<string, unknown>;
+  prompt?: string;
+  cwd?: string;
+  timeoutSeconds?: number;
+  onData?: (chunk: string) => void;
+  launchMode?: "session" | "one-shot";
+}): ActiveSession {
+  const adapter = input.adapterType
+    ? agentAdapterRegistry.get(input.adapterType)
+    : undefined;
+
+  if (input.adapterType && !adapter) {
+    throw new Error(`Unknown adapter type: ${input.adapterType}`);
+  }
+
+  if (adapter && adapter.executionEngine !== "legacy_pty_cli") {
+    return createStructuredSession({
+      sessionId: input.sessionId,
+      providerId: input.providerId,
+      adapterType: input.adapterType!,
+      adapterConfig: input.adapterConfig,
+      prompt: input.prompt,
+      cwd: input.cwd,
+      timeoutSeconds: input.timeoutSeconds,
+      onData: input.onData,
+    });
+  }
+
+  return createDetachedSession(input);
 }
 
 // ===== WebSocket Event Bus =====
@@ -1096,6 +1199,7 @@ const server = http.createServer(async (req, res) => {
       const raw = active.output.join("");
       const plain = stripAnsi(raw);
       if (
+        active.kind === "pty" &&
         active.readyStrategy === "claude" &&
         active.initialPrompt &&
         active.initialPromptSent &&
@@ -1119,13 +1223,7 @@ const server = http.createServer(async (req, res) => {
       res.end(
         JSON.stringify({
           sessionId,
-          status: active.resolvedStatus
-            ? active.resolvedStatus
-            : active.exited
-              ? active.exitCode === 0
-                ? "completed"
-                : "failed"
-              : "running",
+          status: sessionStatus(active),
           output: plain,
         })
       );
@@ -1185,7 +1283,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /sessions — create a PTY session without a WebSocket (for agent heartbeats)
+  // POST /sessions — create a detached session without a WebSocket (for agent heartbeats)
   if (url.pathname === "/sessions" && req.method === "POST") {
     let body = "";
     req.on("data", (chunk) => (body += chunk));
@@ -1194,12 +1292,16 @@ const server = http.createServer(async (req, res) => {
         const {
           id,
           providerId,
+          adapterType,
+          adapterConfig,
           prompt,
           cwd,
           timeoutSeconds,
         } = JSON.parse(body) as {
           id: string;
           providerId?: string;
+          adapterType?: string;
+          adapterConfig?: Record<string, unknown>;
           prompt?: string;
           cwd?: string;
           timeoutSeconds?: number;
@@ -1213,13 +1315,26 @@ const server = http.createServer(async (req, res) => {
         }
 
         try {
-          const launchMode = getDetachedPromptLaunchMode({
-            providerId,
-            prompt,
-          });
-          createDetachedSession({
+          const legacyProviderId = !adapterType
+            ? providerId
+            : agentAdapterRegistry.get(adapterType)?.executionEngine === "legacy_pty_cli"
+              ? resolveLegacyExecutionProviderId({
+                  adapterType,
+                  providerId,
+                })
+              : undefined;
+          const launchMode =
+            legacyProviderId || (!adapterType && providerId)
+              ? getDetachedPromptLaunchMode({
+                  providerId: legacyProviderId || providerId,
+                  prompt,
+                })
+              : undefined;
+          createSession({
             sessionId,
             providerId,
+            adapterType,
+            adapterConfig,
             prompt,
             cwd,
             timeoutSeconds,
@@ -1244,7 +1359,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /session/:id/stop — kill a running PTY session
+  // POST /session/:id/stop — stop a running session
   const stopMatch = url.pathname.match(/^\/session\/([^/]+)\/stop$/);
   if (stopMatch && req.method === "POST") {
     const sessionId = stopMatch[1];
@@ -1256,13 +1371,14 @@ const server = http.createServer(async (req, res) => {
     }
     try {
       // SIGTERM first, then SIGKILL after 2s if still alive
-      session.pty.kill();
-      const fallback = setTimeout(() => {
+      session.stop("SIGTERM");
+      session.stopFallbackTimer = setTimeout(() => {
         if (!session.exited) {
-          try { session.pty.kill("SIGKILL"); } catch {}
+          try {
+            session.stop("SIGKILL");
+          } catch {}
         }
       }, 2000);
-      session.pty.onExit(() => clearTimeout(fallback));
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true, sessionId }));
     } catch (err) {
@@ -1281,6 +1397,8 @@ const server = http.createServer(async (req, res) => {
       connected: s.ws !== null,
       exited: s.exited,
       exitCode: s.exitCode,
+      providerId: s.providerId,
+      adapterType: s.adapterType,
     }));
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(activeSessions));
@@ -1348,7 +1466,7 @@ const server = http.createServer(async (req, res) => {
             providerId,
             prompt,
           });
-          createDetachedSession({
+          createSession({
             sessionId,
             providerId,
             prompt,
@@ -1456,7 +1574,9 @@ function shutdown(): void {
     task.stop();
   }
   for (const [, session] of sessions) {
-    try { session.pty.kill(); } catch {}
+    try {
+      session.stop("SIGTERM");
+    } catch {}
   }
   void scheduleWatcher.close();
   closeDb();

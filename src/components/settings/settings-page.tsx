@@ -43,6 +43,12 @@ import {
   storeThemeName,
   type ThemeDefinition,
 } from "@/lib/themes";
+import {
+  getModelEffortLevels,
+  getSuggestedProviderEffort,
+  resolveProviderEffort,
+  resolveProviderModel,
+} from "@/lib/agents/runtime-options";
 import { cn } from "@/lib/utils";
 import type { ProviderInfo } from "@/types/agents";
 import { useAuthStore } from "@/stores/auth-store";
@@ -810,8 +816,16 @@ export function SettingsPage() {
                       {/* Default model selector */}
                       {(() => {
                         const activeP = providers.find((p) => p.id === defaultProvider);
+                        const activeModel = resolveProviderModel(
+                          activeP,
+                          defaultModel || undefined,
+                          undefined
+                        );
                         const models = activeP?.models || [];
-                        const effortLevels = activeP?.effortLevels || [];
+                        const effortLevels = getModelEffortLevels(
+                          activeP,
+                          activeModel?.id
+                        );
                         if (models.length === 0 && effortLevels.length === 0) return null;
                         return (
                           <div className="mb-3 rounded-lg border border-border bg-card p-3 space-y-4">
@@ -828,9 +842,22 @@ export function SettingsPage() {
                                         key={m.id}
                                         onClick={() => {
                                           if (isActive || savingProviders) return;
+                                          const nextEffortId =
+                                            resolveProviderEffort(
+                                              activeP,
+                                              m.id,
+                                              defaultEffort || undefined,
+                                              undefined
+                                            )?.id ||
+                                            getSuggestedProviderEffort(activeP, m.id)?.id ||
+                                            "";
                                           setDefaultModel(m.id);
+                                          setDefaultEffort(nextEffortId);
                                           const disabledIds = providers.filter((p) => !p.enabled).map((p) => p.id);
-                                          void saveProviderSettings(defaultProvider, disabledIds, [], { defaultModel: m.id });
+                                          void saveProviderSettings(defaultProvider, disabledIds, [], {
+                                            defaultModel: m.id,
+                                            defaultEffort: nextEffortId,
+                                          });
                                         }}
                                         disabled={savingProviders}
                                         className={cn(

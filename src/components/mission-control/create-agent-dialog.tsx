@@ -16,6 +16,12 @@ import { useLocale } from "@/components/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 import { Plus, X } from "lucide-react";
 import type { ProviderInfo } from "@/types/agents";
+import {
+  formatAdapterOptionLabel,
+  getAdapterOptionsForProvider,
+  getDefaultAdapterTypeForProviderInfo,
+  resolveAdapterTypeForProvider,
+} from "@/lib/agents/adapter-options";
 
 interface GoalInput {
   metric: string;
@@ -45,11 +51,17 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
   const [type, setType] = useState<"specialist" | "lead">("specialist");
   const [heartbeat, setHeartbeat] = useState("0 */4 * * *");
   const [provider, setProvider] = useState("claude-code");
+  const [adapterType, setAdapterType] = useState<string | undefined>(undefined);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const { t } = useLocale();
   const [defaultProvider, setDefaultProvider] = useState("claude-code");
   const [goals, setGoals] = useState<GoalInput[]>([]);
   const [creating, setCreating] = useState(false);
+  const adapterOptions = getAdapterOptionsForProvider(
+    providers,
+    provider || defaultProvider,
+    defaultProvider
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -57,10 +69,20 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
     fetch("/api/agents/providers")
       .then((r) => r.json())
       .then((data) => {
-        setProviders((data.providers || []).filter((entry: ProviderInfo) => entry.type === "cli" && entry.enabled));
+        const nextProviders = (data.providers || []).filter(
+          (entry: ProviderInfo) => entry.type === "cli" && entry.enabled
+        );
+        setProviders(nextProviders);
         const nextDefault = data.defaultProvider || "claude-code";
         setDefaultProvider(nextDefault);
         setProvider(nextDefault);
+        setAdapterType(
+          getDefaultAdapterTypeForProviderInfo(
+            nextProviders,
+            nextDefault,
+            nextDefault
+          )
+        );
       })
       .catch(() => {});
   }, [open]);
@@ -94,6 +116,7 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
         type,
         heartbeat,
         provider,
+        adapterType,
         budget: 200,
         active: false,
         workdir: "/data",
@@ -130,6 +153,9 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
     setType("specialist");
     setHeartbeat("0 */4 * * *");
     setProvider(defaultProvider);
+    setAdapterType(
+      getDefaultAdapterTypeForProviderInfo(providers, defaultProvider, defaultProvider)
+    );
     setGoals([]);
   };
 
@@ -256,7 +282,17 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
               <label className="text-[12px] font-medium">{t("mission.dialog.provider")}</label>
               <select
                 value={provider}
-                onChange={(e) => setProvider(e.target.value)}
+                onChange={(e) => {
+                  setProvider(e.target.value);
+                  setAdapterType(
+                    resolveAdapterTypeForProvider(
+                      providers,
+                      e.target.value,
+                      undefined,
+                      defaultProvider
+                    )
+                  );
+                }}
                 className="w-full h-8 text-[12px] bg-background border border-border rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 {(providers.length > 0
@@ -269,6 +305,30 @@ export function CreateAgentDialog({ open, onOpenChange, onCreated }: CreateAgent
                 ))}
               </select>
             </div>
+            {adapterOptions.length > 0 ? (
+              <div className="space-y-1">
+                <label className="text-[12px] font-medium">Runtime</label>
+                <select
+                  value={
+                    adapterType ||
+                    getDefaultAdapterTypeForProviderInfo(
+                      providers,
+                      provider,
+                      defaultProvider
+                    ) ||
+                    ""
+                  }
+                  onChange={(e) => setAdapterType(e.target.value)}
+                  className="w-full h-8 text-[12px] bg-background border border-border rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  {adapterOptions.map((adapter) => (
+                    <option key={adapter.type} value={adapter.type}>
+                      {formatAdapterOptionLabel(adapter)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
           </div>
 
           {/* Schedule */}

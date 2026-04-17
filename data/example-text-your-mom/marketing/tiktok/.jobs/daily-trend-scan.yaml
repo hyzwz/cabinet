@@ -3,6 +3,7 @@ name: Daily Trend Scan
 enabled: true
 schedule: 0 8 * * 1-5
 provider: claude-code
+adapterType: claude_local
 ownerAgent: image-creator
 agentSlug: image-creator
 timeout: 600

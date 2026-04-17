@@ -3,6 +3,7 @@ name: Comment Opportunity Scan
 enabled: true
 schedule: 0 11 * * 1-5
 provider: claude-code
+adapterType: claude_local
 ownerAgent: researcher
 agentSlug: researcher
 timeout: 600

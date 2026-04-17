@@ -16,6 +16,7 @@ export interface ProviderModel {
   id: string;
   name: string;
   description?: string;
+  effortLevels?: ProviderEffortLevel[];
 }
 
 export interface ProviderEffortLevel {
@@ -30,7 +31,12 @@ export interface AgentProvider {
   type: "cli" | "api";
   icon: string;
   installMessage?: string;
-  installSteps?: Array<{ title: string; detail: string; link?: { label: string; url: string } }>;
+  installSteps?: Array<{
+    title: string;
+    detail: string;
+    command?: string;
+    link?: { label: string; url: string };
+  }>;
   models?: ProviderModel[];
   effortLevels?: ProviderEffortLevel[];
   detachedPromptLaunchMode?: "session" | "one-shot";
