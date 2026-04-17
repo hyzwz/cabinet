@@ -479,3 +479,7 @@
 [2026-04-16] Cathie Wood heartbeat: applied disruptive innovation lens to AAPL and META. AAPL rated bullish conviction 3 — Apple Intelligence + health platform convergence is compelling but AAPL is a platform defender, not early-stage disruptor; 5-year bull case $350. META rated bullish conviction 5 — sits at exact AI × spatial computing × social convergence ARK targets; $115-135B capex is Wright's Law in action; 5-year bull case $1,400. Both signals appended to market-analysis/signals.csv.
 
 [2026-04-16] Image Creator heartbeat: designed 2 TikTok carousels from Script Writer briefs. Carousel 01 ("Text your mom before she sends ?", 5 slides) uses lock-screen mockup + iMessage chat bubble + giant red "?" aesthetic. Carousel 02 ("The fake mental math of reply guilt", 6 slides) uses iOS Screen Time stats card + progress bar + timer CTA aesthetic. Both saved to data/example-text-your-mom/marketing/tiktok/carousels/ and content-ideas.csv updated to "Designed" status.
+
+[2026-04-17] Phase 3 完成：添加 .gitattributes 合并策略、docs/upstream-sync-guide.md 同步指南、npm run sync:upstream 脚本。已推送到 origin。
+
+[2026-04-17] Phase 4 分析完成：i18n 层涉及 43 个文件（3 核心 + 43 消费者），冲突风险高；Auth 层共 13 个文件，隔离度好（大部分为 fork 专属文件）。建议：(1) i18n 提取为插件/wrapper 模式减少 ~70% 冲突；(2) Auth 命名空间化；(3) Middleware 模块化。
