@@ -3,6 +3,8 @@ import path from "path";
 import { resolveContentPath } from "@/lib/storage/path-utils";
 import { fileExists } from "@/lib/storage/fs-operations";
 import { autoCommit } from "@/lib/git/git-service";
+import { getRequestUser } from "@/lib/auth/request-user";
+import { checkPageAccess, loadPageMetaWalkUp, getPagePathFromAssetPath } from "@/lib/auth/access-control";
 import fs from "fs/promises";
 
 const MIME_TYPES: Record<string, string> = {
@@ -38,10 +40,19 @@ const MIME_TYPES: Record<string, string> = {
 
 type RouteParams = { params: Promise<{ path: string[] }> };
 
-export async function GET(_req: NextRequest, { params }: RouteParams) {
+export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { path: segments } = await params;
     const virtualPath = segments.join("/");
+
+    // Check read access on the parent page
+    const user = getRequestUser(req);
+    const meta = await loadPageMetaWalkUp(virtualPath);
+    const access = checkPageAccess(user, virtualPath, "read", meta);
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason }, { status: 403 });
+    }
+
     const resolved = resolveContentPath(virtualPath);
 
     if (!(await fileExists(resolved))) {
@@ -68,6 +79,14 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
   try {
     const { path: segments } = await params;
     const virtualPath = segments.join("/");
+
+    const user = getRequestUser(req);
+    const meta = await loadPageMetaWalkUp(virtualPath);
+    const access = checkPageAccess(user, virtualPath, "write", meta);
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason }, { status: 403 });
+    }
+
     const resolved = resolveContentPath(virtualPath);
     const body = await req.text();
     await fs.writeFile(resolved, body, "utf-8");

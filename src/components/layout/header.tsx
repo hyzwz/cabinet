@@ -10,6 +10,7 @@ import {
 import { useEditorStore } from "@/stores/editor-store";
 import { VersionHistory } from "@/components/editor/version-history";
 import { HeaderActions } from "@/components/layout/header-actions";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useLocale } from "@/components/i18n/locale-provider";
 
 export function Header() {
@@ -102,6 +103,9 @@ export function Header() {
 
         {/* Version history */}
         {currentPath && <VersionHistory />}
+
+        {/* Notifications */}
+        <NotificationBell />
 
         {/* Global actions: Search, Terminal, AI, Theme */}
         <HeaderActions />

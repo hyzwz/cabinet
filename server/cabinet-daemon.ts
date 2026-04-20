@@ -559,6 +559,38 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
+// Cleanup expired document edit locks every 60 seconds
+setInterval(() => {
+  try {
+    const db = getDb();
+    const cutoff = Date.now() - 5 * 60 * 1000; // 5 min timeout
+    const result = db
+      .prepare("DELETE FROM document_locks WHERE last_heartbeat < ?")
+      .run(cutoff);
+    if (result.changes > 0) {
+      console.log(`Cleaned up ${result.changes} expired document lock(s)`);
+    }
+  } catch (err) {
+    console.error("Lock cleanup error:", err);
+  }
+}, 60 * 1000);
+
+// Prune old read notifications once per hour
+setInterval(() => {
+  try {
+    const db = getDb();
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000; // 30 days
+    const result = db
+      .prepare("DELETE FROM notifications WHERE read = 1 AND created_at < ?")
+      .run(cutoff);
+    if (result.changes > 0) {
+      console.log(`Pruned ${result.changes} old notification(s)`);
+    }
+  } catch (err) {
+    console.error("Notification prune error:", err);
+  }
+}, 60 * 60 * 1000);
+
 function handlePtyConnection(ws: WebSocket, req: http.IncomingMessage): void {
   const url = new URL(req.url || "", `http://localhost:${PORT}`);
   const sessionId = url.searchParams.get("id") || `session-${Date.now()}`;

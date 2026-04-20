@@ -28,6 +28,7 @@ export function getDb(): Database.Database {
 
   // Enable WAL mode for better concurrent read/write performance
   _db.pragma("journal_mode = WAL");
+  _db.pragma("busy_timeout = 5000"); // wait up to 5s on write contention between Next.js and daemon
   _db.pragma("foreign_keys = ON");
 
   runMigrations(_db);

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import { resolveContentPath } from "@/lib/storage/path-utils";
 import { ensureDirectory, fileExists } from "@/lib/storage/fs-operations";
+import { getRequestUser } from "@/lib/auth/request-user";
+import { checkPageAccess, loadPageMetaWalkUp } from "@/lib/auth/access-control";
 import fs from "fs/promises";
 
 type RouteParams = { params: Promise<{ path: string[] }> };
@@ -10,6 +12,13 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   try {
     const { path: segments } = await params;
     const virtualPath = segments.join("/");
+
+    const user = getRequestUser(req);
+    const meta = await loadPageMetaWalkUp(virtualPath);
+    const access = checkPageAccess(user, virtualPath, "write", meta);
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason }, { status: 403 });
+    }
     const resolved = resolveContentPath(virtualPath);
 
     await ensureDirectory(resolved);

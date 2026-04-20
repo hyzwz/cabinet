@@ -26,6 +26,7 @@ export function getDb(): Database.Database {
   _db = new Database(DB_PATH);
 
   _db.pragma("journal_mode = WAL");
+  _db.pragma("busy_timeout = 5000"); // wait up to 5s on write contention between Next.js and daemon
   _db.pragma("foreign_keys = ON");
 
   runMigrations(_db);

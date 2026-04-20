@@ -6,9 +6,12 @@ import { Sparkles, Code2 } from "lucide-react";
 import { editorExtensions } from "./extensions";
 import { EditorToolbar } from "./editor-toolbar";
 import { SlashCommands } from "./slash-commands";
+import { LockBanner, LockIndicator } from "./lock-banner";
+import { CommentPanel } from "@/components/comments/comment-panel";
 import { useEditorStore } from "@/stores/editor-store";
 import { useAIPanelStore } from "@/stores/ai-panel-store";
 import { useTreeStore } from "@/stores/tree-store";
+import { useCollaborationStore } from "@/stores/collaboration-store";
 import { markdownToHtml } from "@/lib/markdown/to-html";
 import { htmlToMarkdown } from "@/lib/markdown/to-markdown";
 import type { TreeNode } from "@/types";
@@ -112,19 +115,63 @@ export function KBEditor() {
   const { currentPath, content, saveStatus, frontmatter } = useEditorStore();
   const isRtl = frontmatter?.dir === "rtl";
   const { open: openAI, clearMessages } = useAIPanelStore();
+  const { lockStatus, checkLock, acquireLock, releaseLock, clearLock } =
+    useCollaborationStore();
   const isLoadingRef = useRef(false);
+  const lockAttemptedRef = useRef(false);
   const [sourceMode, setSourceMode] = useState(false);
   const [sourceText, setSourceText] = useState("");
   const { t } = useLocale();
 
+  // Check lock status when page changes
+  useEffect(() => {
+    lockAttemptedRef.current = false;
+    if (currentPath) {
+      checkLock(currentPath);
+    } else {
+      clearLock();
+    }
+    return () => {
+      // Release lock when navigating away
+      if (currentPath && useCollaborationStore.getState().lockStatus === "locked_by_me") {
+        releaseLock(currentPath);
+      }
+    };
+  }, [currentPath, checkLock, clearLock, releaseLock]);
+
+  // Release lock on browser/tab close
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const path = useEditorStore.getState().currentPath;
+      if (path && useCollaborationStore.getState().lockStatus === "locked_by_me") {
+        fetch(`/api/locks/${path}`, { method: "DELETE", keepalive: true });
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
   const handleUpdate = useCallback(
     ({ editor }: { editor: ReturnType<typeof useEditor> }) => {
       if (isLoadingRef.current || !editor) return;
+
+      const path = useEditorStore.getState().currentPath;
+      const { lockStatus: status } = useCollaborationStore.getState();
+
+      // Try to acquire lock on first edit
+      if (path && status === "idle" && !lockAttemptedRef.current) {
+        lockAttemptedRef.current = true;
+        acquireLock(path);
+      }
+
+      // Block edits if locked by someone else
+      if (status === "locked_by_other") return;
+
       const html = editor.getHTML();
       const md = htmlToMarkdown(html);
       useEditorStore.getState().updateContent(md);
     },
-    []
+    [acquireLock]
   );
 
   const handlePasteOrDrop = useCallback(
@@ -251,6 +298,15 @@ export function KBEditor() {
     setContent();
   }, [editor, content, currentPath]);
 
+  // Disable editor when locked by another user
+  useEffect(() => {
+    if (!editor) return;
+    const shouldBeEditable = lockStatus !== "locked_by_other";
+    if (editor.isEditable !== shouldBeEditable) {
+      editor.setEditable(shouldBeEditable);
+    }
+  }, [editor, lockStatus]);
+
   const handleOpenAI = () => {
     clearMessages();
     openAI();
@@ -292,21 +348,26 @@ export function KBEditor() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
+      <LockBanner />
       <div className="flex items-center">
         <div className="flex-1">
           {!sourceMode && <EditorToolbar editor={editor} />}
         </div>
-        <button
-          onClick={toggleSourceMode}
-          className={`flex items-center gap-1.5 px-3 py-1 mr-2 text-[11px] rounded-md transition-colors border border-border ${
-            sourceMode
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-accent"
-          }`}
-        >
-          <Code2 className="h-3 w-3" />
-          {sourceMode ? t("editor.preview") : t("editor.source")}
-        </button>
+        <div className="flex items-center gap-2 mr-2">
+          <LockIndicator />
+          <CommentPanel />
+          <button
+            onClick={toggleSourceMode}
+            className={`flex items-center gap-1.5 px-3 py-1 text-[11px] rounded-md transition-colors border border-border ${
+              sourceMode
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent"
+            }`}
+          >
+            <Code2 className="h-3 w-3" />
+            {sourceMode ? t("editor.preview") : t("editor.source")}
+          </button>
+        </div>
       </div>
 
       {sourceMode ? (

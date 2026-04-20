@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listUsers, deleteUser, updateUser } from "@/lib/storage/user-io";
 import { getCurrentUser } from "@/lib/auth/jwt";
+import { deleteNotificationsByUser, deleteCommentsByUser } from "@/lib/collaboration/notification-service";
 import type { UserRole } from "@/types";
 
 export async function GET(req: NextRequest) {
@@ -29,6 +30,16 @@ export async function DELETE(req: NextRequest) {
 
   try {
     await deleteUser(userId);
+    // Clean up collaboration data for deleted user
+    try {
+      deleteNotificationsByUser(userId);
+      deleteCommentsByUser(userId);
+      const { getDb } = await import("@/lib/db");
+      const db = getDb();
+      db.prepare("DELETE FROM document_locks WHERE user_id = ?").run(userId);
+    } catch {
+      // Non-critical — orphaned data will be cleaned by daemon
+    }
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
