@@ -1,4 +1,9 @@
 import type { AgentType } from "@/types/agents";
+import type {
+  CabinetReportingLink,
+  CabinetReportingLinkStatus,
+  ReportingSnapshotSummary,
+} from "@/lib/auth/reporting";
 
 export type CabinetVisibilityMode = "own" | "children-1" | "children-2" | "all";
 
@@ -62,6 +67,22 @@ export interface CabinetJobSummary {
   inherited: boolean;
 }
 
+export type ReportingScopeView = {
+  companyId: string;
+  parentCabinetId: string;
+  activeChildCabinetIds?: string[];
+};
+
+export interface CabinetReportingSnapshotView {
+  companyId: string;
+  parentCabinetId: string;
+  childCabinetId: string;
+  generatedAt: string;
+  summary: ReportingSnapshotSummary;
+}
+
+export interface CabinetReportingLinkView extends CabinetReportingLink {}
+
 export interface CabinetOverview {
   cabinet: CabinetManifest & {
     path: string;
@@ -72,4 +93,19 @@ export interface CabinetOverview {
   visibilityMode: CabinetVisibilityMode;
   agents: CabinetAgentSummary[];
   jobs: CabinetJobSummary[];
+  reportingSnapshots?: CabinetReportingSnapshotView[];
+  reportingError?: string | null;
 }
+
+export type ReportingLinksResponse = {
+  links: CabinetReportingLinkView[];
+};
+
+export type ReportingLinkCreateRequest = {
+  childCabinetId: string;
+};
+
+export type ReportingLinkUpdateRequest = {
+  linkId: string;
+  status: CabinetReportingLinkStatus;
+};
