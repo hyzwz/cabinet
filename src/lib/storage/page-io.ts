@@ -14,9 +14,68 @@ import {
   unlinkSymlink,
 } from "./fs-operations";
 
+export type PageMetaData = Pick<
+  FrontMatter,
+  "title" | "created" | "modified" | "tags" | "icon" | "order" | "owner" | "visibility"
+>;
+
 function defaultFrontmatter(title: string): FrontMatter {
   const now = new Date().toISOString();
   return { title, created: now, modified: now, tags: [] };
+}
+
+function toFrontmatter(virtualPath: string, data: Record<string, unknown>): PageMetaData {
+  const visibility = data.visibility;
+
+  return {
+    title: (data.title as string) || path.basename(virtualPath, ".md"),
+    created: (data.created as string) || new Date().toISOString(),
+    modified: (data.modified as string) || new Date().toISOString(),
+    tags: (data.tags as string[]) || [],
+    icon: data.icon as string | undefined,
+    order: data.order as number | undefined,
+    owner: data.owner as string | undefined,
+    visibility:
+      visibility === "private" || visibility === "team"
+        ? visibility
+        : undefined,
+  };
+}
+
+export async function readPageMeta(virtualPath: string): Promise<PageMetaData> {
+  const resolved = resolveContentPath(virtualPath);
+
+  const indexPath = path.join(resolved, "index.md");
+  const mdPath = resolved.endsWith(".md") ? resolved : `${resolved}.md`;
+
+  let filePath: string | null = null;
+  if (await fileExists(indexPath)) {
+    filePath = indexPath;
+  } else if (await fileExists(mdPath)) {
+    filePath = mdPath;
+  } else if (await fileExists(resolved)) {
+    const stat = await fs.stat(resolved);
+    if (stat.isFile()) {
+      filePath = resolved;
+    }
+  }
+
+  if (filePath) {
+    const raw = await readFileContent(filePath);
+    const { data } = matter(raw);
+    return toFrontmatter(virtualPath, data as Record<string, unknown>);
+  }
+
+  for (const filename of CABINET_LINK_META_CANDIDATES) {
+    const cabinetMetaPath = path.join(resolved, filename);
+    if (!(await fileExists(cabinetMetaPath))) continue;
+
+    const raw = await readFileContent(cabinetMetaPath);
+    const meta = yaml.load(raw) as Record<string, unknown>;
+    return toFrontmatter(virtualPath, meta);
+  }
+
+  throw new Error(`Page not found: ${virtualPath}`);
 }
 
 export async function readPage(virtualPath: string): Promise<PageData> {
@@ -46,16 +105,7 @@ export async function readPage(virtualPath: string): Promise<PageData> {
     return {
       path: virtualPath,
       content: content.trim(),
-      frontmatter: {
-        title: data.title || path.basename(virtualPath, ".md"),
-        created: data.created || new Date().toISOString(),
-        modified: data.modified || new Date().toISOString(),
-        tags: data.tags || [],
-        icon: data.icon,
-        order: data.order,
-        owner: data.owner,
-        visibility: data.visibility,
-      },
+      frontmatter: toFrontmatter(virtualPath, data as Record<string, unknown>),
     };
   }
 
@@ -71,12 +121,7 @@ export async function readPage(virtualPath: string): Promise<PageData> {
       content:
         (meta.description as string) ||
         "This folder is linked from an external directory.",
-      frontmatter: {
-        title: (meta.title as string) || path.basename(virtualPath),
-        created: (meta.created as string) || new Date().toISOString(),
-        modified: (meta.created as string) || new Date().toISOString(),
-        tags: (meta.tags as string[]) || [],
-      },
+      frontmatter: toFrontmatter(virtualPath, meta),
     };
   }
 

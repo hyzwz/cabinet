@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   Archive,
   ChevronRight,
@@ -61,6 +61,121 @@ interface TreeNodeProps {
   contextCabinetPath?: string | null;
 }
 
+const RENAME_ALLOWED_CHARACTERS = /^[\p{L}\p{N}_\- ]+$/u;
+
+export type RenameValidationMessageKey =
+  | "sidebar.renameEmpty"
+  | "sidebar.renameInvalidPrompt"
+  | "sidebar.renameUnchangedPrompt";
+
+export function getRenameValidationMessage(params: {
+  currentSlug: string;
+  nextTitle: string;
+  t: (key: RenameValidationMessageKey) => string;
+}): string | null {
+  const trimmed = params.nextTitle.trim();
+  if (!trimmed) return params.t("sidebar.renameEmpty");
+
+  const slug = slugify(trimmed);
+  if (!slug || !RENAME_ALLOWED_CHARACTERS.test(trimmed)) {
+    return params.t("sidebar.renameInvalidPrompt");
+  }
+
+  if (slug === params.currentSlug) {
+    return params.t("sidebar.renameUnchangedPrompt");
+  }
+
+  return null;
+}
+
+export function RenameSuccessBadge({ message }: { message: string | null }) {
+  if (!message) return null;
+  return <span className="ml-auto truncate text-[11px] text-emerald-600">{message}</span>;
+}
+
+export function TreeNodeRenameForm({
+  renameTitle,
+  renameError,
+  renameValidationError,
+  renaming,
+  onRenameTitleChange,
+  onSubmit,
+  onCancel,
+}: {
+  renameTitle: string;
+  renameError: string | null;
+  renameValidationError: string | null;
+  renaming: boolean;
+  onRenameTitleChange: (value: string) => void;
+  onSubmit: (event?: React.FormEvent) => void | Promise<void>;
+  onCancel: () => void;
+}) {
+  const { t } = useLocale();
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-3">
+      <Input
+        value={renameTitle}
+        onChange={(event) => onRenameTitleChange(event.target.value)}
+        autoFocus
+      />
+      {renameError ? (
+        <p className="text-sm text-destructive">{renameError}</p>
+      ) : renameValidationError ? (
+        <p className="text-sm text-muted-foreground">
+          {renameValidationError}
+        </p>
+      ) : null}
+      <DialogFooter>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={renaming}
+        >
+          {t("sidebar.cancel")}
+        </Button>
+        <Button type="submit" disabled={renaming || !!renameValidationError}>
+          {renaming ? t("sidebar.creating") : t("sidebar.rename")}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+export function TreeNodeRenameDialog(props: {
+  open: boolean;
+  renameTitle: string;
+  renameError: string | null;
+  renameValidationError: string | null;
+  renaming: boolean;
+  onOpenChange: (open: boolean) => void;
+  onRenameTitleChange: (value: string) => void;
+  onSubmit: (event?: React.FormEvent) => void | Promise<void>;
+}) {
+  const { t } = useLocale();
+
+  return (
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t("sidebar.rename")}</DialogTitle>
+          <DialogDescription>{t("sidebar.renameDescription")}</DialogDescription>
+        </DialogHeader>
+        <TreeNodeRenameForm
+          renameTitle={props.renameTitle}
+          renameError={props.renameError}
+          renameValidationError={props.renameValidationError}
+          renaming={props.renaming}
+          onRenameTitleChange={props.onRenameTitleChange}
+          onSubmit={props.onSubmit}
+          onCancel={() => props.onOpenChange(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function TreeNode({
   node,
   depth,
@@ -85,6 +200,9 @@ export function TreeNode({
   const [creating, setCreating] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameTitle, setRenameTitle] = useState("");
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [renameSuccess, setRenameSuccess] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [linkRepoOpen, setLinkRepoOpen] = useState(false);
   const [createCabinetOpen, setCreateCabinetOpen] = useState(false);
@@ -95,6 +213,26 @@ export function TreeNode({
   const hasChildren = !!(node.children && node.children.length > 0);
   const isExpanded = hasChildren && expandedPaths.has(node.path);
   const title = node.frontmatter?.title || node.name;
+  const currentSlug = useMemo(
+    () => node.path.split("/").filter(Boolean).at(-1) ?? node.path,
+    [node.path],
+  );
+  const renameValidationError = useMemo(
+    () =>
+      getRenameValidationMessage({
+        currentSlug,
+        nextTitle: renameTitle,
+        t,
+      }),
+    [currentSlug, renameTitle, t],
+  );
+
+  const openRenameDialog = useCallback(() => {
+    setRenameTitle(title);
+    setRenameError(null);
+    setRenameSuccess(null);
+    setRenameOpen(true);
+  }, [title]);
 
   const handleClick = () => {
     selectPage(node.path);
@@ -151,6 +289,33 @@ export function TreeNode({
       console.error("Failed to create sub page:", error);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleRenameSubmit = async (event?: React.FormEvent) => {
+    event?.preventDefault();
+    if (renaming) return;
+    if (renameValidationError) {
+      setRenameError(renameValidationError);
+      setRenameSuccess(null);
+      return;
+    }
+
+    setRenaming(true);
+    setRenameError(null);
+    setRenameSuccess(null);
+    try {
+      await renamePage(node.path, renameTitle.trim());
+      setRenameSuccess(t("sidebar.renameSuccess"));
+      setRenameOpen(false);
+    } catch (error) {
+      setRenameError(
+        error instanceof Error && error.message
+          ? error.message
+          : t("sidebar.failedRename"),
+      );
+    } finally {
+      setRenaming(false);
     }
   };
 
@@ -281,6 +446,7 @@ export function TreeNode({
               <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
             <span className={cn("truncate", node.type === "unknown" && "opacity-50")}>{title}</span>
+            <RenameSuccessBadge message={renameSuccess} />
           </button>
         </ContextMenuTrigger>
         <ContextMenuContent>
@@ -296,7 +462,7 @@ export function TreeNode({
             <Archive className="h-4 w-4 mr-2" />
             {t("sidebar.createCabinetHere")}
           </ContextMenuItem>
-          <ContextMenuItem onClick={() => { setRenameTitle(title); setRenameOpen(true); }}>
+          <ContextMenuItem onClick={openRenameDialog}>
             <Pencil className="h-4 w-4 mr-2" />
             {t("sidebar.rename")}
           </ContextMenuItem>
@@ -373,31 +539,27 @@ export function TreeNode({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("sidebar.rename")}</DialogTitle>
-          </DialogHeader>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!renameTitle.trim()) return;
-              await renamePage(node.path, renameTitle.trim());
-              setRenameOpen(false);
-            }}
-            className="flex gap-2"
-          >
-            <Input
-              value={renameTitle}
-              onChange={(e) => setRenameTitle(e.target.value)}
-              autoFocus
-            />
-            <Button type="submit" disabled={!renameTitle.trim()}>
-              {t("sidebar.rename")}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <TreeNodeRenameDialog
+        open={renameOpen}
+        renameTitle={renameTitle}
+        renameError={renameError}
+        renameValidationError={renameValidationError}
+        renaming={renaming}
+        onOpenChange={(open) => {
+          setRenameOpen(open);
+          if (open) {
+            setRenameError(null);
+            setRenameSuccess(null);
+            setRenameTitle(title);
+          }
+        }}
+        onRenameTitleChange={(value) => {
+          setRenameTitle(value);
+          if (renameError) setRenameError(null);
+          if (renameSuccess) setRenameSuccess(null);
+        }}
+        onSubmit={handleRenameSubmit}
+      />
 
       <LinkRepoDialog open={linkRepoOpen} onOpenChange={setLinkRepoOpen} parentPath={node.path} />
 
