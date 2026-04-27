@@ -10,7 +10,7 @@ order: 2
 ---
 # Packaging and Versioning
 
-This page explains the supported Cabinet install paths today, how releases are packaged, and how versioning and updates work across managed source installs, custom source installs, and Electron.
+This page explains the supported Cabinet install paths today, how releases are packaged, and how versioning and updates work across managed CLI installs, custom source installs, and Electron.
 
 Cabinet is still experimental and moving fast. Before any upgrade, keep a separate copy of your `data/` folder or let Cabinet create a backup first.
 
@@ -18,7 +18,7 @@ Cabinet is still experimental and moving fast. Before any upgrade, keep a separa
 
 Cabinet currently distinguishes between three install kinds:
 
-- `source-managed` - created by `create-cabinet`
+- `cli-managed` - bootstrapped and run through `cabinetai`
 - `source-custom` - cloned or modified manually
 - `electron-macos` - packaged macOS desktop app
 
@@ -26,19 +26,18 @@ Those install kinds matter because update behavior is different for each one.
 
 ## Running Cabinet Today
 
-## 1. Source-managed install
+## 1. CLI-managed install
 
-This is the best path today for local users, contributors, and anyone who wants the most complete update flow.
+This is the best path today for local users who want the current packaged Cabinet flow.
 
 ### First install
 
 ```bash
-npx create-cabinet@latest
-cd cabinet
-npm run dev:all
+mkdir my-startup && cd my-startup
+npx cabinetai run
 ```
 
-Open `http://localhost:3000`.
+Open the local app URL printed by the CLI.
 
 ### Production-style run
 
@@ -50,7 +49,7 @@ npm run start
 
 By default, Cabinet runs the web app on port `3000` and the daemon on port `3001`. Those can be overridden with `CABINET_APP_PORT` and `CABINET_DAEMON_PORT`.
 
-`create-cabinet` now installs the exact GitHub release tarball that matches its npm version. It also writes install metadata so Cabinet can recognize the install as managed later.
+`cabinetai run` bootstraps the cabinet structure in place if needed, installs the matching app version, and writes install metadata so Cabinet can recognize the install as managed later.
 
 ## 2. Source-custom install
 
@@ -128,16 +127,16 @@ That manifest tells Cabinet:
 - the release tag
 - the release notes URL
 - the source tarball URL
-- the matching `create-cabinet` version
+- the matching `cabinetai` version
 - the Electron asset names for macOS
 
-`create-cabinet` mirrors the same version and installs the matching release tarball, not the default branch `HEAD`.
+`cabinetai` mirrors the same version contract for packaged installs instead of pulling the default branch `HEAD`.
 
 Only the `stable` channel is used in v1. Draft and prerelease builds should not be treated as client updates.
 
 ## How Updates Work By Install Kind
 
-### `source-managed`
+### `cli-managed`
 
 - Cabinet checks for updates on startup, on focus, and periodically
 - one-click apply is allowed only for recognized managed installs with clean app files
@@ -190,7 +189,7 @@ This is the release flow to use right now.
 
 Make sure GitHub Actions has the secrets needed for the parts you want to ship:
 
-- `NPM_TOKEN` - required to publish `create-cabinet`
+- `NPM_TOKEN` - required to publish `create-cabinet` and `cabinetai`
 - `APPLE_ID` - required for macOS notarization
 - `APPLE_APP_PASSWORD` - required for macOS notarization
 - `APPLE_TEAM_ID` - required for macOS notarization
@@ -238,7 +237,7 @@ The release workflow triggered by `vX.Y.Z` tags is responsible for:
 
 - creating the GitHub Release
 - uploading `cabinet-release.json`
-- publishing `create-cabinet@X.Y.Z` to npm
+- publishing `create-cabinet@X.Y.Z` and `cabinetai@X.Y.Z` to npm
 - building and publishing Electron macOS artifacts
 
 ### What to verify after the tag ships
@@ -247,10 +246,10 @@ After GitHub Actions finishes, verify:
 
 - the GitHub Release exists for `vX.Y.Z`
 - `cabinet-release.json` is attached to that release
-- `create-cabinet@X.Y.Z` is visible on npm
+- `create-cabinet@X.Y.Z` and `cabinetai@X.Y.Z` are visible on npm
 - the Electron macOS artifacts are attached to the GitHub Release
 - the latest manifest URL resolves to the new version
-- a fresh `npx create-cabinet@latest` install pulls the expected release
+- a fresh `npx cabinetai run` bootstrap pulls the expected release
 
 ### Practical release checklist
 

@@ -2,7 +2,7 @@
 
 ## What is this project?
 
-Cabinet is an AI-first self-hosted knowledge base and startup OS. All content lives as markdown files on disk. The web UI provides WYSIWYG editing, a collapsible tree sidebar, drag-and-drop page organization, structured AI runs for tasks/jobs/heartbeats, and interactive `WebTerminal` surfaces for direct CLI sessions.
+Cabinet is an AI-first self-hosted knowledge base and startup OS. Core knowledge lives as files on disk, while lightweight local state stores back collaboration features such as locks, comments, notifications, and other runtime metadata. The web UI provides WYSIWYG editing, a collapsible tree sidebar, drag-and-drop page organization, structured AI runs for tasks/jobs/heartbeats, and interactive `WebTerminal` surfaces for direct CLI sessions.
 
 **Core philosophy:** Humans define intent. Agents do the work. The knowledge base is the shared memory between both.
 
@@ -55,7 +55,7 @@ data/                        → Content directory (KB pages, tasks, jobs)
 
 ## Key Rules
 
-1. **No database** — everything is files on disk under `/data`
+1. **File-first architecture** — pages, assets, and agent workspaces live on disk under `/data`; lightweight local state stores (including SQLite-backed collaboration data) are used where file storage is the wrong fit
 2. **Pages** are directories with `index.md` + assets, or standalone `.md` files. PDFs and CSVs are also first-class content types.
 3. **Frontmatter** (YAML) stores metadata: title, created, modified, tags, icon, order
 4. **Path traversal prevention** — all resolved paths must start with DATA_DIR

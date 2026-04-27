@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  The AI-first startup OS where everything lives as markdown files on disk. No database. No vendor lock-in. Self-hosted. Your data never leaves your machine.
+  The AI-first startup OS where your knowledge base lives as markdown files on disk, while collaboration state and runtime metadata use lightweight local storage. No vendor lock-in. Self-hosted. Your data stays under your control.
 </p>
 
 <p align="center">
@@ -47,12 +47,11 @@
 ## From zero to AI team in 2 minutes
 
 ```bash
-npx create-cabinet@latest
-cd cabinet
-npm run dev:all
+mkdir my-startup && cd my-startup
+npx cabinetai run
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The onboarding wizard builds your custom AI team in 5 questions.
+Open the local app URL shown by the CLI. If you are running from this repository instead of the packaged CLI flow, use [http://localhost:3000](http://localhost:3000). The onboarding wizard builds your custom AI team in 5 questions.
 
 ---
 
@@ -88,7 +87,7 @@ Cabinet is built around a few principles that we think matter deeply for the fut
 | **Scheduled Jobs** | Cron-based agent automation. Reddit scout every 6 hours. Weekly reports on Monday. |
 | **Embedded HTML Apps** | Drop an `index.html` in any folder — it renders as an iframe. Full-screen mode. |
 | **Web Terminal** | Interactive local AI CLI terminal in the browser. Kept for direct sessions, debugging, and future terminal-native features such as tmux-style Cabinet workflows. |
-| **File-Based Everything** | No database. Markdown on disk. Your data is always yours, always portable. |
+| **File-Based Knowledge Base** | Pages, assets, and agent workspaces live on disk as portable files. Lightweight local state stores power collaboration and runtime coordination. |
 | **Git-Backed History** | Every save auto-commits. Full diff viewer. Restore any page to any point in time. |
 | **Missions & Tasks** | Break goals into missions. Track progress with Kanban boards. |
 | **Internal Chat** | Built-in team channels. Agents and humans communicate. |
@@ -113,7 +112,7 @@ This is the biggest difference between Cabinet and tools like Obsidian or Notion
 | Embedded HTML apps | Yes | No | No |
 | Web terminal | Yes | No | No |
 | Self-hosted, files on disk | Yes | Yes | No |
-| No database / no lock-in | Yes | Yes | No |
+| Portable knowledge base, no vendor lock-in | Yes | Yes | No |
 | Git-backed version history | Yes | Via plugin | No |
 | WYSIWYG + Markdown | Yes | Yes | Yes |
 
@@ -211,7 +210,7 @@ npm run start        # Production mode (both servers)
 Cabinet is free, open source, and self-hosted. Your data never leaves your machine.
 
 ```bash
-npx create-cabinet my-startup
+npx cabinetai run
 ```
 
 [Get Started](https://runcabinet.com) | <a href="https://github.com/hilash/cabinet/stargazers" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/github/stars/hilash/cabinet?label=GitHub%20Stars&logo=github&color=f5b301" alt="GitHub Stars" valign="middle"></a>

@@ -616,3 +616,4 @@
 [2026-04-27] Updated the core i18n regression expectations to match the current Chinese vocabulary for AI employees, scheduled jobs, provider labels, and mission-control surfaces while keeping local data fixtures out of this repository batch.
 [2026-04-27] Reworked the cabinet v2 regression suite to create and clean up its own temporary cabinet fixtures under `DATA_DIR`, removing its dependency on tracked example `data` content that should no longer be staged with application code.
 [2026-04-27] Narrowed the settings i18n regression so it verifies the message keys actually used by the settings surface while preserving the stricter check against hard-coded English demo copy.
+[2026-04-27] Organized remaining repository documentation by marking stale architecture notes as historical, adding active Cabinet development plans, and introducing an OpenSpec notification-system record for future collaboration notification work.
