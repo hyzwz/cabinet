@@ -12,6 +12,7 @@ interface WebTerminalProps {
   themeSurface?: "terminal" | "page";
   providerId?: string;
   adapterType?: string;
+  preserveConnectionOnly?: boolean;
   onClose: () => void;
 }
 
@@ -81,6 +82,7 @@ export function WebTerminal({
   adapterType,
   reconnect,
   themeSurface = "terminal",
+  preserveConnectionOnly = false,
   onClose,
 }: WebTerminalProps) {
   const termRef = useRef<HTMLDivElement>(null);
@@ -423,15 +425,27 @@ export function WebTerminal({
 
   return (
     <div
-      className="relative h-full w-full overflow-hidden"
-      style={{
-        backgroundColor: surfaceBackground,
-        color: surfaceForeground,
-        minHeight: 100,
-      }}
+      className={preserveConnectionOnly ? "sr-only" : "relative h-full w-full overflow-hidden rounded-md border border-border/60 bg-[var(--terminal-bg)]"}
+      aria-hidden={preserveConnectionOnly ? true : undefined}
+      data-terminal-mode={preserveConnectionOnly ? "keepalive" : "interactive"}
+      style={
+        preserveConnectionOnly
+          ? {
+              position: "absolute",
+              width: 1,
+              height: 1,
+              overflow: "hidden",
+              clipPath: "inset(50%)",
+            }
+          : {
+              backgroundColor: surfaceBackground,
+              color: surfaceForeground,
+              minHeight: 100,
+            }
+      }
     >
       {/* Connection status overlay */}
-      {connState === "connecting" && (
+      {!preserveConnectionOnly && connState === "connecting" && (
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
           <div className="flex items-center gap-2 rounded-lg bg-background/80 px-4 py-2 text-xs text-muted-foreground backdrop-blur-sm border border-border">
             <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-yellow-400" />
@@ -441,7 +455,7 @@ export function WebTerminal({
       )}
 
       {/* Error overlay with retry */}
-      {connState === "error" && errorMsg && (
+      {!preserveConnectionOnly && connState === "error" && errorMsg && (
         <div className="absolute inset-0 z-10 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3 rounded-lg bg-background/90 px-6 py-4 text-center backdrop-blur-sm border border-destructive/30">
             <div className="text-xs text-destructive font-medium">{errorMsg}</div>
@@ -457,8 +471,18 @@ export function WebTerminal({
 
       <div
         ref={termRef}
-        className="h-full w-full overflow-hidden"
-        style={{ padding: "4px 8px", minHeight: 100 }}
+        className={preserveConnectionOnly ? "h-px w-px overflow-hidden" : "h-full w-full overflow-hidden"}
+        style={
+          preserveConnectionOnly
+            ? {
+                position: "absolute",
+                width: 1,
+                height: 1,
+                overflow: "hidden",
+                clipPath: "inset(50%)",
+              }
+            : { padding: "4px 8px", minHeight: 100 }
+        }
       />
     </div>
   );

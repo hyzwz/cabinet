@@ -1,14 +1,26 @@
 import type { TreeNode, PageData, FrontMatter } from "@/types";
 
+export type ApiFetch = typeof fetch;
+
+let apiFetch: ApiFetch = (...args) => fetch(...args);
+
+export function setApiClientFetch(nextFetch: ApiFetch) {
+  apiFetch = nextFetch;
+}
+
+export function resetApiClientFetch() {
+  apiFetch = (...args) => fetch(...args);
+}
+
 export async function fetchTree(showHidden = false): Promise<TreeNode[]> {
   const url = showHidden ? "/api/tree?showHidden=1" : "/api/tree";
-  const res = await fetch(url);
+  const res = await apiFetch(url);
   if (!res.ok) throw new Error("Failed to fetch tree");
   return res.json();
 }
 
 export async function fetchPage(path: string): Promise<PageData> {
-  const res = await fetch(`/api/pages/${path}`);
+  const res = await apiFetch(`/api/pages/${path}`);
   if (!res.ok) throw new Error(`Failed to fetch page: ${path}`);
   return res.json();
 }
@@ -18,7 +30,7 @@ export async function savePage(
   content: string,
   frontmatter: Partial<FrontMatter>
 ): Promise<void> {
-  const res = await fetch(`/api/pages/${path}`, {
+  const res = await apiFetch(`/api/pages/${path}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content, frontmatter }),
@@ -30,7 +42,7 @@ export async function createPageApi(
   parentPath: string,
   title: string
 ): Promise<void> {
-  const res = await fetch(`/api/pages/${parentPath}`, {
+  const res = await apiFetch(`/api/pages/${parentPath}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title }),
@@ -39,7 +51,7 @@ export async function createPageApi(
 }
 
 export async function deletePageApi(path: string): Promise<void> {
-  const res = await fetch(`/api/pages/${path}`, { method: "DELETE" });
+  const res = await apiFetch(`/api/pages/${path}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`Failed to delete page: ${path}`);
 }
 
@@ -47,7 +59,7 @@ export async function movePageApi(
   fromPath: string,
   toParent: string
 ): Promise<string> {
-  const res = await fetch(`/api/pages/${fromPath}`, {
+  const res = await apiFetch(`/api/pages/${fromPath}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ toParent }),
@@ -61,7 +73,7 @@ export async function renamePageApi(
   fromPath: string,
   newName: string
 ): Promise<string> {
-  const res = await fetch(`/api/pages/${fromPath}`, {
+  const res = await apiFetch(`/api/pages/${fromPath}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rename: newName }),

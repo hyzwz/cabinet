@@ -68,8 +68,7 @@ import {
 } from "@/lib/cabinets/tree";
 import { ROOT_CABINET_PATH } from "@/lib/cabinets/paths";
 import {
-  cabinetVisibilityModeLabel,
-  CABINET_VISIBILITY_OPTIONS,
+  getCabinetVisibilityOptions,
 } from "@/lib/cabinets/visibility";
 import { getDataDir } from "@/lib/data-dir-cache";
 import type { CabinetOverview, CabinetVisibilityMode } from "@/types/cabinets";
@@ -161,7 +160,11 @@ export function TreeView() {
   const [cabinetDeleteOpen, setCabinetDeleteOpen] = useState(false);
   const [kbCreating, setKbCreating] = useState(false);
   const [linkRepoOpen, setLinkRepoOpen] = useState(false);
-  const { t, format } = useLocale();
+  const { locale, t, format } = useLocale();
+  const cabinetVisibilityOptions = useMemo(
+    () => getCabinetVisibilityOptions(locale),
+    [locale]
+  );
 
   const rootCabinet = useMemo(() => findRootCabinetNode(nodes), [nodes]);
   const routeCabinetPath = section.mode === "cabinet" ? section.cabinetPath : undefined;
@@ -367,11 +370,11 @@ export function TreeView() {
           </ContextMenuContent>
           </ContextMenu>
 
-          <Select
-            items={CABINET_VISIBILITY_OPTIONS.map((opt) => ({
-              label: opt.shortLabel,
-              value: opt.value,
-            }))}
+            <Select
+              items={cabinetVisibilityOptions.map((opt) => ({
+                label: opt.shortLabel,
+                value: opt.value,
+              }))}
             value={cabinetVisibilityMode}
             onValueChange={(value) =>
               setCabinetVisibilityMode(
@@ -388,7 +391,7 @@ export function TreeView() {
             </SelectTrigger>
             <SelectContent align="end" className="min-w-[200px]">
               <SelectGroup>
-                {CABINET_VISIBILITY_OPTIONS.map((opt) => (
+                {cabinetVisibilityOptions.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
                     <span className="font-medium">{opt.shortLabel}</span>
                     <span className="ml-1.5 text-xs text-muted-foreground">

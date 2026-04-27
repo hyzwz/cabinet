@@ -1,7 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { exec } from "child_process";
+import { requireAdmin } from "@/lib/auth/route-guards";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const forbidden = await requireAdmin(req);
+  if (forbidden) return forbidden;
+
   const home = process.env.HOME || "~";
 
   try {

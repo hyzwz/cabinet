@@ -74,8 +74,9 @@ export function CsvViewer({ path, title }: CsvViewerProps) {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editCell, setEditCell] = useState<{ r: number; c: number } | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const csvUrl = `/api/assets/${path}`;
+  const csvUrl = `/api/assets/${path}?v=${refreshKey}`;
 
   useEffect(() => {
     fetch(csvUrl)
@@ -86,6 +87,18 @@ export function CsvViewer({ path, title }: CsvViewerProps) {
         setDirty(false);
       });
   }, [csvUrl]);
+
+  useEffect(() => {
+    const handleAssetUpdated = (event: Event) => {
+      const updatedPath = (event as CustomEvent<{ path?: string }>).detail?.path;
+      if (updatedPath === path) {
+        setRefreshKey(Date.now());
+      }
+    };
+
+    window.addEventListener("cabinet:asset-updated", handleAssetUpdated);
+    return () => window.removeEventListener("cabinet:asset-updated", handleAssetUpdated);
+  }, [path]);
 
   const updateCell = useCallback(
     (r: number, c: number, value: string) => {

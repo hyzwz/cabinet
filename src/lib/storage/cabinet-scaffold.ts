@@ -19,6 +19,10 @@ export interface ScaffoldCabinetOptions {
 }
 
 const GETTING_STARTED_DIRNAME = "getting-started";
+const GETTING_STARTED_SOURCE_DIRNAMES = [
+  GETTING_STARTED_DIRNAME,
+  "入门指南",
+];
 
 async function pathExists(targetPath: string): Promise<boolean> {
   try {
@@ -29,16 +33,25 @@ async function pathExists(targetPath: string): Promise<boolean> {
   }
 }
 
-async function copyDirectoryMerge(src: string, dest: string): Promise<void> {
+async function copyDirectoryMerge(src: string, dest: string, rootSrc: string = src): Promise<void> {
   await fs.mkdir(dest, { recursive: true });
   const entries = await fs.readdir(src, { withFileTypes: true });
 
   for (const entry of entries) {
     const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
+    const relativePath = path.relative(rootSrc, srcPath);
+    const normalizedRelativePath = relativePath
+      .split(path.sep)
+      .map((segment) =>
+        segment
+          .replace(/^应用与代码库$/u, "apps-and-repos")
+          .replace(/^符号链接与知识加载$/u, "symlinks-and-load-knowledge"),
+      )
+      .join(path.sep);
+    const destPath = path.join(dest, normalizedRelativePath);
 
     if (entry.isDirectory()) {
-      await copyDirectoryMerge(srcPath, destPath);
+      await copyDirectoryMerge(srcPath, dest, rootSrc);
       continue;
     }
 
@@ -53,10 +66,10 @@ async function copyDirectoryMerge(src: string, dest: string): Promise<void> {
 
 async function resolveGettingStartedSeedDir(targetDir: string): Promise<string | null> {
   const destinationDir = path.resolve(targetDir, GETTING_STARTED_DIRNAME);
-  const candidates = [
-    path.join(DATA_DIR, GETTING_STARTED_DIRNAME),
-    path.join(PROJECT_ROOT, "data", GETTING_STARTED_DIRNAME),
-  ];
+  const candidates = GETTING_STARTED_SOURCE_DIRNAMES.flatMap((dirname) => [
+    path.join(DATA_DIR, dirname),
+    path.join(PROJECT_ROOT, "data", dirname),
+  ]);
 
   for (const candidate of candidates) {
     if (!(await pathExists(candidate))) {

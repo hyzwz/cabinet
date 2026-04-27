@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPageHistory } from "@/lib/git/git-service";
-import { getRequestUser } from "@/lib/auth/request-user";
-import { checkPageAccess } from "@/lib/auth/access-control";
-import { readPage } from "@/lib/storage/page-io";
+import {
+  authorizeUserAction,
+  resolveActorFromRequest,
+  resolveCompanyContextForRequest,
+  resolvePageResourceContext,
+  toHttpErrorResponse,
+} from "@/lib/auth/page-authorization";
 
 type RouteParams = { params: Promise<{ path: string[] }> };
 
@@ -11,18 +15,22 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const { path: segments } = await params;
     const virtualPath = segments.join("/");
 
-    const user = getRequestUser(req);
-    try {
-      const page = await readPage(virtualPath);
-      const access = checkPageAccess(user, virtualPath, "read", page.frontmatter);
-      if (!access.allowed) {
-        return NextResponse.json({ error: access.reason }, { status: 403 });
-      }
-    } catch {
-      // Page may not exist (deleted) — allow admin, deny others
-      if (user && user.role !== "admin") {
-        return NextResponse.json({ error: "Access denied" }, { status: 403 });
-      }
+    const actor = await resolveActorFromRequest(req);
+    const companyContext = await resolveCompanyContextForRequest(req, actor);
+    const resourceContext = await resolvePageResourceContext({
+      virtualPath,
+      actor,
+      companyContext,
+    });
+    const decision = await authorizeUserAction({
+      actor,
+      companyContext,
+      resourceContext,
+      action: "read_raw",
+    });
+
+    if (!decision.allowed) {
+      return toHttpErrorResponse(decision);
     }
 
     const history = await getPageHistory(virtualPath);

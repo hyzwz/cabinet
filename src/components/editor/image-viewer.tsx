@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ExternalLink, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeaderActions } from "@/components/layout/header-actions";
@@ -10,9 +11,22 @@ interface ImageViewerProps {
 }
 
 export function ImageViewer({ path, title }: ImageViewerProps) {
-  const src = `/api/assets/${path}`;
+  const [refreshKey, setRefreshKey] = useState(0);
+  const src = `/api/assets/${path}?v=${refreshKey}`;
   const filename = path.split("/").pop() || path;
   const ext = filename.includes(".") ? filename.split(".").pop()!.toUpperCase() : "IMG";
+
+  useEffect(() => {
+    const handleAssetUpdated = (event: Event) => {
+      const updatedPath = (event as CustomEvent<{ path?: string }>).detail?.path;
+      if (updatedPath === path) {
+        setRefreshKey(Date.now());
+      }
+    };
+
+    window.addEventListener("cabinet:asset-updated", handleAssetUpdated);
+    return () => window.removeEventListener("cabinet:asset-updated", handleAssetUpdated);
+  }, [path]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">

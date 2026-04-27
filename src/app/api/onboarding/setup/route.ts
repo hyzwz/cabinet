@@ -10,6 +10,7 @@ import {
   resolveAgentLibraryDir,
 } from "@/lib/agents/library-manager";
 import { ensureAgentScaffold } from "@/lib/agents/scaffold";
+import { normalizeCompanyIdFromName } from "@/lib/auth/company-id";
 
 const AGENTS_DIR = path.join(DATA_DIR, ".agents");
 const CONFIG_DIR = path.join(AGENTS_DIR, ".config");
@@ -30,6 +31,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as OnboardingRequest;
     const { answers } = body;
+    const normalizedCompanyId = normalizeCompanyIdFromName(answers.companyName);
+    if (!normalizedCompanyId) {
+      return NextResponse.json({ error: "Company name is required" }, { status: 400 });
+    }
     const selectedAgents = mergeMandatoryAgentSlugs(body.selectedAgents || []);
     const libraryDir = await resolveAgentLibraryDir();
 
@@ -47,7 +52,9 @@ export async function POST(req: NextRequest) {
       JSON.stringify(
         {
           exists: true,
+          companyId: normalizedCompanyId,
           company: {
+            id: normalizedCompanyId,
             name: answers.companyName,
             description: answers.description,
             goals: answers.goals,

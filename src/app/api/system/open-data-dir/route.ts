@@ -1,7 +1,8 @@
 import { spawn } from "child_process";
 import path from "path";
-import { NextResponse } from "next/server";
-import { DATA_DIR } from "@/lib/storage/path-utils";
+import { NextRequest, NextResponse } from "next/server";
+import { DATA_DIR, isPathInsideDataDir } from "@/lib/storage/path-utils";
+import { requireAdmin } from "@/lib/auth/route-guards";
 
 export const dynamic = "force-dynamic";
 
@@ -20,15 +21,18 @@ function getOpenCommand(targetPath: string, reveal?: boolean): { command: string
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const forbidden = await requireAdmin(request);
+    if (forbidden) return forbidden;
+
     let targetPath = DATA_DIR;
 
     // Optional subpath to open a specific item
     const body = await request.json().catch(() => null);
     if (body?.subpath) {
       const resolved = path.resolve(DATA_DIR, body.subpath);
-      if (!resolved.startsWith(DATA_DIR)) {
+      if (!isPathInsideDataDir(resolved)) {
         return NextResponse.json({ error: "Invalid path" }, { status: 400 });
       }
       targetPath = resolved;

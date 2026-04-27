@@ -1,14 +1,18 @@
 import path from "path";
 import { spawn } from "child_process";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { DATA_DIR } from "@/lib/storage/path-utils";
 import { PROJECT_ROOT } from "@/lib/runtime/runtime-config";
 import { writeUpdateStatus } from "@/lib/system/update-status";
 import { getUpdateCheckResult } from "@/lib/system/update-service";
+import { requireAdmin } from "@/lib/auth/route-guards";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const forbidden = await requireAdmin(req);
+  if (forbidden) return forbidden;
+
   const update = await getUpdateCheckResult();
 
   if (!update.updateAvailable || !update.latest) {

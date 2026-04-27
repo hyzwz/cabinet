@@ -8,6 +8,7 @@ import {
   renamePageApi,
 } from "@/lib/api/client";
 import { slugify } from "@/lib/storage/slugify";
+import { useAppStore } from "@/stores/app-store";
 
 interface TreeState {
   nodes: TreeNode[];
@@ -46,6 +47,35 @@ function loadShowHiddenFiles(): boolean {
     return localStorage.getItem("kb-show-hidden-files") === "true";
   } catch {
     return false;
+  }
+}
+
+function isPathWithinCabinet(path: string, cabinetPath: string): boolean {
+  return path === cabinetPath || path.startsWith(`${cabinetPath}/`);
+}
+
+function replacePathPrefix(path: string, previousPath: string, nextPath: string): string {
+  if (path === previousPath) return nextPath;
+  if (!path.startsWith(`${previousPath}/`)) return path;
+  return `${nextPath}${path.slice(previousPath.length)}`;
+}
+
+function syncSectionAfterRename(previousPath: string, nextPath: string) {
+  const { section, setSection } = useAppStore.getState();
+
+  if (section.type === "cabinet" && section.cabinetPath && isPathWithinCabinet(section.cabinetPath, previousPath)) {
+    setSection({
+      ...section,
+      cabinetPath: replacePathPrefix(section.cabinetPath, previousPath, nextPath),
+    });
+    return;
+  }
+
+  if (section.type === "page" && section.mode === "cabinet" && section.cabinetPath && isPathWithinCabinet(section.cabinetPath, previousPath)) {
+    setSection({
+      ...section,
+      cabinetPath: replacePathPrefix(section.cabinetPath, previousPath, nextPath),
+    });
   }
 }
 
@@ -140,9 +170,10 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       const newPath = await renamePageApi(pagePath, newName);
       await get().loadTree();
       const { selectedPath } = get();
-      if (selectedPath === pagePath) {
-        set({ selectedPath: newPath });
+      if (selectedPath === pagePath || selectedPath?.startsWith(`${pagePath}/`)) {
+        set({ selectedPath: replacePathPrefix(selectedPath, pagePath, newPath) });
       }
+      syncSectionAfterRename(pagePath, newPath);
     } catch (error) {
       console.error("Failed to rename page:", error);
     }

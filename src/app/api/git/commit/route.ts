@@ -1,19 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manualCommit, getStatus } from "@/lib/git/git-service";
-import { getRequestUser } from "@/lib/auth/request-user";
-import { requireAdmin } from "@/lib/auth/access-control";
+import {
+  authorizeAdminActor,
+  resolveActorFromRequest,
+  toHttpErrorResponse,
+} from "@/lib/auth/page-authorization";
 
 export async function POST(req: NextRequest) {
   try {
-    const user = getRequestUser(req);
-    const access = requireAdmin(user);
+    const actor = await resolveActorFromRequest(req);
+    const access = authorizeAdminActor(actor);
     if (!access.allowed) {
-      return NextResponse.json({ error: access.reason }, { status: 403 });
+      return toHttpErrorResponse({
+        allowed: false,
+        reason: "forbidden",
+        message: access.reason,
+        status: access.status,
+      });
     }
 
     const body = await req.json();
     const message = body.message || "Manual commit from KB";
-    const commitUser = user ? { username: user.username, displayName: user.displayName } : undefined;
+    const commitUser =
+      actor.kind === "user"
+        ? { username: actor.username, displayName: actor.username }
+        : undefined;
     const committed = await manualCommit(message, commitUser);
     return NextResponse.json({ ok: true, committed });
   } catch (error) {
@@ -24,10 +35,15 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const user = getRequestUser(req);
-    const access = requireAdmin(user);
+    const actor = await resolveActorFromRequest(req);
+    const access = authorizeAdminActor(actor);
     if (!access.allowed) {
-      return NextResponse.json({ error: access.reason }, { status: 403 });
+      return toHttpErrorResponse({
+        allowed: false,
+        reason: "forbidden",
+        message: access.reason,
+        status: access.status,
+      });
     }
 
     const status = await getStatus();

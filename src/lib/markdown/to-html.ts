@@ -3,6 +3,7 @@ import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
 import rehypeStringify from "rehype-stringify";
+import path from "path";
 
 /**
  * Pre-process markdown to convert [[Wiki Links]] to HTML anchors
@@ -44,24 +45,45 @@ function fixTaskListHtml(html: string): string {
   return html;
 }
 
+function isRelativeAssetUrl(url: string): boolean {
+  return !/^(?:[a-z][a-z0-9+.-]*:|\/\/|#|\/)/i.test(url);
+}
+
+function decodeRelativeUrl(url: string): string {
+  try {
+    return decodeURI(url);
+  } catch {
+    return url;
+  }
+}
+
+function toAssetApiUrl(pagePath: string, url: string): string {
+  if (!isRelativeAssetUrl(url)) return url;
+
+  const normalizedPagePath = pagePath.replace(/^\/+|\/+$/g, "");
+  const decodedUrl = decodeRelativeUrl(url);
+  const basePath = decodedUrl.startsWith("../")
+    ? path.posix.dirname(normalizedPagePath)
+    : normalizedPagePath;
+  const normalized = path.posix.normalize(
+    path.posix.join(basePath, decodedUrl)
+  );
+
+  if (!normalized || normalized === "." || normalized === ".." || normalized.startsWith("../")) {
+    return url;
+  }
+
+  return `/api/assets/${normalized}`;
+}
+
 /**
- * Rewrite relative URLs (./file.pdf, ./image.png) to /api/assets/{pagePath}/file
+ * Rewrite relative asset URLs (./file.pdf, ../images/file.png) through /api/assets
  * and convert PDF links to inline embedded viewers.
  */
 function resolveRelativeUrls(html: string, pagePath: string): string {
-  // Get the directory path (strip trailing filename if any)
-  const dirPath = pagePath;
-
-  // Rewrite relative hrefs: href="./file.pdf" → href="/api/assets/dir/file.pdf"
   html = html.replace(
-    /href="\.\/([^"]+)"/g,
-    (_match, file: string) => `href="/api/assets/${dirPath}/${file}"`
-  );
-
-  // Rewrite relative src: src="./image.png" → src="/api/assets/dir/image.png"
-  html = html.replace(
-    /src="\.\/([^"]+)"/g,
-    (_match, file: string) => `src="/api/assets/${dirPath}/${file}"`
+    /\b(href|src)="([^"]+)"/g,
+    (_match, attr: string, url: string) => `${attr}="${toAssetApiUrl(pagePath, url)}"`
   );
 
   // Mark PDF links with a data attribute so the editor can handle them

@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDiff } from "@/lib/git/git-service";
-import { getRequestUser } from "@/lib/auth/request-user";
-import { requireAdmin } from "@/lib/auth/access-control";
+import {
+  authorizeAdminActor,
+  resolveActorFromRequest,
+  toHttpErrorResponse,
+} from "@/lib/auth/page-authorization";
 
 type RouteParams = { params: Promise<{ hash: string }> };
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
-    const user = getRequestUser(req);
-    const access = requireAdmin(user);
+    const actor = await resolveActorFromRequest(req);
+    const access = authorizeAdminActor(actor);
     if (!access.allowed) {
-      return NextResponse.json({ error: access.reason }, { status: 403 });
+      return toHttpErrorResponse({
+        allowed: false,
+        reason: "forbidden",
+        message: access.reason,
+        status: access.status,
+      });
     }
 
     const { hash } = await params;
