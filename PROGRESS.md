@@ -617,3 +617,4 @@
 [2026-04-27] Reworked the cabinet v2 regression suite to create and clean up its own temporary cabinet fixtures under `DATA_DIR`, removing its dependency on tracked example `data` content that should no longer be staged with application code.
 [2026-04-27] Narrowed the settings i18n regression so it verifies the message keys actually used by the settings surface while preserving the stricter check against hard-coded English demo copy.
 [2026-04-27] Organized remaining repository documentation by marking stale architecture notes as historical, adding active Cabinet development plans, and introducing an OpenSpec notification-system record for future collaboration notification work.
+[2026-04-27] Removed previously tracked local runtime content from the Git index, including `data/`, `.agents/`, and `.factory/`, so future commits keep workspace data and machine-local agent/skill artifacts out of the repository.

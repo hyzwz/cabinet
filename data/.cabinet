@@ -1,7 +1,0 @@
-schemaVersion: 1
-id: jyutechcn-root
-name: jyutech.cn
-kind: root
-version: 0.1.0
-description: jyutech.cn cabinet.
-entry: index.md
