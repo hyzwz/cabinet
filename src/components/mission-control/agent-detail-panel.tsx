@@ -451,7 +451,7 @@ export function AgentDetailPanel({ slug, onClose, onNavigateToAgent, onOpenFile 
                   <span className={agent.active ? "text-emerald-500" : ""}>{statusText}</span>
                 </div>
                 <span>&middot;</span>
-                <span>Heartbeat: {cronToHuman(agent.heartbeat)}</span>
+                <span>{t("mission.detail.heartbeatLabel")}: {cronToHuman(agent.heartbeat)}</span>
                 <span>&middot;</span>
                 <span>Last: {timeAgo(agent.lastHeartbeat)}</span>
                 {history.length > 0 && (

@@ -1,6 +1,8 @@
 import { useAppStore, type SelectedSection } from "@/stores/app-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useTreeStore } from "@/stores/tree-store";
+import { pushRouteHash } from "@/lib/navigation/hash-route";
+import { resolveArtifactTargetPath } from "@/lib/navigation/artifact-path";
 
 const NON_TEXT_ARTIFACT_EXTENSIONS = [
   ".pdf",
@@ -41,25 +43,27 @@ export async function openArtifactPath(
   path: string,
   section: SelectedSection
 ): Promise<void> {
+  const targetPath = resolveArtifactTargetPath(path, section);
   const { setSection } = useAppStore.getState();
   const { selectPage, loadTree } = useTreeStore.getState();
   const { loadPage } = useEditorStore.getState();
 
+  pushRouteHash(section, targetPath);
   setSection(section);
-  expandArtifactParents(path);
-  selectPage(path);
+  expandArtifactParents(targetPath);
+  selectPage(targetPath);
 
   const work: Promise<unknown>[] = [
     loadTree()
       .then(() => {
-        expandArtifactParents(path);
-        selectPage(path);
+        expandArtifactParents(targetPath);
+        selectPage(targetPath);
       })
       .catch(() => {}),
   ];
 
-  if (shouldLoadArtifactContent(path)) {
-    work.push(loadPage(path).catch(() => {}));
+  if (shouldLoadArtifactContent(targetPath)) {
+    work.push(loadPage(targetPath).catch(() => {}));
   }
 
   await Promise.allSettled(work);

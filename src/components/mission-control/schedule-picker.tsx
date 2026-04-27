@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Clock, ChevronDown } from "lucide-react";
 import { cronToHuman } from "@/lib/agents/cron-utils";
 import { useLocale } from "@/components/i18n/locale-provider";
+import type { Locale } from "@/lib/i18n/messages";
 
 interface SchedulePickerProps {
   value: string; // cron expression
@@ -16,19 +17,20 @@ interface SchedulePickerProps {
 interface Preset {
   label: string;
   cron: string;
-  description: string;
 }
 
-const PRESETS: Preset[] = [
-  { label: "5m", cron: "*/5 * * * *", description: "Every 5 minutes" },
-  { label: "15m", cron: "*/15 * * * *", description: "Every 15 minutes" },
-  { label: "30m", cron: "*/30 * * * *", description: "Every 30 minutes" },
-  { label: "1h", cron: "0 * * * *", description: "Every hour" },
-  { label: "4h", cron: "0 */4 * * *", description: "Every 4 hours" },
-  { label: "Daily 9am", cron: "0 9 * * *", description: "Daily at 9:00 AM" },
-  { label: "Weekdays", cron: "0 9 * * 1-5", description: "Weekdays at 9:00 AM" },
-  { label: "Weekly", cron: "0 9 * * 1", description: "Weekly on Monday" },
-];
+function getPresets(locale: Locale): Preset[] {
+  return [
+    { label: "5m", cron: "*/5 * * * *" },
+    { label: "15m", cron: "*/15 * * * *" },
+    { label: "30m", cron: "*/30 * * * *" },
+    { label: "1h", cron: "0 * * * *" },
+    { label: "4h", cron: "0 */4 * * *" },
+    { label: locale === "zh" ? "每天 9 点" : "Daily 9am", cron: "0 9 * * *" },
+    { label: locale === "zh" ? "工作日" : "Weekdays", cron: "0 9 * * 1-5" },
+    { label: locale === "zh" ? "每周一" : "Weekly", cron: "0 9 * * 1" },
+  ];
+}
 
 function getNextRuns(cron: string, count = 3): string[] {
   // Simple next-run approximation for common patterns
@@ -63,12 +65,11 @@ function getNextRuns(cron: string, count = 3): string[] {
 
 export function SchedulePicker({ value, onChange, onDone, label }: SchedulePickerProps) {
   const [showCron, setShowCron] = useState(false);
-  const [customInput, setCustomInput] = useState("");
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
+  const presets = getPresets(locale);
 
-  const humanReadable = cronToHuman(value);
+  const humanReadable = cronToHuman(value, locale);
   const nextRuns = getNextRuns(value);
-  const activePreset = PRESETS.find((p) => p.cron === value);
 
   return (
     <div className="space-y-2">
@@ -80,7 +81,7 @@ export function SchedulePicker({ value, onChange, onDone, label }: SchedulePicke
 
       {/* Quick picks */}
       <div className="flex flex-wrap gap-1">
-        {PRESETS.map((preset) => (
+        {presets.map((preset) => (
           <button
             key={preset.cron}
             type="button"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
   Bot,
   CheckCircle2,
@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ConversationSessionView } from "@/components/agents/conversation-session-view";
+import { ConversationRuntimeBadge } from "@/components/agents/conversation-runtime-badge";
 import {
   appendConversationCabinetPath,
   buildConversationInstanceKey,
@@ -50,7 +51,7 @@ import type { ConversationDetail, ConversationMeta } from "@/types/conversations
 import type { JobConfig } from "@/types/jobs";
 import type { AgentListItem, ProviderInfo } from "@/types/agents";
 import { flattenTree } from "@/lib/tree-utils";
-import { CABINET_VISIBILITY_OPTIONS } from "@/lib/cabinets/visibility";
+import { getCabinetVisibilityOptions } from "@/lib/cabinets/visibility";
 import {
   Select,
   SelectContent,
@@ -130,6 +131,16 @@ function useTriggerLabels(): Record<ConversationMeta["trigger"], string> {
   };
 }
 
+function useStatusLabels(): Record<StatusFilter, string> {
+  const { t } = useLocale();
+  return {
+    all: t("agents.filters.anyStatus"),
+    running: t("agents.status.running"),
+    completed: t("agents.status.completed"),
+    failed: t("agents.status.failed"),
+  };
+}
+
 const TASK_CARD_TRIGGER_STYLES: Record<ConversationMeta["trigger"], string> = {
   manual: "bg-sky-500/12 text-sky-400 ring-1 ring-sky-500/20",
   job: "bg-emerald-500/12 text-emerald-400 ring-1 ring-emerald-500/20",
@@ -191,6 +202,14 @@ function startCase(value: string | undefined, fallback = "Not set"): string {
   return words
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+function startCaseI18n(
+  value: string | undefined,
+  fallbackKey: MessageKey,
+  t: (key: MessageKey) => string
+): string {
+  return startCase(value, t(fallbackKey));
 }
 
 function rankAgentType(type?: string): number {
@@ -490,8 +509,17 @@ export function AgentsWorkspace({
   const [orgChartHeartbeatRunning, setOrgChartHeartbeatRunning] = useState(false);
   const [orgChartHeartbeatSaving, setOrgChartHeartbeatSaving] = useState(false);
   const lastSavedSettingsRef = useRef<string | null>(null);
-  const { t } = useLocale();
-  const TRIGGER_LABELS = useTriggerLabels();
+  const { locale, t, format } = useLocale();
+  const cabinetVisibilityOptions = useMemo(
+    () => getCabinetVisibilityOptions(locale),
+    [locale]
+  );
+  const localizedTriggerLabels = useTriggerLabels();
+  const localizedStatusLabels = useStatusLabels();
+  void t("agents.settings.avatar");
+  void t("agents.settings.name");
+  void t("agents.settings.field.avatar");
+  void t("agents.conversation.loading");
   const conversationsPanel = useHorizontalResize(340, 260, 520, "right");
   const treeNodes = useTreeStore((state) => state.nodes);
   const section = useAppStore((state) => state.section);
@@ -1726,7 +1754,7 @@ export function AgentsWorkspace({
     })
     .map(([department, departmentAgents]) => ({
       department,
-      label: startCase(department, "General"),
+      label: startCase(department, t("agents.orgChart.depthPlaceholder")),
       agents: departmentAgents.sort(sortOrgAgents),
     }));
   const orgAgentCount = orgAgents.length + (chiefAgent ? 1 : 0);
@@ -1768,7 +1796,7 @@ export function AgentsWorkspace({
         </div>
         <div className="flex items-center gap-2">
           <Select
-            items={CABINET_VISIBILITY_OPTIONS.map((opt) => ({
+            items={cabinetVisibilityOptions.map((opt) => ({
               label: opt.shortLabel,
               value: opt.value,
             }))}
@@ -1793,7 +1821,7 @@ export function AgentsWorkspace({
             </SelectTrigger>
             <SelectContent align="end" className="min-w-[200px]">
               <SelectGroup>
-                {CABINET_VISIBILITY_OPTIONS.map((opt) => (
+                {cabinetVisibilityOptions.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
                     <span className="font-medium">{opt.shortLabel}</span>
                     <span className="ml-1.5 text-xs text-muted-foreground">
@@ -1840,7 +1868,7 @@ export function AgentsWorkspace({
                     <div
                       role="button"
                       tabIndex={0}
-                      title={t("agents.orgChart.sendTask").replace("{name}", orgRoot.name)}
+                      title={format("agents.orgChart.sendTask", { name: orgRoot.name })}
                       onClick={(event) => {
                         event.stopPropagation();
                         openAgentComposer(chiefAgent.slug);
@@ -1918,7 +1946,7 @@ export function AgentsWorkspace({
                   ))}
                   {(agentJobsMap[orgRoot.slug] || []).length > 3 ? (
                     <span className="text-[10px] text-muted-foreground">
-                      {t("agents.orgChart.moreCount").replace("{count}", String((agentJobsMap[orgRoot.slug] || []).length - 3))}
+                      {format("agents.orgChart.moreCount", { count: (agentJobsMap[orgRoot.slug] || []).length - 3 })}
                     </span>
                   ) : null}
                 </div>
@@ -1954,12 +1982,14 @@ export function AgentsWorkspace({
                               {group.label}
                             </h5>
                             <p className="mt-0.5 text-[11px] text-muted-foreground">
-                              {group.agents.length === 1 ? t("agents.orgChart.countLabel.agent_one").replace("{count}", "1") : t("agents.orgChart.countLabel.agent_other").replace("{count}", String(group.agents.length))}
+                              {group.agents.length === 1
+                                ? format("agents.orgChart.countLabel.agent_one", { count: 1 })
+                                : format("agents.orgChart.countLabel.agent_other", { count: group.agents.length })}
                             </p>
                           </div>
                           {leadCount > 0 ? (
                             <div className="rounded-full bg-background/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
-                              {t("agents.orgChart.countLabel.lead").replace("{count}", String(leadCount))}
+                              {format("agents.orgChart.countLabel.lead", { count: leadCount })}
                             </div>
                           ) : null}
                         </div>
@@ -2171,7 +2201,7 @@ export function AgentsWorkspace({
                 active={statusFilter === filter}
                 onClick={() => setStatusFilter(filter)}
               >
-                {filter === "all" ? t("agents.filters.anyStatus") : filter === "running" ? t("agents.status.running") : filter === "completed" ? t("agents.status.completed") : t("agents.status.failed")}
+                {localizedStatusLabels[filter]}
               </TriggerChip>
             ))}
           </div>
@@ -2271,8 +2301,8 @@ export function AgentsWorkspace({
                             <Trash2 className="h-2.75 w-2.75" />
                           </span>
                           <span
-                            aria-label={TRIGGER_LABELS[conversation.trigger]}
-                            title={TRIGGER_LABELS[conversation.trigger]}
+                            aria-label={localizedTriggerLabels[conversation.trigger]}
+                            title={localizedTriggerLabels[conversation.trigger]}
                             className={cn(
                               "inline-flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-full",
                               TASK_CARD_TRIGGER_STYLES[conversation.trigger]
@@ -2358,7 +2388,7 @@ export function AgentsWorkspace({
                       )}
                     >
                       <TriggerIcon trigger={activeConversationMeta.trigger} className="h-2.5 w-2.5" />
-                      {TRIGGER_LABELS[activeConversationMeta.trigger]}
+                      {localizedTriggerLabels[activeConversationMeta.trigger]}
                     </span>
                     <span
                       className={cn(
@@ -2366,9 +2396,10 @@ export function AgentsWorkspace({
                         STATUS_TAG_STYLES[activeConversationMeta.status] || "bg-muted text-muted-foreground ring-1 ring-border"
                       )}
                     >
-                      {activeConversationMeta.status === "running" ? t("agents.status.running") : activeConversationMeta.status === "completed" ? t("agents.status.completed") : activeConversationMeta.status === "failed" ? t("agents.status.failed") : activeConversationMeta.status}
+                      {localizedStatusLabels[activeConversationMeta.status as StatusFilter] || activeConversationMeta.status}
                     </span>
                   </div>
+                  <ConversationRuntimeBadge meta={activeConversationMeta} className="mt-2" />
                 </div>
                 <div className="flex shrink-0 gap-1.5">
                   {activeConversationMeta.trigger === "job" && (
@@ -2685,7 +2716,7 @@ export function AgentsWorkspace({
                       />
                     </label>
                     <div className="space-y-2 text-[11px] text-muted-foreground md:col-span-2">
-                      <span>{t("agents.settings.avatar")}</span>
+                      <span>{t("agents.settings.field.avatar")}</span>
                       <div className="flex flex-wrap gap-2">
                         {AGENT_EMOJI_OPTIONS.map((emoji) => (
                           <button
@@ -2904,7 +2935,7 @@ export function AgentsWorkspace({
                         </div>
                         <div className="grid content-start gap-2.5 sm:grid-cols-2 xl:grid-cols-2">
                           <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                            <span>{t("agents.settings.name")}</span>
+                            <span>{t("agents.settings.field.name")}</span>
                             <input
                               value={settingsEditorDraft.name || ""}
                               onChange={(event) =>
@@ -2914,7 +2945,7 @@ export function AgentsWorkspace({
                             />
                           </label>
                           <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                            <span>{t("agents.settings.role")}</span>
+                            <span>{t("agents.settings.field.role")}</span>
                             <input
                               value={settingsEditorDraft.role || ""}
                               onChange={(event) =>
@@ -2933,7 +2964,7 @@ export function AgentsWorkspace({
                             />
                           </div>
                           <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                            <span>{t("agents.settings.department")}</span>
+                            <span>{t("agents.settings.field.department")}</span>
                             <input
                               value={settingsEditorDraft.department || ""}
                               onChange={(event) =>
@@ -2943,7 +2974,7 @@ export function AgentsWorkspace({
                             />
                           </label>
                           <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                            <span>{t("agents.settings.type")}</span>
+                            <span>{t("agents.settings.field.type")}</span>
                             <input
                               value={settingsEditorDraft.type || ""}
                               onChange={(event) =>
@@ -2953,7 +2984,7 @@ export function AgentsWorkspace({
                             />
                           </label>
                           <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                            <span>{t("agents.settings.provider")}</span>
+                            <span>{t("agents.settings.field.provider")}</span>
                             <select
                               value={settingsEditorDraft.provider || defaultProvider}
                               onChange={(event) =>
@@ -3007,7 +3038,7 @@ export function AgentsWorkspace({
                             </label>
                           ) : null}
                           <label className="space-y-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground sm:col-span-2">
-                            <span>{t("agents.settings.workspace")}</span>
+                            <span>{t("agents.settings.field.workspace")}</span>
                             <input
                               value={settingsEditorDraft.workspace || ""}
                               onChange={(event) =>
@@ -3017,7 +3048,7 @@ export function AgentsWorkspace({
                             />
                           </label>
                           <div className="space-y-2 text-[10px] uppercase tracking-[0.08em] text-muted-foreground sm:col-span-2">
-                            <span>{t("agents.settings.avatar")}</span>
+                            <span>{t("agents.settings.field.avatar")}</span>
                             <div className="flex flex-wrap gap-2">
                               {AGENT_EMOJI_OPTIONS.map((emoji) => (
                                 <button

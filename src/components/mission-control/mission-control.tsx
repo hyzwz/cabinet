@@ -16,6 +16,7 @@ import { AgentDetailPanel } from "./agent-detail-panel";
 import { GoalBar } from "./goal-bar";
 import { WorkspaceGallery } from "./workspace-gallery";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { isMissingAlertMessage } from "@/lib/agents/missing-alerts";
 import type { GoalMetric } from "@/types/agents";
 
 interface AgentSummary {
@@ -41,7 +42,7 @@ interface DepartmentGroup {
 
 export function MissionControl() {
   const [agents, setAgents] = useState<AgentSummary[]>([]);
-  const [alertCount, setAlertCount] = useState(0);
+  const [missingAlertCount, setMissingAlertCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [nlOpen, setNlOpen] = useState(false);
@@ -97,7 +98,9 @@ export function MissionControl() {
       }
       if (alertsRes.ok) {
         const data = await alertsRes.json();
-        setAlertCount((data.messages || []).length);
+        const messages = Array.isArray(data.messages) ? data.messages : [];
+        const missingAlerts = messages.filter(isMissingAlertMessage);
+        setMissingAlertCount(missingAlerts.length);
       }
 
       // Fetch task counts per agent
@@ -278,7 +281,7 @@ export function MissionControl() {
     playsThisWeek: 0,
     goalsOnTrack,
     totalGoals: goalsWithData.length > 0 ? goalsWithData.length : allGoals.length,
-    alerts: alertCount,
+    missingAlerts: missingAlertCount,
     estimatedCost: 0,
   };
 

@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import path from "path";
-import { DATA_DIR } from "@/lib/storage/path-utils";
+import { DATA_DIR, resolveContentPath } from "@/lib/storage/path-utils";
 import { runOneShotProviderPrompt } from "@/lib/agents/provider-runtime";
+import { requireAdmin } from "@/lib/auth/route-guards";
 
 export async function POST(req: NextRequest) {
   try {
+    const forbidden = await requireAdmin(req);
+    if (forbidden) return forbidden;
+
     const { prompt, workdir, providerId, captureOutput = true } = await req.json();
 
     if (!prompt) {
@@ -14,7 +17,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cwd = workdir ? path.join(DATA_DIR, workdir) : DATA_DIR;
+    const cwd = workdir ? resolveContentPath(workdir) : DATA_DIR;
 
     const result = await runOneShotProviderPrompt({
       providerId,

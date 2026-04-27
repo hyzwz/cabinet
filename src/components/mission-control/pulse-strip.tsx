@@ -21,7 +21,7 @@ interface PulseMetrics {
   playsThisWeek?: number;
   goalsOnTrack: number;
   totalGoals: number;
-  alerts: number;
+  missingAlerts: number;
   estimatedCost?: number; // Estimated daily cost in dollars
 }
 
@@ -301,10 +301,10 @@ export function PulseStrip({ metrics, onAlertClick, onGoalClick, onPlaybookClick
         />
         <MetricCard
           icon={AlertTriangle}
-          label={t("mission.pulse.alerts")}
-          value={metrics.alerts}
-          subValue="pending alerts"
-          status={metrics.alerts >= 3 ? "critical" : metrics.alerts > 0 ? "warning" : "ok"}
+          label={t("mission.pulse.missingAlerts")}
+          value={metrics.missingAlerts}
+          subValue={t("mission.pulse.missingAlertsSubvalue")}
+          status={metrics.missingAlerts >= 3 ? "critical" : metrics.missingAlerts > 0 ? "warning" : "ok"}
           onClick={onAlertClick}
         />
         <MetricCard

@@ -1,17 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { BrainCircuit, X } from "lucide-react";
+import { X } from "lucide-react";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { useAppStore } from "@/stores/app-store";
 import { ConversationSessionView } from "@/components/agents/conversation-session-view";
+import { ConversationRuntimeBadge, buildConversationRuntimeLabel } from "@/components/agents/conversation-runtime-badge";
 import { Button } from "@/components/ui/button";
-import { formatEffortName } from "@/lib/agents/runtime-options";
 import type {
   ConversationDetail,
   ConversationMeta,
   ConversationStatus,
 } from "@/types/conversations";
 import { openArtifactPath } from "@/lib/navigation/open-artifact-path";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 function StatusDot({ status }: { status: ConversationStatus }) {
   if (status === "running") {
@@ -26,15 +28,15 @@ function StatusDot({ status }: { status: ConversationStatus }) {
   return <span className="inline-flex h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40" />;
 }
 
-function formatRelative(iso?: string): string {
-  if (!iso) return "just now";
+function formatRelative(iso: string | undefined, t: (key: MessageKey) => string): string {
+  if (!iso) return t("agents.time.justNow");
   const delta = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(delta / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t("agents.time.justNow");
+  if (minutes < 60) return t("agents.time.minutesAgo").replace("{minutes}", String(minutes));
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 24) return t("agents.time.hoursAgo").replace("{hours}", String(hours));
+  return t("agents.time.daysAgo").replace("{days}", String(Math.floor(hours / 24)));
 }
 
 function startCase(value: string | undefined, fallback = "General"): string {
@@ -44,64 +46,16 @@ function startCase(value: string | undefined, fallback = "General"): string {
   return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 }
 
-function readConversationModel(meta: Pick<ConversationMeta, "adapterConfig">): string | null {
-  const config = meta.adapterConfig;
-  if (!config || typeof config !== "object") return null;
-  const model = config.model;
-  return typeof model === "string" && model.trim() ? model.trim() : null;
-}
-
-function readConversationEffort(meta: Pick<ConversationMeta, "adapterConfig">): string | null {
-  const config = meta.adapterConfig;
-  if (!config || typeof config !== "object") return null;
-  const effort =
-    typeof config.effort === "string" && config.effort.trim()
-      ? config.effort
-      : typeof config.reasoningEffort === "string" && config.reasoningEffort.trim()
-        ? config.reasoningEffort
-        : null;
-
-  return effort ? formatEffortName(effort) : null;
-}
-
-function formatProviderLabel(providerId?: string): string | null {
-  if (!providerId) return null;
-
-  return providerId
-    .split(/[-_]+/)
-    .filter(Boolean)
-    .map((segment) => {
-      const upper = segment.toUpperCase();
-      if (upper === "API" || upper === "CLI") return upper;
-      return segment.charAt(0).toUpperCase() + segment.slice(1);
-    })
-    .join(" ");
-}
-
-function buildRuntimeLabel(
-  meta: Pick<ConversationMeta, "adapterConfig" | "providerId">
-): string | null {
-  const model = readConversationModel(meta);
-  const effort = readConversationEffort(meta);
-  const provider = formatProviderLabel(meta.providerId);
-
-  if (model && provider && effort) return `${model} · ${provider} · ${effort}`;
-  if (model && provider) return `${model} · ${provider}`;
-  if (model && effort) return `${model} · ${effort}`;
-  if (model) return model;
-  if (provider && effort) return `${provider} · ${effort}`;
-  if (provider) return `${provider} · default model`;
-  return null;
-}
-
 export function TaskDetailPanel() {
+  const { t } = useLocale();
+  void t("tasks.detail.loadError");
   const conversation = useAppStore((s) => s.taskPanelConversation);
   const setTaskPanelConversation = useAppStore((s) => s.setTaskPanelConversation);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
 
   if (!conversation) return null;
   const activeConversation = detail?.meta.id === conversation.id ? detail.meta : conversation;
-  const runtimeLabel = buildRuntimeLabel(activeConversation);
+  const runtimeLabel = buildConversationRuntimeLabel(activeConversation);
 
   return (
     <div className="flex h-full w-[420px] shrink-0 flex-col border-l border-border/70 bg-background">
@@ -116,13 +70,10 @@ export function TaskDetailPanel() {
           <p className="mt-0.5 truncate pl-4 text-[11px] text-muted-foreground">
             {startCase(activeConversation.agentSlug)}
             {" · "}
-            {formatRelative(activeConversation.startedAt)}
+            {formatRelative(conversation.startedAt, t)}
           </p>
           {runtimeLabel ? (
-            <div className="mt-1 flex items-center gap-1.5 pl-4 text-[11px] text-muted-foreground">
-              <BrainCircuit className="size-3.5 shrink-0" />
-              <p className="truncate">{runtimeLabel}</p>
-            </div>
+            <ConversationRuntimeBadge meta={activeConversation} className="mt-1 pl-4" />
           ) : null}
         </div>
         <Button

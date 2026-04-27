@@ -5,9 +5,10 @@ const nvmBin = getNvmNodeBin();
 
 export const ADAPTER_RUNTIME_PATH = [
   `${process.env.HOME || ""}/.local/bin`,
+  `${process.env.HOME || ""}/.bun/bin`,
+  ...(nvmBin ? [nvmBin] : []),
   "/usr/local/bin",
   "/opt/homebrew/bin",
-  ...(nvmBin ? [nvmBin] : []),
   process.env.PATH || "",
 ].filter(Boolean).join(":");
 
@@ -186,4 +187,3 @@ export async function runChildProcess(
     });
   });
 }
-

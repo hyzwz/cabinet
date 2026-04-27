@@ -11,6 +11,7 @@ import {
 } from "./codex-stream";
 import type { AgentExecutionAdapter } from "./types";
 import { ADAPTER_RUNTIME_PATH, runChildProcess } from "./utils";
+import { dangerousCliArgs } from "../execution-policy";
 
 function readStringConfig(
   config: Record<string, unknown>,
@@ -35,7 +36,7 @@ function buildCodexArgs(config: Record<string, unknown>): string[] {
     "--json",
     "--ephemeral",
     "--skip-git-repo-check",
-    "--dangerously-bypass-approvals-and-sandbox",
+    ...dangerousCliArgs(["--dangerously-bypass-approvals-and-sandbox"]),
   ];
 
   const model = readStringConfig(config, "model");

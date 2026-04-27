@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import fs from "fs/promises";
 import { DATA_DIR } from "@/lib/storage/path-utils";
+import { requireAdmin } from "@/lib/auth/route-guards";
 
 const CONFIG_DIR = path.join(DATA_DIR, ".agents", ".config");
 const INTEGRATIONS_FILE = path.join(CONFIG_DIR, "integrations.json");
@@ -118,6 +119,9 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   try {
+    const forbidden = await requireAdmin(req);
+    if (forbidden) return forbidden;
+
     const body = await req.json();
     await fs.mkdir(CONFIG_DIR, { recursive: true });
     await fs.writeFile(INTEGRATIONS_FILE, JSON.stringify(body, null, 2), "utf-8");

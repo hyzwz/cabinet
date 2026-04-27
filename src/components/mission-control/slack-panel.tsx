@@ -655,7 +655,11 @@ export function SlackPanel({ height: initialHeight = 200, onOpenFile }: SlackPan
                 handleSend();
               }
             }}
-            placeholder={threadId ? "Reply in thread..." : `Message #${activeChannel}... (@mention agents)`}
+            placeholder={
+              threadId
+                ? t("mission.slack.replyPlaceholder")
+                : format("mission.slack.messagePlaceholder", { channel: activeChannel })
+            }
             className="flex-1 text-[12px] bg-muted/30 border border-border/50 rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/40"
           />
           <Button

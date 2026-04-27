@@ -1,6 +1,7 @@
 import { execSync } from "child_process";
 import type { AgentProvider, ProviderStatus } from "../provider-interface";
 import { checkCliProviderAvailable, resolveCliCommand, RUNTIME_PATH } from "../provider-cli";
+import { dangerousCliArgs } from "../execution-policy";
 
 const CODEX_REASONING_LEVELS = [
   { id: "low", name: "Low", description: "Faster, lighter reasoning" },
@@ -41,6 +42,18 @@ export const codexCliProvider: AgentProvider = {
   ],
   detachedPromptLaunchMode: "one-shot",
   models: [
+    {
+      id: "gpt-5.5",
+      name: "GPT-5.5",
+      description: "Frontier model for complex coding, research, and real-world work",
+      effortLevels: [...CODEX_EXTENDED_REASONING_LEVELS],
+    },
+    {
+      id: "gpt-5.4",
+      name: "GPT-5.4",
+      description: "Strong model for everyday coding",
+      effortLevels: [...CODEX_EXTENDED_REASONING_LEVELS],
+    },
     {
       id: "gpt-5.2-codex",
       name: "GPT-5.2 Codex",
@@ -104,12 +117,12 @@ export const codexCliProvider: AgentProvider = {
     "codex",
   ],
 
-  buildArgs(prompt: string, _workdir: string): string[] {
+  buildArgs(prompt: string): string[] {
     return [
       "exec",
       "--ephemeral",
       "--skip-git-repo-check",
-      "--dangerously-bypass-approvals-and-sandbox",
+      ...dangerousCliArgs(["--dangerously-bypass-approvals-and-sandbox"]),
       prompt,
     ];
   },

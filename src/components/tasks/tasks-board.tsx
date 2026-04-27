@@ -36,7 +36,8 @@ import {
 import { buildConversationInstanceKey } from "@/lib/agents/conversation-identity";
 import { createConversation } from "@/lib/agents/conversation-client";
 import { ROOT_CABINET_PATH } from "@/lib/cabinets/paths";
-import { CABINET_VISIBILITY_OPTIONS } from "@/lib/cabinets/visibility";
+import { getCabinetVisibilityOptions } from "@/lib/cabinets/visibility";
+import { getPluralSuffix } from "@/lib/i18n/plurals";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 import { useTreeStore } from "@/stores/tree-store";
@@ -829,7 +830,7 @@ export function TasksBoard({
   cabinetPath?: string;
   workspaceMode?: "ops" | "cabinet";
 } = {}) {
-  const { t, format } = useLocale();
+  const { locale, t, format } = useLocale();
   const setSection = useAppStore((state) => state.setSection);
   const setTaskPanelConversation = useAppStore((state) => state.setTaskPanelConversation);
   const cabinetVisibilityModes = useAppStore((state) => state.cabinetVisibilityModes);
@@ -1059,6 +1060,11 @@ export function TasksBoard({
       ? null
       : visibleAgents.find((agent) => agent.scopedId === selectedFilterAgentId) || null;
 
+  const localizedScopeOptions = useMemo(
+    () => getCabinetVisibilityOptions(locale),
+    [locale]
+  );
+
   const filterAgentItems = useMemo(
     () => [
       { label: t("tasks.filters.allVisibleAgents"), value: "all" },
@@ -1067,16 +1073,16 @@ export function TasksBoard({
         value: agent.scopedId,
       })),
     ],
-    [visibleAgents]
+    [t, visibleAgents]
   );
 
   const scopeItems = useMemo(
     () =>
-      CABINET_VISIBILITY_OPTIONS.map((option) => ({
+      localizedScopeOptions.map((option) => ({
         label: option.label,
         value: option.value,
       })),
-    []
+    [localizedScopeOptions]
   );
 
   const filteredConversations = useMemo(() => {
@@ -1371,60 +1377,59 @@ export function TasksBoard({
       ? "Cabinet"
       : startCase(effectiveCabinetPath.split("/").pop()));
   const scopeLabel =
-    CABINET_VISIBILITY_OPTIONS.find((option) => option.value === effectiveVisibilityMode)?.label ||
+    localizedScopeOptions.find((option) => option.value === effectiveVisibilityMode)?.label ||
     t("tasks.filters.ownAgentsOnly");
-  const countSuffix = (count: number) => (count === 1 ? "" : "s");
   const boardTitle =
     resolvedWorkspaceMode === "cabinet"
       ? format("tasks.board.title.cabinet", { name: cabinetName })
       : t("tasks.board.title.allCabinets");
   const runsLabel =
     triggerFilter === "all"
-      ? format("tasks.board.runs.all", {
-          count: filteredConversations.length,
-          suffix: countSuffix(filteredConversations.length),
-        })
+        ? format("tasks.board.runs.all", {
+            count: filteredConversations.length,
+            suffix: getPluralSuffix(locale, filteredConversations.length),
+          })
       : triggerFilter === "job"
         ? format("tasks.board.runs.job", {
             count: filteredConversations.length,
-            suffix: countSuffix(filteredConversations.length),
+            suffix: getPluralSuffix(locale, filteredConversations.length),
           })
         : format("tasks.board.runs.trigger", {
             count: filteredConversations.length,
             trigger: localizedTriggerLabels[triggerFilter],
-            suffix: countSuffix(filteredConversations.length),
+            suffix: getPluralSuffix(locale, filteredConversations.length),
           });
   const boardDescription = selectedFilterAgent
     ? format("tasks.board.summary.agent", {
         drafts: drafts.length,
-        draftsSuffix: countSuffix(drafts.length),
+        draftsSuffix: getPluralSuffix(locale, drafts.length),
         runs: runsLabel,
         agent: selectedFilterAgent.name,
       })
     : resolvedWorkspaceMode === "cabinet"
-      ? format("tasks.board.summary.cabinet", {
-          scope: scopeLabel,
-          drafts: drafts.length,
-          draftsSuffix: countSuffix(drafts.length),
-          runs: runsLabel,
-          agents: visibleAgents.length,
-          agentsSuffix: countSuffix(visibleAgents.length),
-        })
+        ? format("tasks.board.summary.cabinet", {
+            scope: scopeLabel,
+            drafts: drafts.length,
+            draftsSuffix: getPluralSuffix(locale, drafts.length),
+            runs: runsLabel,
+            agents: visibleAgents.length,
+            agentsSuffix: getPluralSuffix(locale, visibleAgents.length),
+          })
       : format("tasks.board.summary.allCabinets", {
           drafts: drafts.length,
-          draftsSuffix: countSuffix(drafts.length),
+          draftsSuffix: getPluralSuffix(locale, drafts.length),
           runs: runsLabel,
           agents: visibleAgents.length,
-          agentsSuffix: countSuffix(visibleAgents.length),
+          agentsSuffix: getPluralSuffix(locale, visibleAgents.length),
         });
 
   const jobCount = overview?.jobs.length ?? 0;
   const heartbeatCount = overview?.agents.filter((a) => a.heartbeat).length ?? 0;
   const scheduleSummary = format("tasks.schedule.summary", {
     jobs: jobCount,
-    jobsSuffix: countSuffix(jobCount),
+    jobsSuffix: getPluralSuffix(locale, jobCount),
     heartbeats: heartbeatCount,
-    heartbeatsSuffix: countSuffix(heartbeatCount),
+    heartbeatsSuffix: getPluralSuffix(locale, heartbeatCount),
     scope:
       resolvedWorkspaceMode === "cabinet"
         ? format("tasks.schedule.scope.cabinet", { name: cabinetName })
@@ -1538,7 +1543,7 @@ export function TasksBoard({
                   </SelectTrigger>
                   <SelectContent align="end">
                     <SelectGroup>
-                      {CABINET_VISIBILITY_OPTIONS.map((option) => (
+                      {localizedScopeOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
                         </SelectItem>
@@ -1775,7 +1780,7 @@ export function TasksBoard({
                 </SelectTrigger>
                 <SelectContent align="end">
                   <SelectGroup>
-                    {CABINET_VISIBILITY_OPTIONS.map((option) => (
+                    {localizedScopeOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>

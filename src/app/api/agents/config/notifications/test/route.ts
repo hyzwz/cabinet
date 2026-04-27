@@ -1,8 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sendNotification } from "@/lib/agents/notification-service";
+import { requireAdmin } from "@/lib/auth/route-guards";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
+    const forbidden = await requireAdmin(req);
+    if (forbidden) return forbidden;
+
     const result = await sendNotification({
       title: "Cabinet Test Notification",
       message: "If you see this, your notification setup is working correctly!",

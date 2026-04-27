@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import fs from "fs/promises";
 import { DATA_DIR } from "@/lib/storage/path-utils";
+import { requireAdmin } from "@/lib/auth/route-guards";
 
 const CONFIG_DIR = path.join(DATA_DIR, ".agents", ".config");
 const COMPANY_FILE = path.join(CONFIG_DIR, "company.json");
@@ -16,6 +17,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const forbidden = await requireAdmin(req);
+  if (forbidden) return forbidden;
+
   const body = await req.json();
 
   await fs.mkdir(CONFIG_DIR, { recursive: true });

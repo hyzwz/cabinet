@@ -63,6 +63,17 @@ test("Codex provider builds the expected launch arguments", () => {
   assert.equal(interactiveSession.initialPrompt, undefined);
 });
 
+test("Codex provider exposes current GPT-5 primary model choices first", () => {
+  assert.equal(codexCliProvider.models?.[0]?.id, "gpt-5.5");
+  assert.equal(codexCliProvider.models?.[1]?.id, "gpt-5.4");
+  assert.ok(
+    codexCliProvider.models?.[0]?.effortLevels?.some((level) => level.id === "xhigh")
+  );
+  assert.ok(
+    codexCliProvider.models?.[1]?.effortLevels?.some((level) => level.id === "xhigh")
+  );
+});
+
 test("Claude provider keeps the prompt injection session contract", () => {
   const session = claudeCodeProvider.buildSessionInvocation?.("Review this", process.cwd());
   assert.ok(session);

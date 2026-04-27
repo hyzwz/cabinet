@@ -2,6 +2,7 @@ import { execSync } from "child_process";
 import type { AgentProvider, ProviderStatus } from "../provider-interface";
 import { checkCliProviderAvailable, resolveCliCommand, RUNTIME_PATH } from "../provider-cli";
 import { getNvmNodeBin } from "../nvm-path";
+import { dangerousCliArgs } from "../execution-policy";
 
 const CLAUDE_THINKING_LEVELS = [
   { id: "low", name: "Low", description: "Quick, minimal reasoning" },
@@ -58,8 +59,8 @@ export const claudeCodeProvider: AgentProvider = {
     "claude",
   ],
 
-  buildArgs(prompt: string, _workdir: string): string[] {
-    return ["--dangerously-skip-permissions", "-p", prompt, "--output-format", "text"];
+  buildArgs(prompt: string): string[] {
+    return [...dangerousCliArgs(["--dangerously-skip-permissions"]), "-p", prompt, "--output-format", "text"];
   },
 
   buildOneShotInvocation(prompt: string, workdir: string) {
@@ -69,10 +70,10 @@ export const claudeCodeProvider: AgentProvider = {
     };
   },
 
-  buildSessionInvocation(prompt: string | undefined, _workdir: string) {
+  buildSessionInvocation(prompt: string | undefined) {
     return {
       command: this.command || "claude",
-      args: ["--dangerously-skip-permissions"],
+      args: dangerousCliArgs(["--dangerously-skip-permissions"]),
       initialPrompt: prompt?.trim() || undefined,
       readyStrategy: prompt ? "claude" : undefined,
     };

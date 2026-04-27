@@ -11,6 +11,7 @@ import {
   normalizeJobConfig,
 } from "@/lib/jobs/job-normalization";
 import { normalizeCabinetPath } from "@/lib/cabinets/paths";
+import { requireAdmin } from "@/lib/auth/route-guards";
 
 export async function GET(
   req: NextRequest,
@@ -39,6 +40,9 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; jobId: string }> }
 ) {
+  const forbidden = await requireAdmin(req);
+  if (forbidden) return forbidden;
+
   const { id: slug, jobId } = await params;
   try {
     const body = await req.json();
@@ -95,6 +99,9 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; jobId: string }> }
 ) {
+  const forbidden = await requireAdmin(req);
+  if (forbidden) return forbidden;
+
   const { id: slug, jobId } = await params;
   try {
     const cabinetPath = normalizeCabinetPath(

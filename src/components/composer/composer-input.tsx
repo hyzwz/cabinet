@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Send, Loader2, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { MentionDropdown } from "./mention-dropdown";
 import { MentionChips } from "./mention-chips";
 import type { UseComposerReturn, MentionableItem } from "@/hooks/use-composer";
@@ -50,6 +51,8 @@ export function ComposerInput({
   secondaryAction,
   onKeyDown,
 }: ComposerInputProps) {
+  const { t, format } = useLocale();
+
   useEffect(() => {
     if (autoFocus) {
       setTimeout(() => composer.textareaRef.current?.focus(), 100);
@@ -57,6 +60,8 @@ export function ComposerInput({
   }, [autoFocus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isDisabled = disabled || composer.submitting;
+  const mentionHint = format("composer.mentionHint", { mention: "@" });
+  const [mentionHintBefore, mentionHintAfter] = mentionHint.split("@");
 
   return (
     <div className={cn("relative flex flex-col", className)}>
@@ -149,13 +154,15 @@ export function ComposerInput({
       {showKeyHint && (
         <div className="flex items-center justify-between px-2 pt-2">
           <span className="text-[11px] text-muted-foreground/50">
-            use <kbd className="rounded border border-border/50 bg-muted/50 px-1 py-0.5 font-mono text-[10px]">@</kbd> to mention
+            {mentionHintBefore}
+            <kbd className="rounded border border-border/50 bg-muted/50 px-1 py-0.5 font-mono text-[10px]">@</kbd>
+            {mentionHintAfter}
           </span>
           <div className="hidden sm:flex items-center gap-1 text-[11px] text-muted-foreground/50">
             <kbd className="rounded border border-border/50 bg-muted/50 px-1 py-0.5 font-mono text-[10px]">Shift</kbd>
             <span>+</span>
             <kbd className="rounded border border-border/50 bg-muted/50 px-1 py-0.5 font-mono text-[10px]">↵</kbd>
-            <span className="ml-0.5">new line</span>
+            <span className="ml-0.5">{t("composer.newLine")}</span>
           </div>
         </div>
       )}

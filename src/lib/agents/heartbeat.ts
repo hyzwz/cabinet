@@ -1,5 +1,6 @@
 import path from "path";
 import { DATA_DIR } from "@/lib/storage/path-utils";
+import type { AgentConversationSummary } from "@/types/agents";
 import {
   readPersona,
   readMemory,
@@ -23,6 +24,8 @@ import {
   defaultAdapterTypeForProvider,
   resolveExecutionProviderId,
 } from "./adapters";
+import { dangerousCliArgs } from "./execution-policy";
+import { resolveScopedWorkdir } from "./workdir-policy";
 
 interface HeartbeatContext {
   prompt: string;
@@ -144,10 +147,7 @@ ARTIFACT: relative/path/to/created-or-updated-kb-file
 
 Now execute your heartbeat. Check your focus areas, process inbox, review goals, and take action.`;
 
-  const baseCwd = cabinetPath ? path.join(DATA_DIR, cabinetPath) : DATA_DIR;
-  const cwd = persona.workdir === "/data" || persona.workdir === "/"
-    ? baseCwd
-    : path.join(baseCwd, persona.workdir.replace(/^\/+/, ""));
+  const cwd = resolveScopedWorkdir({ cabinetPath, workdir: persona.workdir });
   return { prompt, persona, inbox, cwd, startTime };
 }
 
@@ -159,9 +159,11 @@ async function processHeartbeatOutput(
   inbox: Array<{ from: string; timestamp: string; message: string }>,
   startTime: number,
   cabinetPath?: string,
+  conversation?: AgentConversationSummary,
 ): Promise<void> {
   // Parse memory block from output
   const memoryMatch = output.match(/```memory\n([\s\S]*?)```/);
+
   if (memoryMatch) {
     const memoryBlock = memoryMatch[1];
 
@@ -295,7 +297,18 @@ async function processHeartbeatOutput(
 
   const duration = Date.now() - startTime;
   const timestamp = new Date().toISOString();
-  await recordHeartbeat({ agentSlug: slug, timestamp, duration, status, summary: output.slice(0, 500), cabinetPath });
+  await recordHeartbeat({
+    agentSlug: slug,
+    timestamp,
+    duration,
+    status,
+    summary: output.slice(0, 500),
+    cabinetPath,
+    conversationId: conversation?.id,
+    providerId: conversation?.providerId,
+    adapterType: conversation?.adapterType,
+    conversation,
+  });
 
   // Auto-generate workspace index
   try {
@@ -345,10 +358,18 @@ async function processHeartbeatOutput(
  * Creates a PTY session so output is always visible and buffered.
  * Post-processing (memory updates, goal tracking etc.) runs in the background.
  *
- * Returns the sessionId (cron ignores it; frontend connects WebTerminal to it).
- * Returns null if the agent is inactive or over budget.
+ * Returns session metadata for the frontend to connect the live view
+ * and hydrate conversation-aware runtime UI.
  */
-export async function runHeartbeat(slug: string, cabinetPath?: string): Promise<string | null> {
+export async function runHeartbeat(
+  slug: string,
+  cabinetPath?: string,
+): Promise<{
+  sessionId: string;
+  conversationId?: string;
+  providerId?: string;
+  adapterType?: string;
+} | null> {
   const ctx = await buildHeartbeatContext(slug, cabinetPath);
   if (!ctx) return null;
   const { prompt, persona, inbox, startTime, cwd } = ctx;
@@ -400,11 +421,29 @@ export async function runHeartbeat(slug: string, cabinetPath?: string): Promise<
           inbox,
           startTime,
           cabinetPath,
+          {
+            id: completion.meta.id,
+            title: completion.meta.title,
+            status: completion.meta.status,
+            startedAt: completion.meta.startedAt,
+            completedAt: completion.meta.completedAt,
+            exitCode: completion.meta.exitCode,
+            cabinetPath: completion.meta.cabinetPath,
+            providerId: completion.meta.providerId,
+            adapterType: completion.meta.adapterType,
+            adapterConfig: completion.meta.adapterConfig,
+            summary: completion.meta.summary,
+          }
         );
       },
     });
 
-    return meta.id;
+    return {
+      sessionId: meta.id,
+      conversationId: meta.id,
+      providerId: meta.providerId,
+      adapterType: meta.adapterType,
+    };
   } catch (err) {
     console.error(`Failed to create daemon session for ${slug}:`, err);
     markHeartbeatComplete(slug);
@@ -416,7 +455,15 @@ export async function runHeartbeat(slug: string, cabinetPath?: string): Promise<
  * Start a manual heartbeat — thin wrapper over runHeartbeat.
  * Returns sessionId for the frontend to connect a WebTerminal to.
  */
-export async function startManualHeartbeat(slug: string, cabinetPath?: string): Promise<string | null> {
+export async function startManualHeartbeat(
+  slug: string,
+  cabinetPath?: string,
+): Promise<{
+  sessionId: string;
+  conversationId?: string;
+  providerId?: string;
+  adapterType?: string;
+} | null> {
   return runHeartbeat(slug, cabinetPath);
 }
 
@@ -514,7 +561,7 @@ Respond naturally as ${persona.name}. Be concise (1-3 short paragraphs max). Ref
       headers,
       body: JSON.stringify({
         id: sessionId,
-        args: ["--dangerously-skip-permissions", "-p", prompt, "--output-format", "text"],
+        args: [...dangerousCliArgs(["--dangerously-skip-permissions"]), "-p", prompt, "--output-format", "text"],
       }),
     });
 

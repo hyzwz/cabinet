@@ -1,10 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   agentAdapterRegistry,
   defaultAdapterTypeForProvider,
 } from "@/lib/agents/adapters";
 import { providerRegistry } from "@/lib/agents/provider-registry";
-import { getDaemonProviders } from "@/lib/agents/daemon-client";
 import {
   getProviderUsage,
   ProviderSettingsConflictError,
@@ -15,16 +14,38 @@ import {
   isProviderEnabled,
   readProviderSettings,
 } from "@/lib/agents/provider-settings";
+import { getDaemonProviderStatuses } from "@/lib/agents/daemon-client";
+import { requireAdmin } from "@/lib/auth/route-guards";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET() {
   try {
     const providers = providerRegistry.listAll();
     const settings = await readProviderSettings();
     const usage = await getProviderUsage();
+    const daemonStatuses = await getDaemonProviderStatuses()
+      .then((status) => new Map(status.providers.map((provider) => [provider.id, provider])))
+      .catch(() => null);
 
     const results = await Promise.all(
       providers.map(async (p) => {
-        const status = await p.healthCheck();
+        const localStatus = await p.healthCheck();
+        const daemonStatus = daemonStatuses?.get(p.id);
+        const status = daemonStatus
+          ? {
+              ...localStatus,
+              ...daemonStatus,
+              error: daemonStatus.error,
+            }
+          : localStatus;
+        const statusPayload = {
+          available: status.available,
+          authenticated: status.authenticated,
+          version: status.version,
+          error: status.error,
+        };
         const defaultAdapterType = defaultAdapterTypeForProvider(p.id);
         const adapters = agentAdapterRegistry
           .listAll()
@@ -73,7 +94,7 @@ export async function GET() {
             jobCount: 0,
             totalCount: 0,
           },
-          ...status,
+          ...statusPayload,
         };
       })
     );
@@ -83,6 +104,10 @@ export async function GET() {
       defaultProvider: getConfiguredDefaultProviderId(settings),
       defaultModel: settings.defaultModel || null,
       defaultEffort: settings.defaultEffort || null,
+    }, {
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -90,8 +115,11 @@ export async function GET() {
   }
 }
 
-export async function PUT(req: Request) {
+export async function PUT(req: NextRequest) {
   try {
+    const forbidden = await requireAdmin(req);
+    if (forbidden) return forbidden;
+
     const body = await req.json();
     const result = await updateProviderSettingsWithMigrations({
       defaultProvider:

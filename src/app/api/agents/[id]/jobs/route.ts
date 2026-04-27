@@ -4,6 +4,7 @@ import type { JobConfig } from "@/types/jobs";
 import { reloadDaemonSchedules } from "@/lib/agents/daemon-client";
 import { normalizeJobConfig } from "@/lib/jobs/job-normalization";
 import { normalizeCabinetPath } from "@/lib/cabinets/paths";
+import { requireAdmin } from "@/lib/auth/route-guards";
 
 export async function GET(
   req: NextRequest,
@@ -28,6 +29,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const forbidden = await requireAdmin(req);
+  if (forbidden) return forbidden;
+
   const { id: slug } = await params;
   try {
     const body = await req.json();

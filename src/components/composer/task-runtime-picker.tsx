@@ -22,7 +22,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { getDefaultAdapterTypeForProviderInfo } from "@/lib/agents/adapter-options";
+import { getDefaultAdapterTypeForProviderInfo, getAdapterOptionsForProvider } from "@/lib/agents/adapter-options";
 import type { ConversationRuntimeOverride } from "@/types/conversations";
 import type {
   ProviderEffortLevel,
@@ -575,6 +575,16 @@ export function TaskRuntimePicker({
     [defaultProviderId, normalizedValue.providerId, providers]
   );
 
+  const currentAdapter = useMemo(
+    () =>
+      getAdapterOptionsForProvider(
+        providers,
+        currentProvider?.id,
+        defaultProviderId
+      ).find((adapter) => adapter.type === normalizedValue.adapterType),
+    [currentProvider?.id, defaultProviderId, normalizedValue.adapterType, providers]
+  );
+
   const currentModel = useMemo(
     () =>
       resolveSelectedModel(
@@ -721,6 +731,21 @@ export function TaskRuntimePicker({
             <span className={cn("text-[9px] font-medium", getEffortTone(normalizedValue.effort ?? AUTO_EFFORT_ID).header)}>
               {currentEffort?.name || (normalizedValue.effort ? formatEffortName(normalizedValue.effort) : "Auto")}
             </span>
+            {currentAdapter ? (
+              <>
+                <span className="text-[9px] text-muted-foreground/40">·</span>
+                <span
+                  className={cn(
+                    "rounded-full border px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide",
+                    currentAdapter.experimental
+                      ? "border-amber-300 bg-amber-50 text-amber-700"
+                      : "border-emerald-300 bg-emerald-50 text-emerald-700"
+                  )}
+                >
+                  {currentAdapter.experimental ? "Legacy / Experimental" : "Structured"}
+                </span>
+              </>
+            ) : null}
           </>
         ) : (
           <BrainCircuit className="h-4 w-4" />
@@ -756,6 +781,23 @@ export function TaskRuntimePicker({
                         ? formatEffortName(normalizedValue.effort)
                         : "Auto")}
                   </span>
+                  {currentAdapter ? (
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full border px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide",
+                        currentAdapter.experimental
+                          ? "border-amber-300 bg-amber-50 text-amber-700"
+                          : "border-emerald-300 bg-emerald-50 text-emerald-700"
+                      )}
+                      title={
+                        currentAdapter.experimental
+                          ? "Legacy adapter kept as an experimental compatibility fallback"
+                          : "Structured runtime is the recommended default path"
+                      }
+                    >
+                      {currentAdapter.experimental ? "Legacy fallback" : "Structured default"}
+                    </span>
+                  ) : null}
                 </>
               ) : (
                 <span className="text-[10px] text-muted-foreground">{selectionSummary}</span>

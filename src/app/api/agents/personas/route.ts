@@ -11,6 +11,7 @@ import { getRunningConversationCounts } from "@/lib/agents/conversation-store";
 import { ensureAgentScaffold } from "@/lib/agents/scaffold";
 import { defaultAdapterTypeForProvider } from "@/lib/agents/adapters";
 import { getDefaultProviderId } from "@/lib/agents/provider-runtime";
+import { requireAdmin } from "@/lib/auth/route-guards";
 
 // Initialize heartbeats on first request
 let initialized = false;
@@ -41,6 +42,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const forbidden = await requireAdmin(req);
+  if (forbidden) return forbidden;
+
   const body = await req.json();
   const { slug, ...personaData } = body;
   const cabinetPath = normalizeCabinetPath(

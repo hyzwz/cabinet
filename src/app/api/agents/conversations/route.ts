@@ -2,15 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { defaultAdapterTypeForProvider } from "@/lib/agents/adapters";
 import {
   buildEditorConversationPrompt,
+  buildImageGenerationConversationPrompt,
   buildManualConversationPrompt,
+  isImageGenerationRequest,
   startConversationRun,
 } from "@/lib/agents/conversation-runner";
 import { buildConversationInstanceKey } from "@/lib/agents/conversation-identity";
 import { listConversationMetas } from "@/lib/agents/conversation-store";
 import { readMemory, writeMemory } from "@/lib/agents/persona-manager";
-import { readCabinetOverview } from "@/lib/cabinets/overview";
+import { readCabinetOverview, resolveOverviewCabinetPath } from "@/lib/cabinets/overview";
 import { findOwningCabinetPathForPage } from "@/lib/cabinets/server-paths";
+import { canReadCabinetForRequest, requirePageAction } from "@/lib/auth/route-guards";
 import type { CabinetVisibilityMode } from "@/types/cabinets";
+import type { ConversationMeta } from "@/types/conversations";
+
+async function filterReadableConversationMetas(
+  req: NextRequest,
+  conversations: ConversationMeta[],
+): Promise<ConversationMeta[]> {
+  const filtered: ConversationMeta[] = [];
+  const cache = new Map<string, Promise<boolean>>();
+
+  for (const conversation of conversations) {
+    const cabinetPath = conversation.cabinetPath || ".";
+    const allowed = cache.get(cabinetPath) ??
+      canReadCabinetForRequest(req, cabinetPath).catch(() => false);
+    cache.set(cabinetPath, allowed);
+    if (await allowed) {
+      filtered.push(conversation);
+    }
+  }
+
+  return filtered;
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -28,10 +52,11 @@ export async function GET(req: NextRequest) {
     | "cancelled"
     | null;
   const cabinetPath = searchParams.get("cabinetPath") || undefined;
+  const conversationId = searchParams.get("conversationId") || undefined;
   const visibilityMode = (searchParams.get("visibilityMode") || "own") as CabinetVisibilityMode;
   const limit = parseInt(searchParams.get("limit") || "200", 10);
 
-  const filters = {
+  const filtered = {
     agentSlug: agentSlug && agentSlug !== "all" ? agentSlug : undefined,
     pagePath: pagePath || undefined,
     trigger: trigger || undefined,
@@ -39,15 +64,31 @@ export async function GET(req: NextRequest) {
     limit: 1000,
   };
 
+  if (conversationId) {
+    const conversations = await listConversationMetas({
+      ...filtered,
+      cabinetPath,
+      limit: 1000,
+    });
+    const readableConversations = await filterReadableConversationMetas(req, conversations);
+    const conversation = readableConversations.find((entry) => entry.id === conversationId) || null;
+    return NextResponse.json({ conversation });
+  }
+
   // When viewing a cabinet with visibility that includes descendants, aggregate
   // conversations from all visible cabinet directories.
   if (cabinetPath && visibilityMode !== "own") {
     try {
       const overview = await readCabinetOverview(cabinetPath, { visibilityMode });
-      const visiblePaths = overview.visibleCabinets.map((c) => c.path);
+      const visiblePaths = [];
+      for (const cabinet of overview.visibleCabinets) {
+        if (await canReadCabinetForRequest(req, resolveOverviewCabinetPath(cabinet.path)).catch(() => false)) {
+          visiblePaths.push(cabinet.path);
+        }
+      }
 
       const all = await Promise.all(
-        visiblePaths.map((cp) => listConversationMetas({ ...filters, cabinetPath: cp }))
+        visiblePaths.map((cp) => listConversationMetas({ ...filtered, cabinetPath: cp }))
       );
 
       const deduped = new Map<string, (typeof all)[number][number]>();
@@ -63,19 +104,23 @@ export async function GET(req: NextRequest) {
         (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
       );
 
-      return NextResponse.json({ conversations: merged.slice(0, limit) });
+      return NextResponse.json({
+        conversations: (await filterReadableConversationMetas(req, merged)).slice(0, limit),
+      });
     } catch {
       // Fall through to single-cabinet fetch on error
     }
   }
 
   const conversations = await listConversationMetas({
-    ...filters,
+    ...filtered,
     cabinetPath,
     limit,
   });
 
-  return NextResponse.json({ conversations });
+  return NextResponse.json({
+    conversations: await filterReadableConversationMetas(req, conversations),
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -85,11 +130,14 @@ export async function POST(req: NextRequest) {
     const agentSlug = source === "editor" ? "editor" : body.agentSlug || "general";
     const userMessage = (body.userMessage || "").trim();
     const mentionedPaths = Array.isArray(body.mentionedPaths)
-      ? body.mentionedPaths.filter((value: unknown): value is string => typeof value === "string")
+      ? body.mentionedPaths
+          .filter((value: unknown): value is string => typeof value === "string")
+          .map((value: string) => value.trim().replace(/^\/+|\/+$/g, ""))
+          .filter(Boolean)
       : [];
     const pagePath =
       typeof body.pagePath === "string" && body.pagePath.trim()
-        ? body.pagePath.trim()
+        ? body.pagePath.trim().replace(/^\/+|\/+$/g, "")
         : undefined;
     const cabinetPath =
       typeof body.cabinetPath === "string" && body.cabinetPath.trim()
@@ -111,6 +159,8 @@ export async function POST(req: NextRequest) {
       typeof body.effort === "string" && body.effort.trim()
         ? body.effort.trim()
         : undefined;
+    const wantsImageGeneration =
+      body.intent === "image_generation" || isImageGenerationRequest(userMessage);
 
     if (!userMessage) {
       return NextResponse.json(
@@ -126,23 +176,43 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const readableMentionedPaths = Array.from(
+      new Set([
+        ...(source === "editor" && pagePath ? [pagePath] : []),
+        ...mentionedPaths,
+      ])
+    );
+    for (const readablePath of readableMentionedPaths) {
+      const forbidden = await requirePageAction(req, readablePath, "read_raw");
+      if (forbidden) return forbidden;
+    }
+
     const editorCabinetPath =
       source === "editor" && pagePath
         ? await findOwningCabinetPathForPage(pagePath)
         : undefined;
 
-    const conversationInput =
-      source === "editor" && pagePath
+    const conversationInput = wantsImageGeneration && pagePath
+      ? await buildImageGenerationConversationPrompt({
+          pagePath,
+          userMessage,
+          mentionedPaths,
+          readableMentionedPaths,
+          cabinetPath: editorCabinetPath || cabinetPath,
+        })
+      : source === "editor" && pagePath
         ? await buildEditorConversationPrompt({
             pagePath,
             userMessage,
             mentionedPaths,
+            readableMentionedPaths,
             cabinetPath: editorCabinetPath,
           })
         : await buildManualConversationPrompt({
             agentSlug,
             userMessage,
             mentionedPaths,
+            readableMentionedPaths,
             cabinetPath,
           });
 

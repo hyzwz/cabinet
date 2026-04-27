@@ -12,12 +12,16 @@ export interface EditorSession {
   id: string;
   sessionId: string;
   pagePath: string;
+  cabinetPath?: string;
   agentSlug?: string;
   userMessage: string;
   prompt: string;
   timestamp: number;
   status: "running" | "completed";
   reconnect?: boolean;  // true when restored from sessionStorage after refresh
+  conversationId?: string;
+  providerId?: string;
+  adapterType?: string;
 }
 
 export interface AgentLiveSession {
@@ -28,6 +32,9 @@ export interface AgentLiveSession {
   timestamp: number;
   status: "running" | "completed";
   reconnect?: boolean;
+  conversationId?: string;
+  providerId?: string;
+  adapterType?: string;
 }
 
 const SESSION_STORAGE_KEY = "ai-panel-running-sessions";

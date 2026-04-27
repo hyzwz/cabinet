@@ -12,6 +12,17 @@ export interface ConversationArtifact {
   label?: string;
 }
 
+export interface ConversationRunAudit {
+  requestedAt: string;
+  providerId?: string;
+  adapterType?: string;
+  cwd?: string;
+  cabinetPath?: string;
+  jobId?: string;
+  jobName?: string;
+  dangerousCliFlagsAllowed?: boolean;
+}
+
 export interface ConversationMeta {
   id: string;
   agentSlug: string;
@@ -33,6 +44,7 @@ export interface ConversationMeta {
   artifactPaths: string[];
   summary?: string;
   contextSummary?: string;
+  runAudit?: ConversationRunAudit;
 }
 
 export interface ConversationDetail {
@@ -54,6 +66,7 @@ export interface ConversationRuntimeOverride {
 
 export interface CreateConversationRequest extends ConversationRuntimeOverride {
   source?: ConversationSource;
+  intent?: "image_generation";
   agentSlug?: string;
   userMessage: string;
   mentionedPaths?: string[];

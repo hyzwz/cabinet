@@ -5,6 +5,7 @@ import type {
   ConversationArtifact,
   ConversationDetail,
   ConversationMeta,
+  ConversationRunAudit,
   ConversationStatus,
   ConversationTrigger,
 } from "../../types/conversations";
@@ -14,7 +15,12 @@ import {
   dedupeConversationNotifications,
   shouldEnqueueConversationNotification,
 } from "./conversation-notification-utils";
-import { DATA_DIR, sanitizeFilename, virtualPathFromFs } from "../storage/path-utils";
+import {
+  DATA_DIR,
+  resolveContentPath,
+  sanitizeFilename,
+  virtualPathFromFs,
+} from "../storage/path-utils";
 import {
   deleteFileOrDir,
   ensureDirectory,
@@ -23,6 +29,8 @@ import {
   readFileContent,
   writeFileContent,
 } from "../storage/fs-operations";
+import { normalizeArtifactRecordPath } from "@/lib/navigation/artifact-path";
+import { resolveConversationArtifactPaths } from "./conversation-artifacts";
 
 export const CONVERSATIONS_DIR = path.join(DATA_DIR, ".agents", ".conversations");
 
@@ -63,6 +71,7 @@ interface CreateConversationInput {
   jobId?: string;
   jobName?: string;
   startedAt?: string;
+  runAudit?: ConversationRunAudit;
 }
 
 interface ListConversationFilters {
@@ -188,7 +197,7 @@ function normalizeArtifactPath(rawPath: string): string | null {
   const normalized = candidate.replace(/^\.?\//, "");
   if (!normalized || normalized.startsWith("..")) return null;
   if (/^relative\/path\/to\/file\d*$/i.test(normalized)) return null;
-  return normalized;
+  return normalizeArtifactRecordPath(normalized);
 }
 
 function sanitizeCabinetFieldValue(value: string): string {
@@ -436,6 +445,7 @@ export async function createConversation(
     transcriptPath: virtualPathFromFs(transcriptPathFs(id, cp)),
     mentionedPaths: input.mentionedPaths || [],
     artifactPaths: [],
+    runAudit: input.runAudit,
   };
 
   await Promise.all([
@@ -773,20 +783,31 @@ async function maybeResolveCompletedConversation(
     return meta;
   }
   const parsed = parseCabinetBlock(transcript, prompt);
+  const normalizedParsedArtifactPaths = parsed.artifactPaths.map(normalizeArtifactRecordPath);
   // Also check transcript-based artifacts as fallback
   const transcriptArtifacts = parsed.artifactPaths.length === 0
     ? extractArtifactsFromTranscript(transcript, cabinetPath)
     : [];
+  const resolvedArtifacts = await resolveConversationArtifactPaths({
+    rootDir: cabinetPath ? resolveContentPath(cabinetPath) : DATA_DIR,
+    reportedPaths: meta.artifactPaths,
+    startedAt: meta.startedAt,
+    completedAt: meta.completedAt || new Date().toISOString(),
+  });
   const needsRepair =
     meta.status === "running" ||
     isPlaceholderCabinetValue(meta.summary) ||
     isPlaceholderCabinetValue(meta.contextSummary) ||
     meta.artifactPaths.some((artifactPath) => isPlaceholderCabinetValue(artifactPath)) ||
+    meta.artifactPaths.some(
+      (artifactPath) => artifactPath !== normalizeArtifactRecordPath(artifactPath)
+    ) ||
     (!!parsed.summary && parsed.summary !== meta.summary) ||
     (!!parsed.contextSummary && parsed.contextSummary !== meta.contextSummary) ||
-    (parsed.artifactPaths.length > 0 &&
-      parsed.artifactPaths.join("|") !== meta.artifactPaths.join("|")) ||
-    (transcriptArtifacts.length > 0 && meta.artifactPaths.length === 0);
+    (normalizedParsedArtifactPaths.length > 0 &&
+      normalizedParsedArtifactPaths.join("|") !== meta.artifactPaths.join("|")) ||
+    (transcriptArtifacts.length > 0 && meta.artifactPaths.length === 0) ||
+    resolvedArtifacts.join("|") !== meta.artifactPaths.join("|");
 
   if (!needsRepair) {
     return meta;
@@ -850,9 +871,6 @@ export async function finalizeConversation(
   if (artifactPaths.length === 0) {
     artifactPaths = extractArtifactsFromTranscript(output, cp);
   }
-  const artifacts = artifactPaths.map((artifactPath) => ({
-    path: artifactPath,
-  }));
 
   const previousStatus = meta.status;
   meta.status = input.status;
@@ -863,7 +881,16 @@ export async function finalizeConversation(
   meta.exitCode = input.exitCode ?? null;
   meta.summary = parsed.summary || makeSummaryFromOutput(cleanedOutput);
   meta.contextSummary = parsed.contextSummary;
-  meta.artifactPaths = artifacts.map((artifact) => artifact.path);
+  const resolvedArtifactPaths = await resolveConversationArtifactPaths({
+    rootDir: cp ? resolveContentPath(cp) : DATA_DIR,
+    reportedPaths: artifactPaths,
+    startedAt: meta.startedAt,
+    completedAt: meta.completedAt,
+  });
+  const artifacts = resolvedArtifactPaths.map((artifactPath) => ({
+    path: artifactPath,
+  }));
+  meta.artifactPaths = resolvedArtifactPaths;
 
   await Promise.all([
     writeConversationMeta(meta),

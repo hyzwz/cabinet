@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildTree } from "@/lib/storage/tree-builder";
 import { DATA_DIR } from "@/lib/storage/path-utils";
 import { runOneShotProviderPrompt } from "@/lib/agents/provider-runtime";
+import { requireAdmin } from "@/lib/auth/route-guards";
 import type { TreeNode } from "@/types";
 
 function flattenPaths(nodes: TreeNode[]): string[] {
@@ -15,6 +16,9 @@ function flattenPaths(nodes: TreeNode[]): string[] {
 
 export async function POST(req: NextRequest) {
   try {
+    const forbidden = await requireAdmin(req);
+    if (forbidden) return forbidden;
+
     const { title, description } = await req.json();
     if (!title) {
       return NextResponse.json({ error: "title is required" }, { status: 400 });

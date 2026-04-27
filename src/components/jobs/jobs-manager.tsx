@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ConversationSessionView } from "@/components/agents/conversation-session-view";
+import { ConversationRuntimeBadge } from "@/components/agents/conversation-runtime-badge";
 import {
   buildConversationInstanceKey,
 } from "@/lib/agents/conversation-identity";
@@ -24,6 +25,7 @@ import type { MessageKey } from "@/lib/i18n/messages";
 import { useAppStore } from "@/stores/app-store";
 import { ROOT_CABINET_PATH } from "@/lib/cabinets/paths";
 import { openArtifactPath } from "@/lib/navigation/open-artifact-path";
+import { getArtifactLabel } from "@/lib/navigation/artifact-path";
 import { cn } from "@/lib/utils";
 import type { CabinetVisibilityMode } from "@/types/cabinets";
 import type { ConversationDetail, ConversationMeta } from "@/types/conversations";
@@ -131,7 +133,7 @@ export function JobsManager({
   workspaceMode?: "ops" | "cabinet";
 } = {}) {
   const [agents, setAgents] = useState<AgentSummary[]>([]);
-  const { t } = useLocale();
+  const { t, format } = useLocale();
   const TRIGGER_LABELS = useTriggerLabels();
   const [selectedAgentSlug, setSelectedAgentSlug] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentSummary | null>(null);
@@ -528,7 +530,9 @@ export function JobsManager({
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="text-[14px] font-semibold">
-                {selectedAgent ? t("jobs.scheduledRunsForAgent").replace("{name}", selectedAgent.name) : t("jobs.scheduledRuns")}
+                {selectedAgent
+                  ? format("jobs.scheduledRunsForAgent", { name: selectedAgent.name })
+                  : t("jobs.scheduledRuns")}
               </h3>
               <p className="text-[11px] text-muted-foreground">
                 {selectedAgent
@@ -626,6 +630,7 @@ export function JobsManager({
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     {activeConversationMeta.agentSlug} · {TRIGGER_LABELS[activeConversationMeta.trigger]} · {activeConversationMeta.status}
                   </p>
+                  <ConversationRuntimeBadge meta={activeConversationMeta} className="mt-1" />
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -659,7 +664,7 @@ export function JobsManager({
                       }}
                       className="rounded-full bg-muted px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
                     >
-                      {artifact.label || artifact.path}
+                      {artifact.label || getArtifactLabel(artifact.path)}
                     </button>
                   ))}
                 </div>
@@ -692,7 +697,7 @@ export function JobsManager({
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{selectedAgent.emoji || "🤖"}</span>
                   <div>
-                    <h3 className="text-[15px] font-semibold">{t("jobs.agentJobs").replace("{name}", selectedAgent.name)}</h3>
+                    <h3 className="text-[15px] font-semibold">{format("jobs.scheduledRunsForAgent", { name: selectedAgent.name })}</h3>
                     <p className="text-[11px] text-muted-foreground">
                       {t("jobs.agentJobsDescription")}
                     </p>
@@ -740,7 +745,7 @@ export function JobsManager({
                           value={heartbeatDraft}
                           onChange={(event) => setHeartbeatDraft(event.target.value)}
                           className="h-10 flex-1 rounded-lg border border-border bg-background px-3 text-[13px] font-mono focus:outline-none focus:ring-1 focus:ring-ring"
-                          placeholder="0 */4 * * *"
+                          placeholder={t("jobs.heartbeat.cronPlaceholder")}
                         />
                         <Button
                           size="sm"
@@ -752,7 +757,7 @@ export function JobsManager({
                         </Button>
                       </div>
                       <p className="mt-2 text-[11px] text-muted-foreground">
-                        {heartbeatDraft ? cronToHuman(heartbeatDraft) : t("jobs.noHeartbeat")}
+                        {heartbeatDraft ? cronToHuman(heartbeatDraft) : t("jobs.heartbeat.none")}
                       </p>
                     </div>
 

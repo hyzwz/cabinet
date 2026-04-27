@@ -1,5 +1,6 @@
 import type { JobConfig } from "@/types/jobs";
 import { defaultAdapterTypeForProvider } from "@/lib/agents/adapters";
+import { normalizeStoredWorkdir } from "@/lib/agents/workdir-policy";
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\r\n/g, "\n").trim();
@@ -87,7 +88,7 @@ export function normalizeJobConfig(
           : undefined,
     workdir:
       typeof input.workdir === "string" && input.workdir.trim()
-        ? input.workdir.trim()
+        ? normalizeStoredWorkdir(input.workdir)
         : undefined,
     timeout:
       typeof input.timeout === "number" &&

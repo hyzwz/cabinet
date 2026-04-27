@@ -24,7 +24,7 @@ test("parseCabinetBlock strips Claude spinner noise from artifact lines", () => 
   );
   assert.deepEqual(parsed.artifactPaths, [
     "harry-potter/characters.mermaid",
-    "harry-potter/index.md",
+    "harry-potter",
   ]);
 });
 
@@ -37,7 +37,7 @@ test("manual cabinet-scoped prompts explicitly pin work to the cabinet root", as
 
   assert.equal(
     prompt.cwd,
-    "/Users/mybiblepath/Development/cabinet/data/hilas-cabinet"
+    "/Users/murunkun/MeishuSourceCode/cabinet/data/hilas-cabinet"
   );
   assert.match(
     prompt.prompt,

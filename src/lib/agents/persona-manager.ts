@@ -13,9 +13,11 @@ import {
 } from "@/lib/storage/fs-operations";
 import { runHeartbeat } from "./heartbeat";
 import { getGoalState } from "./goal-manager";
-import type { GoalMetric, AgentType } from "@/types/agents";
+import { readConversationMeta } from "./conversation-store";
+import type { GoalMetric, AgentType, AgentConversationSummary } from "@/types/agents";
 import { getDefaultProviderId } from "./provider-runtime";
 import { resolveEnabledProviderId } from "./provider-settings";
+import { normalizeStoredWorkdir } from "./workdir-policy";
 
 const AGENTS_DIR = path.join(DATA_DIR, ".agents");
 const MEMORY_DIR = path.join(AGENTS_DIR, ".memory");
@@ -89,6 +91,23 @@ export interface HeartbeatRecord {
   duration: number;
   status: "completed" | "failed";
   summary: string;
+  conversationId?: string;
+  providerId?: string;
+  adapterType?: string;
+  conversation?: AgentConversationSummary;
+}
+
+export interface HeartbeatHydrationStats {
+  total: number;
+  withConversationId: number;
+  hydrated: number;
+  missingConversationId: number;
+  missingMeta: number;
+}
+
+export interface HeartbeatHistoryResult {
+  history: HeartbeatRecord[];
+  hydration: HeartbeatHydrationStats;
 }
 
 import { computeNextCronRun } from "./cron-compute";
@@ -103,6 +122,52 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function normalizeAdapterConfig(value: unknown): Record<string, unknown> | undefined {
   if (!isRecord(value)) return undefined;
   return Object.keys(value).length > 0 ? value : undefined;
+}
+
+async function hydrateHeartbeatConversationSummary(
+  record: HeartbeatRecord,
+  cabinetPath?: string
+): Promise<{ record: HeartbeatRecord; hydrated: boolean; attempted: boolean }> {
+  if (record.conversation) {
+    return { record, hydrated: true, attempted: true };
+  }
+
+  const conversationId =
+    typeof record.conversationId === "string" && record.conversationId.trim().length > 0
+      ? record.conversationId.trim()
+      : null;
+
+  if (!conversationId) {
+    return { record, hydrated: false, attempted: false };
+  }
+
+  const meta = await readConversationMeta(conversationId, cabinetPath);
+  if (!meta) {
+    return { record, hydrated: false, attempted: true };
+  }
+
+  return {
+    hydrated: true,
+    attempted: true,
+    record: {
+      ...record,
+      providerId: record.providerId || meta.providerId,
+      adapterType: record.adapterType || meta.adapterType,
+      conversation: {
+        id: meta.id,
+        title: meta.title,
+        status: meta.status,
+        startedAt: meta.startedAt,
+        completedAt: meta.completedAt,
+        exitCode: meta.exitCode,
+        cabinetPath: meta.cabinetPath,
+        providerId: meta.providerId,
+        adapterType: meta.adapterType,
+        adapterConfig: meta.adapterConfig,
+        summary: meta.summary || record.summary,
+      },
+    },
+  };
 }
 
 export async function initAgentsDir(): Promise<void> {
@@ -167,7 +232,7 @@ export async function readPersona(slug: string, cabinetPath?: string): Promise<A
     heartbeat: (data.heartbeat as string) || "0 8 * * *",
     budget: (data.budget as number) || 100,
     active: data.active !== false,
-    workdir: (data.workdir as string) || "/data",
+    workdir: normalizeStoredWorkdir(data.workdir as string | undefined),
     focus: (data.focus as string[]) || [],
     tags: (data.tags as string[]) || [],
     // New fields with backward-compatible defaults
@@ -235,7 +300,7 @@ export async function writePersona(slug: string, persona: Partial<AgentPersona> 
     heartbeat: merged.heartbeat,
     budget: merged.budget,
     active: merged.active,
-    workdir: merged.workdir,
+    workdir: normalizeStoredWorkdir(merged.workdir),
     focus: merged.focus,
     tags: merged.tags,
     // Always write these fields for consistency
@@ -365,16 +430,69 @@ export async function recordHeartbeat(record: HeartbeatRecord & { cabinetPath?: 
 }
 
 export async function getHeartbeatHistory(slug: string, limit = 20, cabinetPath?: string): Promise<HeartbeatRecord[]> {
+  const result = await getHeartbeatHistoryResult(slug, limit, cabinetPath);
+  return result.history;
+}
+
+export async function getHeartbeatHistoryResult(
+  slug: string,
+  limit = 20,
+  cabinetPath?: string
+): Promise<HeartbeatHistoryResult> {
   const historyFile = path.join(resolveHistoryDir(cabinetPath), `${slug}.jsonl`);
-  if (!(await fileExists(historyFile))) return [];
+  if (!(await fileExists(historyFile))) {
+    return {
+      history: [],
+      hydration: {
+        total: 0,
+        withConversationId: 0,
+        hydrated: 0,
+        missingConversationId: 0,
+        missingMeta: 0,
+      },
+    };
+  }
 
   const raw = await readFileContent(historyFile);
   const lines = raw.trim().split("\n").filter(Boolean);
-  return lines
-    .map((l) => { try { return JSON.parse(l); } catch { return null; } })
-    .filter(Boolean)
+  const records = lines
+    .map((l) => { try { return JSON.parse(l) as HeartbeatRecord; } catch { return null; } })
+    .filter((record): record is HeartbeatRecord => Boolean(record))
     .reverse()
     .slice(0, limit);
+
+  const hydratedEntries = await Promise.all(
+    records.map((record) => hydrateHeartbeatConversationSummary(record, cabinetPath))
+  );
+
+  const hydration = hydratedEntries.reduce<HeartbeatHydrationStats>(
+    (acc, entry) => {
+      acc.total += 1;
+      if (entry.attempted) {
+        acc.withConversationId += 1;
+        if (entry.hydrated) {
+          acc.hydrated += 1;
+        } else {
+          acc.missingMeta += 1;
+        }
+      } else {
+        acc.missingConversationId += 1;
+      }
+      return acc;
+    },
+    {
+      total: 0,
+      withConversationId: 0,
+      hydrated: 0,
+      missingConversationId: 0,
+      missingMeta: 0,
+    }
+  );
+
+  return {
+    history: hydratedEntries.map((entry) => entry.record),
+    hydration,
+  };
 }
 
 // --- Heartbeat Scheduler ---

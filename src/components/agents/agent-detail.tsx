@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   ArrowLeft,
   Play,
@@ -24,7 +24,11 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { useAppStore } from "@/stores/app-store";
-import { WebTerminal } from "@/components/terminal/web-terminal";
+import { createConversation } from "@/lib/agents/conversation-client";
+import { ConversationSessionView } from "@/components/agents/conversation-session-view";
+import { HeartbeatHydrationBadge } from "@/components/agents/heartbeat-hydration-badge";
+import { LegacyHeartbeatSection } from "@/components/agents/legacy-heartbeat-section";
+import type { ConversationMeta } from "@/types/conversations";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/components/i18n/locale-provider";
 import type { AgentPersona, HeartbeatRecord } from "@/lib/agents/persona-manager";
@@ -546,57 +550,107 @@ function SessionsTab({
   persona,
   history,
   onRefresh,
+  historyHydration,
 }: {
   persona: AgentPersona;
   history: HeartbeatRecord[];
   onRefresh: () => void;
+  historyHydration?: {
+    total: number;
+    withConversationId: number;
+    hydrated: number;
+    missingConversationId: number;
+    missingMeta: number;
+  } | null;
 }) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [expandedLegacy, setExpandedLegacy] = useState<Set<string>>(new Set());
   const [prompt, setPrompt] = useState("");
-  // Live terminal session
-  const [liveSession, setLiveSession] = useState<{
-    id: string;
-    prompt: string;
-    userMessage: string;
-    providerId: string;
-    adapterType?: string;
-  } | null>(null);
+  const [liveConversation, setLiveConversation] = useState<ConversationMeta | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const { t, format } = useLocale();
 
-  const selectedSession = selectedIndex !== null ? history[selectedIndex] : null;
+  const historySessions = useMemo<ConversationMeta[]>(() => {
+    return history
+      .map((hb, index) => ({ hb, index }))
+      .filter(({ hb }) => Boolean(hb.conversationId))
+      .map(({ hb, index }) => ({
+        id: hb.conversationId as string,
+        agentSlug: persona.slug,
+        title:
+          hb.summary
+            ?.replace(/^---\s*\n/, "")
+            ?.replace(/^#+\s*/, "")
+            ?.split("\n")[0]
+            ?.trim() || `Session ${index + 1}`,
+        trigger: "heartbeat" as const,
+        status: hb.status === "completed" ? "completed" : "failed",
+        startedAt: hb.timestamp,
+        completedAt: new Date(new Date(hb.timestamp).getTime() + hb.duration).toISOString(),
+        exitCode: hb.status === "completed" ? 0 : 1,
+        providerId: persona.provider,
+        adapterType: persona.adapterType,
+        promptPath: "",
+        transcriptPath: "",
+        mentionedPaths: [],
+        artifactPaths: [],
+        summary: hb.summary,
+      }));
+  }, [history, persona.adapterType, persona.provider, persona.slug]);
 
-  const handleSendPrompt = () => {
-    if (!prompt.trim()) return;
+  const legacyHistory = useMemo(
+    () => history.filter((hb) => !hb.conversationId && !hb.conversation).slice(0, 2),
+    [history]
+  );
+  const hiddenLegacyCount = Math.max(
+    0,
+    history.filter((hb) => !hb.conversationId && !hb.conversation).length - legacyHistory.length
+  );
+
+  const selectedHistoryConversation =
+    selectedIndex !== null ? historySessions[selectedIndex] || null : null;
+
+  const selectedConversation = liveConversation || selectedHistoryConversation;
+
+  const handleSendPrompt = async () => {
     const userMessage = prompt.trim();
-    const sessionId = `agent-${persona.slug}-${Date.now()}`;
-    const fullPrompt = `${persona.body}\n\n---\n\nUser request: ${userMessage}`;
+    if (!userMessage || submitting) return;
 
-    setLiveSession({
-      id: sessionId,
-      prompt: fullPrompt,
-      userMessage,
-      providerId: persona.provider,
-      adapterType: persona.adapterType,
-    });
-    setSelectedIndex(null);
-    setPrompt("");
+    setSubmitting(true);
+    try {
+      const response = await createConversation({
+        agentSlug: persona.slug,
+        userMessage,
+      }, "Failed to start conversation");
+      setLiveConversation(response.conversation);
+      setSelectedIndex(null);
+      setPrompt("");
+      onRefresh();
+    } catch {
+      // ignore for now; existing UI has no inline error state
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSessionEnd = () => {
-    setLiveSession(null);
-    onRefresh();
-  };
+  const handleSessionDetailChange = useCallback(
+    (detail: { meta: ConversationMeta } | null) => {
+      if (!detail || detail.meta.status === "running") return;
+      setLiveConversation(detail.meta);
+      onRefresh();
+    },
+    [onRefresh]
+  );
 
   const handleNewSession = () => {
     setSelectedIndex(null);
-    setLiveSession(null);
+    setLiveConversation(null);
   };
 
-  const showNewPrompt = !liveSession && selectedIndex === null;
+  const showNewPrompt = !selectedConversation;
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      {/* Session list sidebar */}
       <div className="w-[240px] min-w-[240px] border-r border-border flex flex-col bg-muted/5">
         <div className="px-3 py-2 border-b border-border flex items-center justify-between">
           <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
@@ -612,44 +666,86 @@ function SessionsTab({
           </Button>
         </div>
 
+        <div className="px-2 pt-2 opacity-85">
+          <HeartbeatHydrationBadge hydration={historyHydration ?? null} compact={true} />
+        </div>
+
+        {legacyHistory.length > 0 ? (
+          <div className="px-2 pt-2">
+            <LegacyHeartbeatSection
+              records={legacyHistory}
+              hiddenCount={hiddenLegacyCount}
+              expandedKeys={expandedLegacy}
+              onToggle={(timestamp) => {
+                setExpandedLegacy((prev) => {
+                  const next = new Set(prev);
+                  next.has(timestamp) ? next.delete(timestamp) : next.add(timestamp);
+                  return next;
+                });
+              }}
+              summaryPreviewLines={2}
+              summaryLabel={
+                legacyHistory.length > 2
+                  ? {
+                      visible: 2,
+                      hidden: legacyHistory.length - 2,
+                    }
+                  : null
+              }
+              className="space-y-2 opacity-85"
+            />
+          </div>
+        ) : null}
+
         <ScrollArea className="flex-1">
           <div className="p-1.5 space-y-0.5">
-            {/* Live session entry */}
-            {liveSession && (
+            {liveConversation && (
               <button
+                onClick={() => setSelectedIndex(null)}
                 className="flex items-start gap-2 w-full px-2.5 py-2 rounded-md text-[11px] text-left bg-primary/10 border border-primary/20"
               >
                 <div className="mt-0.5 shrink-0">
-                  <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />
+                  {liveConversation.status === "running" ? (
+                    <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />
+                  ) : liveConversation.status === "completed" ? (
+                    <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                  ) : (
+                    <XCircle className="h-3.5 w-3.5 text-red-500" />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-[11px] leading-tight text-foreground">
-                    {liveSession.userMessage}
+                    {liveConversation.title}
                   </p>
-                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                    running...
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5 capitalize">
+                    {liveConversation.status}
                   </p>
                 </div>
               </button>
             )}
-            {history.length === 0 && !liveSession && (
+            {historySessions.length === 0 && !liveConversation && legacyHistory.length === 0 && (
               <p className="text-[11px] text-muted-foreground/50 px-2 py-6 text-center">
                 No sessions yet
               </p>
             )}
-            {history.map((hb, i) => {
-              const date = new Date(hb.timestamp);
-              const summaryLine = hb.summary
-                ?.replace(/^---\s*\n/, "")
-                ?.replace(/^#+\s*/, "")
-                ?.split("\n")[0]
-                ?.trim() || "Session";
+            {historySessions.map((conversation, i) => {
+              const date = new Date(conversation.startedAt);
+              const duration = conversation.completedAt
+                ? Math.max(
+                    0,
+                    Math.round(
+                      (new Date(conversation.completedAt).getTime() -
+                        new Date(conversation.startedAt).getTime()) /
+                        1000
+                    )
+                  )
+                : null;
               return (
                 <button
-                  key={i}
+                  key={conversation.id}
                   onClick={() => {
                     setSelectedIndex(i);
-                    setLiveSession(null);
+                    setLiveConversation(null);
                   }}
                   className={cn(
                     "flex items-start gap-2 w-full px-2.5 py-2 rounded-md text-[11px] transition-colors text-left group",
@@ -659,7 +755,7 @@ function SessionsTab({
                   )}
                 >
                   <div className="mt-0.5 shrink-0">
-                    {hb.status === "completed" ? (
+                    {conversation.status === "completed" ? (
                       <CheckCircle className="h-3.5 w-3.5 text-green-500" />
                     ) : (
                       <XCircle className="h-3.5 w-3.5 text-red-500" />
@@ -667,21 +763,20 @@ function SessionsTab({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-[11px] leading-tight">
-                      {summaryLine.length > 50 ? summaryLine.slice(0, 50) + "..." : summaryLine}
+                      {conversation.title.length > 50
+                        ? conversation.title.slice(0, 50) + "..."
+                        : conversation.title}
                     </p>
                     <p className="text-[10px] text-muted-foreground/60 mt-0.5">
                       {date.toLocaleDateString([], {
                         month: "short",
                         day: "numeric",
-                      })}
-                      {" "}
+                      })}{" "}
                       {date.toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
-                      <span className="ml-1.5">
-                        {Math.round(hb.duration / 1000)}s
-                      </span>
+                      {duration !== null ? <span className="ml-1.5">{duration}s</span> : null}
                     </p>
                   </div>
                 </button>
@@ -691,63 +786,29 @@ function SessionsTab({
         </ScrollArea>
       </div>
 
-      {/* Session content panel */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {liveSession ? (
-          /* Live agent terminal */
+        {selectedConversation ? (
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="px-4 py-2.5 border-b border-border flex items-center gap-2 shrink-0">
-              <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />
-              <span className="text-[12px] font-medium">{liveSession.userMessage}</span>
-            </div>
-            <div className="flex-1 min-h-0">
-              <WebTerminal
-                sessionId={liveSession.id}
-                prompt={liveSession.prompt}
-                themeSurface="page"
-                providerId={liveSession.providerId}
-                adapterType={liveSession.adapterType}
-                onClose={handleSessionEnd}
-              />
-            </div>
-          </div>
-        ) : selectedSession ? (
-          /* Viewing a past session */
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
-              {selectedSession.status === "completed" ? (
+              {selectedConversation.status === "running" ? (
+                <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />
+              ) : selectedConversation.status === "completed" ? (
                 <CheckCircle className="h-3.5 w-3.5 text-green-500" />
               ) : (
                 <XCircle className="h-3.5 w-3.5 text-red-500" />
               )}
-              <span className="text-[12px] font-medium capitalize">
-                {selectedSession.status}
-              </span>
-              <span className="text-[10px] text-muted-foreground">
-                {Math.round(selectedSession.duration / 1000)}s
-              </span>
-              <span className="text-[10px] text-muted-foreground ml-auto">
-                {new Date(selectedSession.timestamp).toLocaleString([], {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+              <span className="text-[12px] font-medium truncate">{selectedConversation.title}</span>
+              <span className="text-[10px] text-muted-foreground ml-auto capitalize">
+                {selectedConversation.status}
               </span>
             </div>
-            <ScrollArea
-              className="flex-1"
-              style={{
-                backgroundColor: "var(--background)",
-                color: "var(--foreground)",
-              }}
-            >
-              <div className="p-4">
-                <pre className="text-[12px] font-mono whitespace-pre-wrap leading-relaxed text-foreground/90">
-                  {selectedSession.summary || t("agents.detail.sessions.noOutput")}
-                </pre>
-              </div>
-            </ScrollArea>
+            <div className="flex-1 min-h-0">
+              <ConversationSessionView
+                conversation={selectedConversation}
+                onDetailChange={handleSessionDetailChange}
+                onOpenArtifact={() => {}}
+              />
+            </div>
             <div className="border-t border-border p-3">
               <div className="flex gap-2">
                 <input
@@ -756,7 +817,7 @@ function SessionsTab({
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      handleSendPrompt();
+                      void handleSendPrompt();
                     }
                   }}
                   placeholder={format("agents.detail.sessions.placeholder", { name: persona.name })}
@@ -765,16 +826,15 @@ function SessionsTab({
                 <Button
                   size="sm"
                   className="h-8 gap-1"
-                  onClick={handleSendPrompt}
-                  disabled={!prompt.trim()}
+                  onClick={() => void handleSendPrompt()}
+                  disabled={!prompt.trim() || submitting}
                 >
-                  <Send className="h-3.5 w-3.5" />
+                  {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                 </Button>
               </div>
             </div>
           </div>
         ) : showNewPrompt ? (
-          /* New session prompt */
           <div className="flex-1 flex flex-col items-center justify-center px-8">
             <div className="text-center mb-6">
               <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground/20 mb-3" />
@@ -793,7 +853,7 @@ function SessionsTab({
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      handleSendPrompt();
+                      void handleSendPrompt();
                     }
                   }}
                   placeholder={format("agents.detail.sessions.placeholder", { name: persona.name })}
@@ -803,10 +863,10 @@ function SessionsTab({
                 <Button
                   size="sm"
                   className="h-9 gap-1.5"
-                  onClick={handleSendPrompt}
-                  disabled={!prompt.trim()}
+                  onClick={() => void handleSendPrompt()}
+                  disabled={!prompt.trim() || submitting}
                 >
-                  <Send className="h-3.5 w-3.5" />
+                  {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                   {t("agents.general.send")}
                 </Button>
               </div>
@@ -822,6 +882,13 @@ function SessionsTab({
 export function AgentDetail({ slug }: { slug: string }) {
   const [persona, setPersona] = useState<AgentPersona | null>(null);
   const [history, setHistory] = useState<HeartbeatRecord[]>([]);
+  const [historyHydration, setHistoryHydration] = useState<{
+    total: number;
+    withConversationId: number;
+    hydrated: number;
+    missingConversationId: number;
+    missingMeta: number;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("definition");
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
@@ -841,6 +908,7 @@ export function AgentDetail({ slug }: { slug: string }) {
         const data = await res.json();
         setPersona(data.persona);
         setHistory(data.history || []);
+        setHistoryHydration(data.historyHydration || null);
       }
     } catch {
       // ignore
@@ -965,6 +1033,7 @@ export function AgentDetail({ slug }: { slug: string }) {
           <SessionsTab
             persona={persona}
             history={history}
+            historyHydration={historyHydration}
             onRefresh={refresh}
           />
         ) : (

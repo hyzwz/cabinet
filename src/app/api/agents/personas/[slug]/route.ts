@@ -11,11 +11,13 @@ import {
   listMemoryFiles,
   readInbox,
   sendMessage,
-  getHeartbeatHistory,
+  getHeartbeatHistoryResult,
 } from "@/lib/agents/persona-manager";
 import { startManualHeartbeat } from "@/lib/agents/heartbeat";
 import { updateGoal, getGoalHistory } from "@/lib/agents/goal-manager";
 import { reloadDaemonSchedules } from "@/lib/agents/daemon-client";
+import { requireAdmin } from "@/lib/auth/route-guards";
+import { isPathInsideDataDir } from "@/lib/storage/path-utils";
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -29,7 +31,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const sessionsDir = path.join(DATA_DIR, ".agents", slug, "sessions");
     const sessionFile = path.join(sessionsDir, `${sessionTs.replace(/[:.]/g, "-")}.txt`);
     // Validate path stays within sessions dir
-    if (!sessionFile.startsWith(sessionsDir)) {
+    if (!isPathInsideDataDir(sessionFile) || !sessionFile.startsWith(`${sessionsDir}${path.sep}`)) {
       return NextResponse.json({ error: "Invalid path" }, { status: 400 });
     }
     try {
@@ -56,13 +58,23 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   }
 
   const inbox = await readInbox(slug, cabinetPath);
-  const history = await getHeartbeatHistory(slug, undefined, cabinetPath);
+  const heartbeatHistory = await getHeartbeatHistoryResult(slug, undefined, cabinetPath);
   const goalHistory = await getGoalHistory(slug);
 
-  return NextResponse.json({ persona, memory, inbox, history, goalHistory });
+  return NextResponse.json({
+    persona,
+    memory,
+    inbox,
+    history: heartbeatHistory.history,
+    historyHydration: heartbeatHistory.hydration,
+    goalHistory,
+  });
 }
 
 export async function PUT(req: NextRequest, { params }: RouteParams) {
+  const forbidden = await requireAdmin(req);
+  if (forbidden) return forbidden;
+
   const { slug } = await params;
   const body = await req.json();
   const cabinetPath = typeof body.cabinetPath === "string" ? body.cabinetPath : undefined;
@@ -77,11 +89,11 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
   }
 
   if (body.action === "run") {
-    const sessionId = await startManualHeartbeat(slug, cabinetPath);
-    if (!sessionId) {
+    const session = await startManualHeartbeat(slug, cabinetPath);
+    if (!session?.sessionId) {
       return NextResponse.json({ ok: false, message: "Agent inactive or over budget" }, { status: 400 });
     }
-    return NextResponse.json({ ok: true, sessionId });
+    return NextResponse.json({ ok: true, ...session });
   }
 
   if (body.action === "updateMemory") {
@@ -106,6 +118,9 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 }
 
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
+  const forbidden = await requireAdmin(req);
+  if (forbidden) return forbidden;
+
   const { slug } = await params;
   const cabinetPath = req.nextUrl.searchParams.get("cabinetPath") || undefined;
   await deletePersona(slug, cabinetPath);

@@ -4,6 +4,7 @@ import {
   writePersona,
 } from "@/lib/agents/persona-manager";
 import { reloadDaemonSchedules } from "@/lib/agents/daemon-client";
+import { requireAdmin } from "@/lib/auth/route-guards";
 
 /**
  * GET /api/agents/scheduler — Get scheduler status
@@ -52,6 +53,9 @@ export async function GET() {
  * body.exclude?: string[] — agents to exclude from bulk operations
  */
 export async function POST(req: NextRequest) {
+  const forbidden = await requireAdmin(req);
+  if (forbidden) return forbidden;
+
   const body = await req.json();
   const { action, slugs, exclude = [], cabinetPath } = body;
 

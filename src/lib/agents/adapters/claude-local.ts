@@ -8,6 +8,7 @@ import {
 } from "./claude-stream";
 import type { AgentExecutionAdapter } from "./types";
 import { ADAPTER_RUNTIME_PATH, runChildProcess } from "./utils";
+import { dangerousCliArgs } from "../execution-policy";
 
 function readStringConfig(
   config: Record<string, unknown>,
@@ -24,7 +25,7 @@ function buildClaudeArgs(config: Record<string, unknown>): string[] {
     "stream-json",
     "--include-partial-messages",
     "--verbose",
-    "--dangerously-skip-permissions",
+    ...dangerousCliArgs(["--dangerously-skip-permissions"]),
     "--no-session-persistence",
   ];
 

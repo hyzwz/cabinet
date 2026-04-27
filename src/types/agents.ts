@@ -48,6 +48,20 @@ export interface AgentTask {
   startedAt?: string;
 }
 
+export interface AgentConversationSummary {
+  id: string;
+  title: string;
+  status: "running" | "completed" | "failed" | "cancelled";
+  startedAt: string;
+  completedAt?: string;
+  exitCode?: number | null;
+  cabinetPath?: string;
+  providerId?: string;
+  adapterType?: string;
+  adapterConfig?: Record<string, unknown>;
+  summary?: string;
+}
+
 export interface HumanInboxDraft {
   id: string;
   title: string;

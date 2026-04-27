@@ -5,6 +5,7 @@ import matter from "gray-matter";
 import { DATA_DIR } from "@/lib/storage/path-utils";
 import { writePersona } from "@/lib/agents/persona-manager";
 import { getDefaultProviderId } from "@/lib/agents/provider-runtime";
+import { requireAdmin } from "@/lib/auth/route-guards";
 
 async function ensureDir(dir: string) {
   try { await fs.mkdir(dir, { recursive: true }); } catch { /* exists */ }
@@ -12,6 +13,9 @@ async function ensureDir(dir: string) {
 
 export async function POST(req: NextRequest) {
   try {
+    const forbidden = await requireAdmin(req);
+    if (forbidden) return forbidden;
+
     const bundle = await req.json();
 
     if (!bundle.agent?.slug || !bundle.agent?.frontmatter) {

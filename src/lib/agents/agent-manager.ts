@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from "child_process";
-import path from "path";
 import { DATA_DIR } from "@/lib/storage/path-utils";
 import { getOneShotLaunchSpec } from "./provider-runtime";
+import { resolveScopedWorkdir } from "./workdir-policy";
 
 export interface AgentSession {
   id: string;
@@ -17,10 +17,16 @@ export interface AgentSession {
 // In-memory session store
 const sessions = new Map<string, AgentSession>();
 
+function withoutProcess(session: AgentSession): AgentSession {
+  const copy = { ...session };
+  delete copy.process;
+  return copy;
+}
+
 export function getActiveSessions(): AgentSession[] {
   return Array.from(sessions.values())
     .filter((s) => s.status === "running")
-    .map(({ process: _p, ...rest }) => rest);
+    .map(withoutProcess);
 }
 
 export function getRecentSessions(limit = 10): AgentSession[] {
@@ -32,14 +38,13 @@ export function getRecentSessions(limit = 10): AgentSession[] {
         new Date(a.completedAt || a.startedAt).getTime()
     )
     .slice(0, limit)
-    .map(({ process: _p, ...rest }) => rest);
+    .map(withoutProcess);
 }
 
 export function getSession(id: string): AgentSession | undefined {
   const session = sessions.get(id);
   if (!session) return undefined;
-  const { process: _p, ...rest } = session;
-  return rest;
+  return withoutProcess(session);
 }
 
 export function getAgentStats(): {
@@ -79,7 +84,7 @@ export async function runAgent(
     output: "",
   };
 
-  const cwd = workdir ? path.join(DATA_DIR, workdir) : DATA_DIR;
+  const cwd = resolveScopedWorkdir({ workdir });
   const launch = getOneShotLaunchSpec({
     providerId,
     prompt,
