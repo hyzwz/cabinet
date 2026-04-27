@@ -5,6 +5,8 @@ export interface RequestUser {
   username: string;
   displayName: string;
   role: string;
+  systemRole: string;
+  status: string;
 }
 
 /**
@@ -15,6 +17,8 @@ export function getRequestUser(req: NextRequest): RequestUser | null {
   const userId = req.headers.get("x-user-id");
   const username = req.headers.get("x-user-name");
   const role = req.headers.get("x-user-role");
+  const systemRole = req.headers.get("x-system-role");
+  const status = req.headers.get("x-user-status");
   const displayName = req.headers.get("x-user-display-name");
 
   if (!userId || !username || !role) return null;
@@ -24,5 +28,7 @@ export function getRequestUser(req: NextRequest): RequestUser | null {
     username,
     displayName: displayName ? decodeURIComponent(displayName) : username,
     role,
+    systemRole: systemRole || (role === "admin" ? "platform_admin" : "user"),
+    status: status || "active",
   };
 }

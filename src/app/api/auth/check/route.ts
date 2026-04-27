@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getUserCount } from "@/lib/storage/user-io";
-import { verifyToken, TOKEN_COOKIE } from "@/lib/auth/jwt";
+import { getCurrentUser, TOKEN_COOKIE } from "@/lib/auth/jwt";
+import { listMembershipsForUser } from "@/lib/storage/company-io";
 
 const KB_PASSWORD = process.env.KB_PASSWORD || "";
 
@@ -23,15 +24,26 @@ export async function GET(req: NextRequest) {
     if (!token) {
       return NextResponse.json({ authenticated: false, authEnabled: true, mode: "multi" });
     }
-    const payload = await verifyToken(token);
+    const payload = await getCurrentUser(req);
     if (!payload) {
       return NextResponse.json({ authenticated: false, authEnabled: true, mode: "multi" });
     }
+    const memberships = await listMembershipsForUser(payload.userId);
     return NextResponse.json({
       authenticated: true,
       authEnabled: true,
       mode: "multi",
-      user: { userId: payload.userId, username: payload.username, displayName: payload.displayName, role: payload.role },
+      user: {
+        userId: payload.userId,
+        username: payload.username,
+        displayName: payload.displayName,
+        role: payload.role,
+        systemRole: payload.systemRole,
+        status: payload.status,
+        companyAdminCompanyIds: memberships
+          .filter((membership) => membership.status === "active" && membership.role === "company_admin")
+          .map((membership) => membership.companyId),
+      },
     });
   }
 

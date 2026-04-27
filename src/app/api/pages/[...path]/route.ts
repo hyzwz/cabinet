@@ -1,13 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readPage, writePage, createPage, deletePage, movePage, renamePage } from "@/lib/storage/page-io";
+import {
+  readPage,
+  writePage,
+  createPage,
+  deletePage,
+  canDeletePath,
+  movePage,
+  renamePage,
+} from "@/lib/storage/page-io";
+import { slugify } from "@/lib/storage/slugify";
 import { autoCommit } from "@/lib/git/git-service";
 import { getRequestUser } from "@/lib/auth/request-user";
-import { checkPageAccess } from "@/lib/auth/access-control";
-import { getLock, acquireLock, deleteLocksByPath, migrateLockPaths } from "@/lib/collaboration/lock-service";
-import { deleteCommentsByPath, migrateCommentPaths } from "@/lib/collaboration/comment-service";
-import { deleteNotificationsByPath, migrateNotificationPaths } from "@/lib/collaboration/notification-service";
+import {
+  authorizeUserAction,
+  resolveActorFromRequest,
+  resolveCabinetContextForResource,
+  resolveCompanyContextForRequest,
+  resolvePageResourceContext,
+  toHttpErrorResponse,
+} from "@/lib/auth/page-authorization";
+import {
+  getLock,
+  acquireLock,
+  deleteLocksByPath,
+  migrateLockPaths,
+} from "@/lib/collaboration/lock-service";
+import {
+  deleteCommentsByPath,
+  migrateCommentPaths,
+} from "@/lib/collaboration/comment-service";
+import {
+  deleteNotificationsByPath,
+  migrateNotificationPaths,
+} from "@/lib/collaboration/notification-service";
 
 type RouteParams = { params: Promise<{ path: string[] }> };
+
+export function validateRenameTarget(virtualPath: string, rename: unknown): {
+  error: string | null;
+  status: number | null;
+  normalizedName: string | null;
+} {
+  const renameInput = typeof rename === "string" ? rename.trim() : "";
+  if (!renameInput) {
+    return { error: "Rename target is required", status: 400, normalizedName: null };
+  }
+
+  const normalizedName = slugify(renameInput);
+  if (!normalizedName) {
+    return { error: "Rename target is invalid", status: 400, normalizedName: null };
+  }
+
+  const currentName = virtualPath.split("/").filter(Boolean).at(-1) ?? virtualPath;
+  if (normalizedName === currentName) {
+    return { error: "Rename target matches current path", status: 409, normalizedName };
+  }
+
+  return { error: null, status: null, normalizedName };
+}
 
 function commitUser(req: NextRequest) {
   const user = getRequestUser(req);
@@ -18,14 +68,33 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { path: segments } = await params;
     const virtualPath = segments.join("/");
-    const page = await readPage(virtualPath);
 
-    const user = getRequestUser(req);
-    const access = checkPageAccess(user, virtualPath, "read", page.frontmatter);
-    if (!access.allowed) {
-      return NextResponse.json({ error: access.reason }, { status: 403 });
+    const actor = await resolveActorFromRequest(req);
+    const companyContext = await resolveCompanyContextForRequest(req, actor);
+    const resourceContext = await resolvePageResourceContext({
+      virtualPath,
+      actor,
+      companyContext,
+    });
+    const cabinetContext = await resolveCabinetContextForResource({
+      actor,
+      companyContext,
+      resourceContext,
+    });
+
+    const decision = await authorizeUserAction({
+      actor,
+      companyContext,
+      resourceContext,
+      cabinetContext,
+      action: "read_raw",
+    });
+
+    if (!decision.allowed) {
+      return toHttpErrorResponse(decision);
     }
 
+    const page = await readPage(virtualPath);
     return NextResponse.json(page);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -39,25 +108,33 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const { path: segments } = await params;
     const virtualPath = segments.join("/");
 
-    const user = getRequestUser(req);
-    // Read current page to check ownership/visibility
-    try {
-      const page = await readPage(virtualPath);
-      const access = checkPageAccess(user, virtualPath, "write", page.frontmatter);
-      if (!access.allowed) {
-        return NextResponse.json({ error: access.reason }, { status: 403 });
-      }
-    } catch {
-      // Page may not exist yet (first save) — allow write if user has editor+ role
-      const access = checkPageAccess(user, virtualPath, "write");
-      if (!access.allowed) {
-        return NextResponse.json({ error: access.reason }, { status: 403 });
-      }
+    const actor = await resolveActorFromRequest(req);
+    const companyContext = await resolveCompanyContextForRequest(req, actor);
+    const resourceContext = await resolvePageResourceContext({
+      virtualPath,
+      actor,
+      companyContext,
+    });
+    const cabinetContext = await resolveCabinetContextForResource({
+      actor,
+      companyContext,
+      resourceContext,
+    });
+    const decision = await authorizeUserAction({
+      actor,
+      companyContext,
+      resourceContext,
+      cabinetContext,
+      action: "write_raw",
+    });
+
+    if (!decision.allowed) {
+      return toHttpErrorResponse(decision);
     }
 
+    const user = getRequestUser(req);
     const body = await req.json();
 
-    // Lock validation: if someone else holds a valid lock, reject
     if (user) {
       const lock = getLock(virtualPath);
       if (lock && lock.user_id !== user.userId) {
@@ -70,7 +147,6 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
           { status: 423 }
         );
       }
-      // Auto-acquire lock if none exists
       if (!lock) {
         acquireLock(virtualPath, user.userId, user.username);
       }
@@ -90,19 +166,40 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const { path: segments } = await params;
     const virtualPath = segments.join("/");
 
-    const user = getRequestUser(req);
-    const access = checkPageAccess(user, virtualPath, "write");
-    if (!access.allowed) {
-      return NextResponse.json({ error: access.reason }, { status: 403 });
+    const actor = await resolveActorFromRequest(req);
+    const companyContext = await resolveCompanyContextForRequest(req, actor);
+    const resourceContext = await resolvePageResourceContext({
+      virtualPath,
+      actor,
+      companyContext,
+    });
+    const cabinetContext = await resolveCabinetContextForResource({
+      actor,
+      companyContext,
+      resourceContext,
+    });
+    const decision = await authorizeUserAction({
+      actor,
+      companyContext,
+      resourceContext,
+      cabinetContext,
+      action: "write_raw",
+    });
+
+    if (!decision.allowed) {
+      return toHttpErrorResponse(decision);
     }
 
+    const user = getRequestUser(req);
     const body = await req.json();
     await createPage(virtualPath, body.title);
 
-    // Set owner on new pages
     if (user) {
       const page = await readPage(virtualPath);
-      await writePage(virtualPath, page.content, { ...page.frontmatter, owner: user.username });
+      await writePage(virtualPath, page.content, {
+        ...page.frontmatter,
+        owner: user.username,
+      });
     }
 
     autoCommit(virtualPath, "Add", commitUser(req));
@@ -119,28 +216,50 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const { path: segments } = await params;
     const virtualPath = segments.join("/");
 
-    const user = getRequestUser(req);
+    const actor = await resolveActorFromRequest(req);
+    const companyContext = await resolveCompanyContextForRequest(req, actor);
+    const resourceContext = await resolvePageResourceContext({
+      virtualPath,
+      actor,
+      companyContext,
+    });
+    const cabinetContext = await resolveCabinetContextForResource({
+      actor,
+      companyContext,
+      resourceContext,
+    });
+    const decision = await authorizeUserAction({
+      actor,
+      companyContext,
+      resourceContext,
+      cabinetContext,
+      action: "write_raw",
+    });
+
+    if (!decision.allowed) {
+      return toHttpErrorResponse(decision);
+    }
+
     try {
-      const page = await readPage(virtualPath);
-      const access = checkPageAccess(user, virtualPath, "write", page.frontmatter);
-      if (!access.allowed) {
-        return NextResponse.json({ error: access.reason }, { status: 403 });
-      }
+      await readPage(virtualPath);
     } catch {
-      const access = checkPageAccess(user, virtualPath, "write");
-      if (!access.allowed) {
-        return NextResponse.json({ error: access.reason }, { status: 403 });
-      }
+      return NextResponse.json({ error: `Page not found: ${virtualPath}` }, { status: 404 });
     }
 
     const body = await req.json();
     if (body.rename) {
-      const newPath = await renamePage(virtualPath, body.rename);
+      const validation = validateRenameTarget(virtualPath, body.rename);
+      if (validation.error || validation.status) {
+        return NextResponse.json({ error: validation.error }, { status: validation.status ?? 400 });
+      }
+
+      const newPath = await renamePage(virtualPath, String(body.rename).trim());
       migrateLockPaths(virtualPath, newPath);
       migrateCommentPaths(virtualPath, newPath);
       migrateNotificationPaths(virtualPath, newPath);
       return NextResponse.json({ ok: true, newPath });
     }
+
     const newPath = await movePage(virtualPath, body.toParent || "");
     migrateLockPaths(virtualPath, newPath);
     migrateCommentPaths(virtualPath, newPath);
@@ -148,7 +267,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ ok: true, newPath });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const status = message.includes("already exists")
+      ? 409
+      : message.includes("not found")
+        ? 404
+        : message.includes("invalid") || message.includes("required")
+          ? 400
+          : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }
 
@@ -157,18 +283,32 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     const { path: segments } = await params;
     const virtualPath = segments.join("/");
 
-    const user = getRequestUser(req);
-    try {
-      const page = await readPage(virtualPath);
-      const access = checkPageAccess(user, virtualPath, "delete", page.frontmatter);
-      if (!access.allowed) {
-        return NextResponse.json({ error: access.reason }, { status: 403 });
-      }
-    } catch {
-      const access = checkPageAccess(user, virtualPath, "delete");
-      if (!access.allowed) {
-        return NextResponse.json({ error: access.reason }, { status: 403 });
-      }
+    const actor = await resolveActorFromRequest(req);
+    const companyContext = await resolveCompanyContextForRequest(req, actor);
+    const resourceContext = await resolvePageResourceContext({
+      virtualPath,
+      actor,
+      companyContext,
+    });
+    const cabinetContext = await resolveCabinetContextForResource({
+      actor,
+      companyContext,
+      resourceContext,
+    });
+    const decision = await authorizeUserAction({
+      actor,
+      companyContext,
+      resourceContext,
+      cabinetContext,
+      action: "delete_raw",
+    });
+
+    if (!decision.allowed) {
+      return toHttpErrorResponse(decision);
+    }
+
+    if (!(await canDeletePath(virtualPath))) {
+      return NextResponse.json({ error: `Page not found: ${virtualPath}` }, { status: 404 });
     }
 
     await deletePage(virtualPath);

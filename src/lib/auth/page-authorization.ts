@@ -1,9 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import { dirname, join } from "path";
+import yaml from "js-yaml";
+import { CABINET_MANIFEST_FILE } from "@/lib/cabinets/files";
 import { readPageMeta } from "@/lib/storage/page-io";
 import { DATA_DIR } from "@/lib/storage/path-utils";
 import { getRequestUser } from "./request-user";
+import { resolveConfiguredCompanyId } from "./company-id";
+import {
+  buildResolvedCompanySelection,
+  normalizeCompanyMemberships,
+} from "./page-authorization/company-context";
+import {
+  buildCabinetContextForRequest,
+  buildCabinetContextForResource,
+  normalizeCabinetMemberships,
+} from "./page-authorization/cabinet-context";
+import {
+  evaluateContextMismatchDecision,
+  evaluatePageResourceRequirements,
+  evaluatePrivatePageDecision,
+  evaluateReportingAuthorizationDecision,
+  evaluateResourceOwnershipDecision,
+  evaluateStandardCabinetDecision,
+} from "./page-authorization/decision-helpers";
+import {
+  fileCabinetMembershipProvider,
+  fileCabinetResourceMappingProvider,
+  fileCompanyMembershipProvider,
+} from "./membership-store";
+
+export { resolveActiveCompanySelection } from "./page-authorization/company-context";
 
 export type AuthorizationAction =
   | "read_raw"
@@ -25,6 +52,14 @@ export type CabinetAction =
 export type CabinetResourceMapping = {
   cabinetId: string;
   companyId: string;
+};
+
+export type CabinetMappingSource = "provider" | "none";
+
+export type CabinetMappingResolution = {
+  virtualPath: string;
+  mapping: CabinetResourceMapping | null;
+  source: CabinetMappingSource;
 };
 
 export interface CabinetResourceMappingProvider {
@@ -78,9 +113,9 @@ const defaultCabinetResourceMappingProvider: CabinetResourceMappingProvider = {
   },
 };
 
-let activeCompanyMembershipProvider: CompanyMembershipProvider = defaultCompanyMembershipProvider;
-let activeCabinetMembershipProvider: CabinetMembershipProvider = defaultCabinetMembershipProvider;
-let activeCabinetResourceMappingProvider: CabinetResourceMappingProvider = defaultCabinetResourceMappingProvider;
+let activeCompanyMembershipProvider: CompanyMembershipProvider = fileCompanyMembershipProvider;
+let activeCabinetMembershipProvider: CabinetMembershipProvider = fileCabinetMembershipProvider;
+let activeCabinetResourceMappingProvider: CabinetResourceMappingProvider = fileCabinetResourceMappingProvider;
 
 export type Actor =
   | { kind: "anonymous" }
@@ -89,6 +124,7 @@ export type Actor =
       userId: string;
       username: string;
       role: string;
+      systemRole?: string;
     };
 
 export type CompanyRole = "company_admin" | "company_member";
@@ -159,13 +195,15 @@ export type OwnedPageResourceContext = PageResourceContext & {
 export function buildResourceOwnershipChain(input: {
   virtualPath: string;
   mapping?: CabinetResourceMapping | null;
+  mappingResolution?: CabinetMappingResolution | null;
 }): ResourceOwnershipChain {
+  const resolvedMapping = input.mappingResolution?.mapping ?? input.mapping ?? null;
   return {
     resourceType: "page",
     virtualPath: input.virtualPath,
-    companyId: input.mapping?.companyId ?? null,
-    cabinetId: input.mapping?.cabinetId ?? null,
-    source: input.mapping ? "resource_mapping" : "none",
+    companyId: resolvedMapping?.companyId ?? null,
+    cabinetId: resolvedMapping?.cabinetId ?? null,
+    source: resolvedMapping ? "resource_mapping" : "none",
   };
 }
 
@@ -409,7 +447,7 @@ export type AuthorizationDecision = {
     | "read_only_role"
     | "unknown";
   message?: string;
-  status?: 401 | 403 | 404;
+  status?: 400 | 401 | 403 | 404;
 };
 
 export async function resolveActorFromRequest(req: NextRequest): Promise<Actor> {
@@ -424,6 +462,7 @@ export async function resolveActorFromRequest(req: NextRequest): Promise<Actor> 
     userId: user.userId,
     username: user.username,
     role: user.role,
+    systemRole: user.systemRole,
   };
 }
 
@@ -447,82 +486,66 @@ export function setCabinetResourceMappingProvider(provider: CabinetResourceMappi
   activeCabinetResourceMappingProvider = provider;
 }
 
+export async function resolveCabinetMappingForPath(virtualPath: string): Promise<CabinetMappingResolution> {
+  const normalizedPath = virtualPath.replace(/^\/+|\/+$/g, "");
+  const mapping = await activeCabinetResourceMappingProvider.resolveCabinetForPage(normalizedPath);
+  return {
+    virtualPath: normalizedPath,
+    mapping,
+    source: mapping ? "provider" : "none",
+  };
+}
+
+export async function resolveOwnershipChainFromVirtualPath(
+  virtualPath: string,
+): Promise<ResourceOwnershipChain> {
+  const normalizedPath = virtualPath.replace(/^\/+|\/+$/g, "");
+  const mappingResolution = await resolveCabinetMappingForPath(normalizedPath);
+  return buildResourceOwnershipChain({
+    virtualPath: normalizedPath,
+    mappingResolution,
+  });
+}
+
 export function resetCabinetResourceMappingProvider(): void {
   activeCabinetResourceMappingProvider = defaultCabinetResourceMappingProvider;
+}
+
+export function resetMembershipProvidersToFileDefaults(): void {
+  activeCompanyMembershipProvider = fileCompanyMembershipProvider;
+  activeCabinetMembershipProvider = fileCabinetMembershipProvider;
+  activeCabinetResourceMappingProvider = fileCabinetResourceMappingProvider;
 }
 
 async function readWorkspaceDefaultCompanyId(): Promise<string | null> {
   try {
     const raw = await fs.readFile(COMPANY_CONFIG_PATH, "utf-8");
     const parsed = JSON.parse(raw) as {
-      company?: { id?: unknown };
+      company?: { id?: unknown; name?: unknown };
       companyId?: unknown;
     };
-
-    const candidates = [parsed.company?.id, parsed.companyId];
-    for (const candidate of candidates) {
-      if (typeof candidate === "string") {
-        const trimmed = candidate.trim();
-        if (trimmed) {
-          return trimmed;
-        }
-      }
-    }
-
-    return null;
+    return resolveConfiguredCompanyId(parsed);
   } catch {
-    return null;
-  }
-}
-
-function normalizeMemberships(result: CompanyMembershipProviderResult): CompanyMembershipProviderResult {
-  const memberships = result.memberships
-    .map((membership) => ({
-      companyId: membership.companyId.trim(),
-      isDefault: membership.isDefault === true,
-      role: typeof membership.role === "string" ? membership.role.trim() : undefined,
-    }))
-    .filter((membership) => membership.companyId.length > 0);
-
-  const membershipCompanyIds = new Set(memberships.map((membership) => membership.companyId));
-  let defaultCompanyId =
-    typeof result.defaultCompanyId === "string" && result.defaultCompanyId.trim()
-      ? result.defaultCompanyId.trim()
-      : null;
-
-  if (!defaultCompanyId) {
-    defaultCompanyId = memberships.find((membership) => membership.isDefault)?.companyId ?? null;
+    // Fall through to legacy root cabinet manifest.
   }
 
-  if (defaultCompanyId && !membershipCompanyIds.has(defaultCompanyId)) {
-    defaultCompanyId = null;
+  try {
+    const raw = await fs.readFile(join(DATA_DIR, CABINET_MANIFEST_FILE), "utf-8");
+    const parsed = yaml.load(raw);
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      const manifest = parsed as { id?: unknown; name?: unknown };
+      return (
+        resolveConfiguredCompanyId({ company: { name: manifest.name } }) ||
+        (typeof manifest.id === "string" && manifest.id.trim() ? manifest.id.trim() : null)
+      );
+    }
+  } catch {
+    // No legacy manifest available.
   }
 
-  return {
-    memberships,
-    defaultCompanyId,
-  };
+  return null;
 }
 
-function buildCompanyMismatchContext(input: {
-  requestCompanyId: string;
-  workspaceCompanyId: string | null;
-  membershipCompanyIds: string[];
-  membershipDefaultCompanyId: string | null;
-  membershipRoleByCompanyId: Record<string, string>;
-}): CompanyContext {
-  return {
-    companyId: null,
-    source: "none",
-    requestCompanyId: input.requestCompanyId,
-    workspaceCompanyId: input.workspaceCompanyId,
-    membershipCompanyIds: input.membershipCompanyIds,
-    membershipDefaultCompanyId: input.membershipDefaultCompanyId,
-    membershipRoleByCompanyId: input.membershipRoleByCompanyId,
-    denyReason: "company_mismatch",
-    denyMessage: `Access denied — requested company ${input.requestCompanyId} is not part of the actor's memberships`,
-  };
-}
 
 export async function resolveCompanyContextForRequest(
   req: NextRequest,
@@ -532,86 +555,17 @@ export async function resolveCompanyContextForRequest(
     req.headers.get("x-company-id")?.trim() || req.nextUrl.searchParams.get("companyId")?.trim() || null;
 
   const [{ memberships, defaultCompanyId }, workspaceCompanyId] = await Promise.all([
-    activeCompanyMembershipProvider.getMemberships(actor).then(normalizeMemberships),
+    activeCompanyMembershipProvider.getMemberships(actor).then(normalizeCompanyMemberships),
     readWorkspaceDefaultCompanyId(),
   ]);
 
-  const membershipCompanyIds = memberships.map((membership) => membership.companyId);
-  const membershipCompanyIdSet = new Set(membershipCompanyIds);
-  const membershipRoleByCompanyId = memberships.reduce<Record<string, string>>((acc, membership) => {
-    if (membership.role) {
-      acc[membership.companyId] = membership.role;
-    }
-    return acc;
-  }, {});
-
-  if (requestCompanyId) {
-    if (actor.kind === "anonymous") {
-      return {
-        companyId: requestCompanyId,
-        source: "request",
-        requestCompanyId,
-        workspaceCompanyId,
-        membershipCompanyIds: [],
-        membershipDefaultCompanyId: null,
-        membershipRoleByCompanyId: {},
-      };
-    }
-
-    if (!membershipCompanyIdSet.has(requestCompanyId)) {
-      return buildCompanyMismatchContext({
-        requestCompanyId,
-        workspaceCompanyId,
-        membershipCompanyIds,
-        membershipDefaultCompanyId: defaultCompanyId,
-        membershipRoleByCompanyId,
-      });
-    }
-
-    return {
-      companyId: requestCompanyId,
-      source: "request",
-      requestCompanyId,
-      workspaceCompanyId,
-      membershipCompanyIds,
-      membershipDefaultCompanyId: defaultCompanyId,
-      membershipRoleByCompanyId,
-    };
-  }
-
-  if (workspaceCompanyId) {
-    return {
-      companyId: workspaceCompanyId,
-      source: "workspace_default",
-      requestCompanyId: null,
-      workspaceCompanyId,
-      membershipCompanyIds,
-      membershipDefaultCompanyId: defaultCompanyId,
-      membershipRoleByCompanyId,
-    };
-  }
-
-  if (defaultCompanyId) {
-    return {
-      companyId: defaultCompanyId,
-      source: "membership_default",
-      requestCompanyId: null,
-      workspaceCompanyId,
-      membershipCompanyIds,
-      membershipDefaultCompanyId: defaultCompanyId,
-      membershipRoleByCompanyId,
-    };
-  }
-
-  return {
-    companyId: null,
-    source: "none",
-    requestCompanyId: null,
+  return buildResolvedCompanySelection({
+    actor,
+    memberships,
+    defaultCompanyId,
+    requestCompanyId,
     workspaceCompanyId,
-    membershipCompanyIds,
-    membershipDefaultCompanyId: defaultCompanyId,
-    membershipRoleByCompanyId,
-  };
+  });
 }
 
 export type ResolvePageResourceContextInput = {
@@ -619,58 +573,6 @@ export type ResolvePageResourceContextInput = {
   actor: Actor;
   companyContext: CompanyContext;
 };
-
-function normalizeCabinetMemberships(result: CabinetMembershipProviderResult): CabinetMembershipProviderResult {
-  const memberships = result.memberships
-    .map((membership) => ({
-      cabinetId: membership.cabinetId.trim(),
-      companyId: membership.companyId.trim(),
-      role: membership.role,
-      isDefault: membership.isDefault === true,
-    }))
-    .filter((membership) => membership.cabinetId.length > 0 && membership.companyId.length > 0);
-
-  const membershipCabinetIds = new Set(memberships.map((membership) => membership.cabinetId));
-  let defaultCabinetId =
-    typeof result.defaultCabinetId === "string" && result.defaultCabinetId.trim()
-      ? result.defaultCabinetId.trim()
-      : null;
-
-  if (!defaultCabinetId) {
-    defaultCabinetId = memberships.find((membership) => membership.isDefault)?.cabinetId ?? null;
-  }
-
-  if (defaultCabinetId && !membershipCabinetIds.has(defaultCabinetId)) {
-    defaultCabinetId = null;
-  }
-
-  return {
-    memberships,
-    defaultCabinetId,
-  };
-}
-
-function buildCabinetMismatchContext(input: {
-  requestCabinetId: string;
-  companyId: string | null;
-  membershipCabinetIds: string[];
-  membershipDefaultCabinetId: string | null;
-  roleByCabinetId: Record<string, CabinetRole>;
-  resourceCabinetId?: string | null;
-}): CabinetContext {
-  return {
-    cabinetId: null,
-    companyId: input.companyId,
-    source: "none",
-    requestCabinetId: input.requestCabinetId,
-    membershipCabinetIds: input.membershipCabinetIds,
-    membershipDefaultCabinetId: input.membershipDefaultCabinetId,
-    roleByCabinetId: input.roleByCabinetId,
-    resourceCabinetId: input.resourceCabinetId ?? null,
-    denyReason: "cabinet_mismatch",
-    denyMessage: `Access denied — requested cabinet ${input.requestCabinetId} is not part of the actor's memberships`,
-  };
-}
 
 export async function resolveCabinetContextForResource(input: {
   actor: Actor;
@@ -684,41 +586,12 @@ export async function resolveCabinetContextForResource(input: {
     .getMemberships(actor, companyContext)
     .then(normalizeCabinetMemberships);
 
-  const filteredMemberships = companyId
-    ? memberships.filter((membership) => membership.companyId === companyId)
-    : memberships;
-  const membershipCabinetIds = filteredMemberships.map((membership) => membership.cabinetId);
-  const membershipCabinetIdSet = new Set(membershipCabinetIds);
-  const roleByCabinetId = filteredMemberships.reduce<Record<string, CabinetRole>>((acc, membership) => {
-    acc[membership.cabinetId] = membership.role;
-    return acc;
-  }, {});
-  const resolvedDefaultCabinetId =
-    defaultCabinetId && membershipCabinetIdSet.has(defaultCabinetId) ? defaultCabinetId : null;
-
-  if (!cabinetId) {
-    return {
-      cabinetId: null,
-      companyId,
-      source: "none",
-      requestCabinetId: null,
-      membershipCabinetIds,
-      membershipDefaultCabinetId: resolvedDefaultCabinetId,
-      roleByCabinetId,
-      resourceCabinetId: null,
-    };
-  }
-
-  return {
-    cabinetId,
+  return buildCabinetContextForResource({
     companyId,
-    source: "resource_mapping",
-    requestCabinetId: null,
-    membershipCabinetIds,
-    membershipDefaultCabinetId: resolvedDefaultCabinetId,
-    roleByCabinetId,
     resourceCabinetId: cabinetId,
-  };
+    memberships,
+    defaultCabinetId,
+  });
 }
 
 export async function resolveCabinetContextForRequest(input: {
@@ -736,91 +609,14 @@ export async function resolveCabinetContextForRequest(input: {
     .getMemberships(actor, companyContext)
     .then(normalizeCabinetMemberships);
 
-  const filteredMemberships = companyContext.companyId
-    ? memberships.filter((membership) => membership.companyId === companyContext.companyId)
-    : memberships;
-  const membershipCabinetIds = filteredMemberships.map((membership) => membership.cabinetId);
-  const membershipCabinetIdSet = new Set(membershipCabinetIds);
-  const roleByCabinetId = filteredMemberships.reduce<Record<string, CabinetRole>>((acc, membership) => {
-    acc[membership.cabinetId] = membership.role;
-    return acc;
-  }, {});
-  const resolvedDefaultCabinetId =
-    defaultCabinetId && membershipCabinetIdSet.has(defaultCabinetId) ? defaultCabinetId : null;
-
-  if (requestCabinetId) {
-    if (actor.kind === "anonymous") {
-      return {
-        cabinetId: requestCabinetId,
-        companyId: companyContext.companyId,
-        source: "request",
-        requestCabinetId,
-        membershipCabinetIds: [],
-        membershipDefaultCabinetId: null,
-        roleByCabinetId: {},
-        resourceCabinetId,
-      };
-    }
-
-    if (!membershipCabinetIdSet.has(requestCabinetId)) {
-      return buildCabinetMismatchContext({
-        requestCabinetId,
-        companyId: companyContext.companyId,
-        membershipCabinetIds,
-        membershipDefaultCabinetId: resolvedDefaultCabinetId,
-        roleByCabinetId,
-        resourceCabinetId,
-      });
-    }
-
-    return {
-      cabinetId: requestCabinetId,
-      companyId: companyContext.companyId,
-      source: "request",
-      requestCabinetId,
-      membershipCabinetIds,
-      membershipDefaultCabinetId: resolvedDefaultCabinetId,
-      roleByCabinetId,
-      resourceCabinetId,
-    };
-  }
-
-  if (resourceCabinetId) {
-    return {
-      cabinetId: resourceCabinetId,
-      companyId: companyContext.companyId,
-      source: "resource_mapping",
-      requestCabinetId: null,
-      membershipCabinetIds,
-      membershipDefaultCabinetId: resolvedDefaultCabinetId,
-      roleByCabinetId,
-      resourceCabinetId,
-    };
-  }
-
-  if (resolvedDefaultCabinetId) {
-    return {
-      cabinetId: resolvedDefaultCabinetId,
-      companyId: companyContext.companyId,
-      source: "membership_default",
-      requestCabinetId: null,
-      membershipCabinetIds,
-      membershipDefaultCabinetId: resolvedDefaultCabinetId,
-      roleByCabinetId,
-      resourceCabinetId,
-    };
-  }
-
-  return {
-    cabinetId: null,
-    companyId: companyContext.companyId,
-    source: "none",
-    requestCabinetId: null,
-    membershipCabinetIds,
-    membershipDefaultCabinetId: resolvedDefaultCabinetId,
-    roleByCabinetId,
+  return buildCabinetContextForRequest({
+    actor,
+    companyContext,
+    requestCabinetId,
     resourceCabinetId,
-  };
+    memberships,
+    defaultCabinetId,
+  });
 }
 
 export function resolveCabinetActionFromAuthorizationAction(action: AuthorizationAction): CabinetAction | null {
@@ -866,7 +662,7 @@ export function evaluateCabinetAccess(input: {
     return null;
   }
 
-  if (actor.role === "admin") {
+  if (actor.role === "admin" || actor.systemRole === "platform_admin") {
     return { allowed: true };
   }
 
@@ -943,10 +739,10 @@ async function resolvePageResourceContextFromPagePath(
   pageVirtualPath: string,
   sourcePath: string,
 ): Promise<OwnedPageResourceContext> {
-  const cabinetMapping = await activeCabinetResourceMappingProvider.resolveCabinetForPage(pageVirtualPath);
+  const mappingResolution = await resolveCabinetMappingForPath(pageVirtualPath);
   const ownership = buildResourceOwnershipChain({
     virtualPath: pageVirtualPath,
-    mapping: cabinetMapping,
+    mappingResolution,
   });
 
   try {
@@ -1006,10 +802,15 @@ export async function resolvePageDerivedResourceContext(
     if (context.visibility !== null || context.ownerUsername !== null) {
       return context;
     }
+    if (candidate === normalizedPath && (context.companyId !== null || context.cabinetId !== null)) {
+      return context;
+    }
   }
 
+  const mappingResolution = await resolveCabinetMappingForPath(normalizedPath);
   const ownership = buildResourceOwnershipChain({
     virtualPath: normalizedPath,
+    mappingResolution,
   });
 
   return attachOwnershipToPageResourceContext(
@@ -1099,7 +900,7 @@ export async function authorizeUserAction(input: {
     };
   }
 
-  if (actor.role === "admin") {
+  if (actor.role === "admin" || actor.systemRole === "platform_admin") {
     return { allowed: true };
   }
 
@@ -1122,49 +923,14 @@ export async function authorizeUserAction(input: {
     };
   }
 
-  if (action === "manage_reporting") {
-    const reportingManageDecision = evaluateCabinetAccess({
+  if (action === "manage_reporting" || action === "read_reporting") {
+    return evaluateReportingAuthorizationDecision({
+      action,
       actor,
       companyContext,
+      resourceContext,
       cabinetContext,
-      action: "cabinet_reporting_manage",
     });
-    if (reportingManageDecision?.allowed) {
-      return reportingManageDecision;
-    }
-
-    const companyRole = companyContext.companyId
-      ? companyContext.membershipRoleByCompanyId[companyContext.companyId] ?? null
-      : null;
-    if (canCompanyRoleAccessCabinetAction(companyRole, "cabinet_reporting_manage")) {
-      return { allowed: true };
-    }
-
-    return reportingManageDecision ?? {
-      allowed: false,
-      reason: "forbidden",
-      message: "Reporting management access required",
-      status: 403,
-    };
-  }
-
-  if (action === "read_reporting") {
-    const reportingCabinetDecision = evaluateCabinetAccess({
-      actor,
-      companyContext,
-      cabinetContext,
-      action: "cabinet_reporting_read",
-    });
-    if (reportingCabinetDecision) {
-      return reportingCabinetDecision;
-    }
-
-    return {
-      allowed: false,
-      reason: "missing_cabinet_context",
-      message: "Access denied — reporting requires a parent cabinet context",
-      status: 403,
-    };
   }
 
   if (actor.role === "viewer" && action !== "read_raw") {
@@ -1176,102 +942,44 @@ export async function authorizeUserAction(input: {
     };
   }
 
-  if (resourceContext.requiresPageContext && resourceContext.visibility === null) {
-    return {
-      allowed: false,
-      reason: "missing_page_context",
-      message: "Access denied — resource is not associated with a page",
-      status: 403,
-    };
+  const pageRequirementDecision = evaluatePageResourceRequirements(resourceContext, cabinetContext);
+  if (pageRequirementDecision) {
+    return pageRequirementDecision;
   }
 
-  if (resourceContext.requiresCabinetContext && !cabinetContext?.cabinetId) {
-    return {
-      allowed: false,
-      reason: "missing_cabinet_context",
-      message: "This resource requires cabinet context",
-      status: 404,
-    };
-  }
-
-  const ownership = isOwnedPageResourceContext(resourceContext)
-    ? resourceContext.ownership
-    : resolveOwnershipChainFromPageResource(resourceContext);
-  const ownershipValidation = validateResourceOwnershipAlignment({
-    ownership,
+  const ownershipDecision = evaluateResourceOwnershipDecision({
+    resourceContext,
     companyContext,
     cabinetContext,
   });
-
-  if (ownershipValidation.mismatchReason === "company_mismatch") {
-    return {
-      allowed: false,
-      reason: "company_mismatch",
-      message: ownershipValidation.mismatchMessage,
-      status: 403,
-    };
+  if (ownershipDecision) {
+    return ownershipDecision;
   }
 
-  if (ownershipValidation.mismatchReason === "cabinet_mismatch") {
-    return {
-      allowed: false,
-      reason: "cabinet_mismatch",
-      message: ownershipValidation.mismatchMessage,
-      status: 403,
-    };
+  const contextMismatchDecision = evaluateContextMismatchDecision({
+    companyContext,
+    cabinetContext,
+  });
+  if (contextMismatchDecision) {
+    return contextMismatchDecision;
   }
 
-  if (companyContext.denyReason === "company_mismatch") {
-    return {
-      allowed: false,
-      reason: "company_mismatch",
-      message: companyContext.denyMessage ?? "Access denied — company context mismatch",
-      status: 403,
-    };
+  const cabinetDecision = evaluateStandardCabinetDecision({
+    actor,
+    companyContext,
+    cabinetContext,
+    action,
+  });
+  if (cabinetDecision) {
+    return cabinetDecision;
   }
 
-  if (cabinetContext?.denyReason === "cabinet_mismatch") {
-    return {
-      allowed: false,
-      reason: "cabinet_mismatch",
-      message: cabinetContext.denyMessage ?? "Access denied — cabinet context mismatch",
-      status: 403,
-    };
-  }
-
-  const cabinetAction = resolveCabinetActionFromAuthorizationAction(action);
-  if (cabinetAction) {
-    const cabinetDecision = evaluateCabinetAccess({
-      actor,
-      companyContext,
-      cabinetContext,
-      action: cabinetAction,
-    });
-    if (cabinetDecision) {
-      return cabinetDecision;
-    }
-  }
-
-  if (resourceContext.visibility === "private" && !resourceContext.ownerUsername) {
-    return {
-      allowed: false,
-      reason: "misconfigured_private_page",
-      message: "Access denied — private page is missing an owner",
-      status: 403,
-    };
-  }
-
-  if (
-    resourceContext.visibility === "private" &&
-    resourceContext.ownerUsername &&
-    actor.username !== resourceContext.ownerUsername
-  ) {
-    return {
-      allowed: false,
-      reason: "private_page",
-      message: "Access denied — private page",
-      status: 403,
-    };
+  const privatePageDecision = evaluatePrivatePageDecision({
+    actor,
+    resourceContext,
+  });
+  if (privatePageDecision) {
+    return privatePageDecision;
   }
 
   if (companyContext.companyId) {
@@ -1295,7 +1003,7 @@ export function authorizeAdminActor(actor: Actor): AdminAuthorizationResult {
     };
   }
 
-  if (actor.role === "admin") {
+  if (actor.role === "admin" || actor.systemRole === "platform_admin") {
     return { allowed: true };
   }
 

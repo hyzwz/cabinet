@@ -41,7 +41,7 @@ export function checkPageAccess(
   if (!user) return { allowed: true };
 
   // Admin can do anything
-  if (user.role === "admin") return { allowed: true };
+  if (user.role === "admin" || user.systemRole === "platform_admin") return { allowed: true };
 
   // Actions restricted to admin
   if (action === "admin") {
@@ -70,7 +70,7 @@ export function checkPageAccess(
  */
 export function requireAdmin(user: RequestUser | null): AccessResult {
   if (!user) return { allowed: true }; // no-auth mode
-  if (user.role === "admin") return { allowed: true };
+  if (user.role === "admin" || user.systemRole === "platform_admin") return { allowed: true };
   return { allowed: false, reason: "Admin access required" };
 }
 

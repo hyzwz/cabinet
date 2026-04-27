@@ -179,13 +179,35 @@ export async function createPage(
 }
 
 export async function deletePage(virtualPath: string): Promise<void> {
-  const resolved = resolveContentPath(virtualPath);
-  const stat = await fs.lstat(resolved).catch(() => null);
-  if (stat?.isSymbolicLink()) {
-    await unlinkSymlink(resolved);
-  } else {
-    await deleteFileOrDir(resolved);
+  const targetPath = await resolveDeleteTarget(virtualPath);
+  if (!targetPath) {
+    return;
   }
+
+  const stat = await fs.lstat(targetPath).catch(() => null);
+  if (stat?.isSymbolicLink()) {
+    await unlinkSymlink(targetPath);
+  } else {
+    await deleteFileOrDir(targetPath);
+  }
+}
+
+export async function canDeletePath(virtualPath: string): Promise<boolean> {
+  return (await resolveDeleteTarget(virtualPath)) !== null;
+}
+
+async function resolveDeleteTarget(virtualPath: string): Promise<string | null> {
+  const resolved = resolveContentPath(virtualPath);
+  if (await fileExists(resolved)) {
+    return resolved;
+  }
+
+  if (resolved.endsWith(".md")) {
+    return null;
+  }
+
+  const mdPath = `${resolved}.md`;
+  return (await fileExists(mdPath)) ? mdPath : null;
 }
 
 export async function movePage(

@@ -70,6 +70,7 @@ export interface CabinetJobSummary {
 export type ReportingScopeView = {
   companyId: string;
   parentCabinetId: string;
+  parentCabinetPath?: string | null;
   activeChildCabinetIds?: string[];
 };
 
@@ -81,7 +82,7 @@ export interface CabinetReportingSnapshotView {
   summary: ReportingSnapshotSummary;
 }
 
-export interface CabinetReportingLinkView extends CabinetReportingLink {}
+export type CabinetReportingLinkView = CabinetReportingLink;
 
 export interface CabinetOverview {
   cabinet: CabinetManifest & {
@@ -103,6 +104,8 @@ export type ReportingLinksResponse = {
 
 export type ReportingLinkCreateRequest = {
   childCabinetId: string;
+  childCabinetPath?: string;
+  parentCabinetPath?: string;
 };
 
 export type ReportingLinkUpdateRequest = {

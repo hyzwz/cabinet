@@ -58,6 +58,28 @@ function getJwtSecret(cabinetInternalDir: string): Uint8Array | null {
   }
 }
 
+function readActiveUserClaims(
+  cabinetInternalDir: string,
+  userId: string
+): { role: string; systemRole: string; status: string } | null {
+  try {
+    const raw = fs.readFileSync(path.join(cabinetInternalDir, "users.json"), "utf8");
+    const users = JSON.parse(raw);
+    if (!Array.isArray(users)) return null;
+    const user = users.find((entry) => entry?.id === userId);
+    if (!user) return null;
+    const role = typeof user.role === "string" ? user.role : "editor";
+    const systemRole = typeof user.systemRole === "string"
+      ? user.systemRole
+      : role === "admin" ? "platform_admin" : "user";
+    const status = typeof user.status === "string" ? user.status : "active";
+    if (status !== "active") return null;
+    return { role, systemRole, status };
+  } catch {
+    return null;
+  }
+}
+
 async function hashLegacyToken(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password + "cabinet-salt");
@@ -133,10 +155,16 @@ export function createAuthMiddleware(
 
       try {
         const { payload } = await jwtVerify(token, secret);
+        const userClaims = readActiveUserClaims(cabinetInternalDir, payload.userId as string);
+        if (!userClaims) {
+          return authFailed(req, pathname, cfg.loginPath);
+        }
         const response = NextResponse.next();
         response.headers.set("x-user-id", payload.userId as string);
         response.headers.set("x-user-name", payload.username as string);
-        response.headers.set("x-user-role", payload.role as string);
+        response.headers.set("x-user-role", userClaims.role);
+        response.headers.set("x-system-role", userClaims.systemRole);
+        response.headers.set("x-user-status", userClaims.status);
         response.headers.set(
           "x-user-display-name",
           encodeURIComponent(payload.displayName as string)

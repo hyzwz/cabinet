@@ -1,13 +1,16 @@
 "use client";
 
 import { create } from "zustand";
-import type { UserRole } from "@/types";
+import type { SystemRole, UserRole, UserStatus } from "@/types";
 
 interface AuthUser {
   userId: string;
   username: string;
   displayName: string;
   role: UserRole;
+  systemRole: SystemRole;
+  status: UserStatus;
+  companyAdminCompanyIds: string[];
 }
 
 interface AuthState {
@@ -49,6 +52,9 @@ export const useAuthStore = create<AuthState>((set) => ({
               username: data.user.username,
               displayName: data.user.displayName,
               role: data.user.role,
+              systemRole: data.user.systemRole || (data.user.role === "admin" ? "platform_admin" : "user"),
+              status: data.user.status || "active",
+              companyAdminCompanyIds: data.user.companyAdminCompanyIds || [],
             }
           : null,
       });

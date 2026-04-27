@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
+import { LocaleProvider } from "../src/components/i18n/locale-provider";
 import {
   ReportingLinksAlerts,
   ReportingLinksFeedback,
@@ -26,8 +27,10 @@ import {
 } from "./reporting-assertion-utils";
 import { createReportingLink, createReportingSnapshot } from "./reporting-test-utils";
 
-function render(element: React.ReactElement) {
-  return renderMarkup(element);
+function render(element: React.ReactElement, locale: "en" | "zh" = "en") {
+  return renderMarkup(
+    React.createElement(LocaleProvider, { initialLocale: locale }, element),
+  );
 }
 
 test("reporting panels render links feedback for error, empty, and filtered-empty states", () => {
@@ -53,9 +56,14 @@ test("reporting panels render links feedback for error, empty, and filtered-empt
       statusFilter: "all",
       snapshotFilter: "all",
       freshnessFilter: "all",
+      onCreateFirstLink: () => {},
     }),
   );
-  assertReportingFeedback(emptyMarkup, ["No reporting links configured for this cabinet"]);
+  assertReportingFeedback(emptyMarkup, [
+    "No reporting links configured for this cabinet",
+    "Add a child cabinet link below to define which workspaces should publish reporting snapshots here",
+    "Add first reporting link",
+  ]);
 
   const filteredEmptyMarkup = render(
     React.createElement(ReportingLinksFeedback, {
@@ -215,17 +223,20 @@ test("reporting panels suppress health summary when there are no scoped links", 
 });
 
 test("reporting panels render links alerts for missing and stale snapshots", () => {
+  const missingUpdatedAt = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const staleUpdatedAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const staleGeneratedAt = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
   const missingLink = createReportingLink({
     id: "link-missing",
     childCabinetId: "cab-missing",
     status: "active",
     createdBy: "ops-admin",
-    updatedAt: "2026-04-22T08:30:00.000Z",
+    updatedAt: missingUpdatedAt,
   });
-  const staleLink = createReportingLink({ id: "link-stale", childCabinetId: "cab-stale", updatedAt: "2026-04-21T08:00:00.000Z" });
+  const staleLink = createReportingLink({ id: "link-stale", childCabinetId: "cab-stale", updatedAt: staleUpdatedAt });
   const staleSnapshot = createReportingSnapshot({
     childCabinetId: "cab-stale",
-    generatedAt: "2026-04-20T07:00:00.000Z",
+    generatedAt: staleGeneratedAt,
     summary: { cabinetPath: "example-company/stale-child", itemCount: 7, activeAgentCount: 2, enabledJobCount: 1 },
   });
 
@@ -276,7 +287,7 @@ test("reporting panels render links alerts for missing and stale snapshots", () 
     "Refreshing before missing review...",
     "Refreshing and opening cabinet...",
     "cab-missing",
-    "Updated 4/22/2026",
+    "Updated",
     "Last change",
     "Status active",
     "Missing state missing after recent update · active",
@@ -293,7 +304,7 @@ test("reporting panels render links alerts for missing and stale snapshots", () 
     "cab-stale",
     "example-company/stale-child",
     "stale",
-    "Generated 4/20/2026",
+    "Generated",
     "Snapshot age 2d ago",
     "Freshness stale for 1d+",
     "7 items · 2 agents · 1 jobs",
@@ -358,7 +369,10 @@ test("reporting panels render snapshot feedback for error, stale, loading, and e
       snapshotCount: 0,
     }),
   );
-  assertReportingFeedback(emptyMarkup, ["No reporting snapshots available for this cabinet yet"]);
+  assertReportingFeedback(emptyMarkup, [
+    "No reporting snapshots available for this cabinet yet",
+    "Snapshots will appear here after at least one active reporting link is configured and refreshed",
+  ]);
 });
 
 test("reporting panels render snapshot header loading and manual refresh states", () => {

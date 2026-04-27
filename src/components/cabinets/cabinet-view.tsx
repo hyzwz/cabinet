@@ -1,7 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Calendar, ChevronLeft, ChevronRight, Clock3, FolderOpen, FolderTree, HeartPulse, LayoutList, Loader2, Maximize2, Minimize2, Save, Send, Users, Zap } from "lucide-react";
+import {
+  ArrowUpRight,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  FolderOpen,
+  FolderTree,
+  HeartPulse,
+  LayoutList,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Save,
+  Send,
+  Users,
+  Zap,
+} from "lucide-react";
 import { KBEditor } from "@/components/editor/editor";
 import { HeaderActions } from "@/components/layout/header-actions";
 import { VersionHistory } from "@/components/editor/version-history";
@@ -15,12 +32,13 @@ import {
 } from "@/components/ui/dialog";
 import { SchedulePicker } from "@/components/mission-control/schedule-picker";
 import { cronToShortLabel } from "@/lib/agents/cron-utils";
-import { CABINET_VISIBILITY_OPTIONS } from "@/lib/cabinets/visibility";
+import { getCabinetVisibilityOptions } from "@/lib/cabinets/visibility";
 import { useEditorStore } from "@/stores/editor-store";
 import { useTreeStore } from "@/stores/tree-store";
 import { useAppStore } from "@/stores/app-store";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { ReportingLinksPanel, ReportingPanel } from "./reporting-containers";
 import { sortOrgAgents, startCase } from "./cabinet-utils";
 import { CabinetTaskComposer } from "./cabinet-task-composer";
 import { CabinetSchedulerControls } from "./cabinet-scheduler-controls";
@@ -34,6 +52,11 @@ import type {
   CabinetAgentSummary,
   CabinetJobSummary,
   CabinetOverview,
+  CabinetReportingLinkView,
+  CabinetReportingSnapshotView,
+  ReportingLinkCreateRequest,
+  ReportingLinksResponse,
+  ReportingLinkUpdateRequest,
 } from "@/types/cabinets";
 
 /* ─── Compact Org Chart (kept as-is — user loves it) ─── */
@@ -321,6 +344,8 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("week");
   const [calendarAnchor, setCalendarAnchor] = useState(() => new Date());
   const [calendarFullscreen, setCalendarFullscreen] = useState(false);
+  const [reportingRefreshToken, setReportingRefreshToken] = useState(0);
+  const reportingRefreshRef = useRef<(() => Promise<void>) | null>(null);
   const scrollAreaHostRef = useRef<HTMLDivElement>(null);
   const titleSectionRef = useRef<HTMLDivElement>(null);
   const selectPage = useTreeStore((state) => state.selectPage);
@@ -329,7 +354,11 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
   const cabinetVisibilityModes = useAppStore((state) => state.cabinetVisibilityModes);
   const setCabinetVisibilityMode = useAppStore((state) => state.setCabinetVisibilityMode);
   const cabinetVisibilityMode = cabinetVisibilityModes[cabinetPath] || "own";
-  const { t, format } = useLocale();
+  const { locale, t, format } = useLocale();
+  const cabinetVisibilityOptions = useMemo(
+    () => getCabinetVisibilityOptions(locale),
+    [locale]
+  );
 
   const openCabinet = useCallback(
     (path: string) => {
@@ -384,6 +413,15 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
   const primeTaskComposer = useCallback((agent: CabinetAgentSummary) => {
     setRequestedAgent(agent);
     setComposerFocusRequest((current) => current + 1);
+  }, []);
+
+  const refreshReporting = useCallback(async () => {
+    if (reportingRefreshRef.current) {
+      await reportingRefreshRef.current();
+      return;
+    }
+
+    setReportingRefreshToken((current) => current + 1);
   }, []);
 
   const loadOverview = useCallback(async () => {
@@ -655,7 +693,7 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
             <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/55">
               {t("cabinets.header.scope")}
             </span>
-            {CABINET_VISIBILITY_OPTIONS.map((option) => (
+            {cabinetVisibilityOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => setCabinetVisibilityMode(cabinetPath, option.value)}
@@ -748,6 +786,26 @@ export function CabinetView({ cabinetPath }: { cabinetPath: string }) {
                 />
               ) : null}
             </section>
+
+            {/* ── Section 4: Reporting ── */}
+            <ReportingPanel
+              cabinetId={overview?.cabinet.id ?? null}
+              cabinetPath={cabinetPath}
+              snapshots={overview?.reportingSnapshots ?? []}
+              initialError={overview?.reportingError ?? null}
+              refreshToken={reportingRefreshToken}
+              onRefreshReady={(refresh) => {
+                reportingRefreshRef.current = refresh;
+              }}
+            />
+
+            {/* ── Section 5: Reporting link management ── */}
+            <ReportingLinksPanel
+              cabinetId={overview?.cabinet.id ?? null}
+              cabinetPath={cabinetPath}
+              snapshots={overview?.reportingSnapshots ?? []}
+              onRefreshSnapshots={refreshReporting}
+            />
 
             {/* ── Section 4: Activity Feed ── */}
             <section

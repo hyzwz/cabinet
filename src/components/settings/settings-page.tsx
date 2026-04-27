@@ -28,6 +28,8 @@ import {
   FolderOpen,
   RotateCw,
   Users,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,6 +80,14 @@ interface IntegrationConfig {
   };
 }
 
+type IntegrationServerEntry = [string, McpServer];
+
+type IntegrationReadiness = {
+  configured: number;
+  enabled: number;
+  total: number;
+};
+
 type Tab = "providers" | "storage" | "integrations" | "notifications" | "appearance" | "updates" | "about" | "users";
 
 function TerminalCommand({ command }: { command: string }) {
@@ -112,6 +122,22 @@ function TerminalCommand({ command }: { command: string }) {
   );
 }
 
+function isIntegrationServerConfigured(server: McpServer): boolean {
+  return Object.values(server.env).some((value) => value.trim().length > 0);
+}
+
+function isNotificationChannelConfigured(channel: { enabled: boolean } & Record<string, string | boolean>): boolean {
+  return Object.entries(channel).some(([key, value]) => key !== "enabled" && typeof value === "string" && value.trim().length > 0);
+}
+
+function formatEnvLabel(key: string): string {
+  return key
+    .toLowerCase()
+    .split("_")
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+}
+
 type SetupStep = { title: string; detail: string; cmd?: string; openTerminal?: boolean; link?: { label: string; url: string } };
 
 const PROVIDER_SETUP_STEPS: Record<string, SetupStep[]> = {
@@ -135,7 +161,11 @@ export function SettingsPage() {
   const { showHiddenFiles, setShowHiddenFiles } = useTreeStore();
   const currentUser = useAuthStore((s) => s.user);
   const authMode = useAuthStore((s) => s.authMode);
-  const isAdmin = authMode === "multi" && currentUser?.role === "admin";
+  const isAdmin = authMode === "multi" && (
+    currentUser?.role === "admin" ||
+    currentUser?.systemRole === "platform_admin" ||
+    (currentUser?.companyAdminCompanyIds?.length ?? 0) > 0
+  );
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [defaultProvider, setDefaultProvider] = useState("");
   const [defaultModel, setDefaultModel] = useState("");
@@ -186,6 +216,11 @@ export function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
+  const [integrationsFeedback, setIntegrationsFeedback] = useState<string | null>(null);
+  const [integrationsError, setIntegrationsError] = useState<string | null>(null);
+  const [notificationsFeedback, setNotificationsFeedback] = useState<string | null>(null);
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
+  const [notificationTestPending, setNotificationTestPending] = useState(false);
   const [activeThemeName, setActiveThemeName] = useState<string | null>(null);
   const { setTheme: setNextTheme } = useTheme();
   const {
@@ -220,7 +255,7 @@ export function SettingsPage() {
   const refresh = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch("/api/agents/providers");
+      const res = await fetch("/api/agents/providers", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         setProviders(data.providers || []);
@@ -308,18 +343,22 @@ export function SettingsPage() {
   }, []);
 
   const saveConfig = async () => {
-    if (!config) return;
+    if (!config) return false;
     setSaving(true);
     try {
-      await fetch("/api/agents/config/integrations", {
+      const res = await fetch("/api/agents/config/integrations", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
       });
+      if (!res.ok) {
+        throw new Error("save_failed");
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      return true;
     } catch {
-      // ignore
+      return false;
     } finally {
       setSaving(false);
     }
@@ -351,6 +390,76 @@ export function SettingsPage() {
       return next;
     });
   };
+
+  const integrationEntries: IntegrationServerEntry[] = Object.entries(config?.mcp_servers ?? {});
+  const integrationReadiness: IntegrationReadiness = integrationEntries.reduce(
+    (summary, [, server]) => ({
+      total: summary.total + 1,
+      enabled: summary.enabled + (server.enabled ? 1 : 0),
+      configured: summary.configured + (isIntegrationServerConfigured(server) ? 1 : 0),
+    }),
+    { total: 0, enabled: 0, configured: 0 }
+  );
+  const notificationsConfig = config?.notifications ?? null;
+  const configuredNotificationChannels = notificationsConfig
+    ? Number(notificationsConfig.browser_push) +
+      Number(isNotificationChannelConfigured(notificationsConfig.telegram)) +
+      Number(isNotificationChannelConfigured(notificationsConfig.slack_webhook)) +
+      Number(isNotificationChannelConfigured(notificationsConfig.email))
+    : 0;
+  const enabledNotificationChannels = notificationsConfig
+    ? Number(notificationsConfig.browser_push) +
+      Number(notificationsConfig.telegram.enabled) +
+      Number(notificationsConfig.slack_webhook.enabled) +
+      Number(notificationsConfig.email.enabled)
+    : 0;
+
+  const handleLoadConfig = useCallback(async () => {
+    setIntegrationsFeedback(null);
+    setIntegrationsError(null);
+    await loadConfig();
+  }, [loadConfig]);
+
+  const handleSaveConfig = useCallback(async () => {
+    setIntegrationsFeedback(null);
+    setIntegrationsError(null);
+    const ok = await saveConfig();
+    if (ok) {
+      setIntegrationsFeedback("Integrations saved successfully.");
+      return;
+    }
+    setIntegrationsError("Unable to save integrations right now.");
+  }, [saveConfig]);
+
+  const handleSaveNotifications = useCallback(async () => {
+    setNotificationsFeedback(null);
+    setNotificationsError(null);
+    const ok = await saveConfig();
+    if (ok) {
+      setNotificationsFeedback("Notifications settings saved successfully.");
+      return;
+    }
+    setNotificationsError("Unable to save notifications settings right now.");
+  }, [saveConfig]);
+
+  const handleSendTestNotification = useCallback(async () => {
+    setNotificationsFeedback(null);
+    setNotificationsError(null);
+    setNotificationTestPending(true);
+    try {
+      const response = await fetch("/api/agents/config/notifications/test", { method: "POST" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.ok) {
+        setNotificationsError(data?.message || "Unable to send a test notification.");
+        return;
+      }
+      setNotificationsFeedback(data.message || "Test notification sent.");
+    } catch {
+      setNotificationsError("Unable to send a test notification.");
+    } finally {
+      setNotificationTestPending(false);
+    }
+  }, []);
 
   const updateMcp = (id: string, field: string, value: unknown) => {
     if (!config) return;
@@ -1168,146 +1277,502 @@ export function SettingsPage() {
 
           {/* Integrations Tab */}
           {tab === "integrations" && (
-            <div className="relative">
-              {/* Blurred content preview */}
-              <div className="pointer-events-none select-none blur-[2px] opacity-70" aria-hidden="true">
+            <div className="space-y-6">
+              <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="text-[14px] font-semibold mb-1">{t("settings.integrations.title")}</h3>
-                  <p className="text-xs text-muted-foreground mb-4">
+                  <p className="text-xs text-muted-foreground mb-0">
                     {t("settings.integrations.description")}
                   </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      void handleLoadConfig();
+                    }}
+                    disabled={configLoading || saving}
+                    className="gap-2"
+                  >
+                    <RotateCw className={cn("h-3.5 w-3.5", configLoading && "animate-spin")} />
+                    Refresh
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      void handleSaveConfig();
+                    }}
+                    disabled={!config || configLoading || saving}
+                    className="gap-2"
+                  >
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    Save integrations
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Configured servers</p>
+                  <p className="mt-2 text-2xl font-semibold">{integrationReadiness.configured}/{integrationReadiness.total}</p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">Servers with at least one credential or env value present.</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Enabled servers</p>
+                  <p className="mt-2 text-2xl font-semibold">{integrationReadiness.enabled}</p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">Servers currently available to the runtime.</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Scheduling posture</p>
+                  <p className="mt-2 text-sm font-medium">
+                    {config?.scheduling.pause_on_error ? "Pause on error enabled" : "Pause on error disabled"}
+                  </p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">
+                    {config ? `${config.scheduling.max_concurrent_agents} max concurrent agents · ${config.scheduling.active_hours}` : "Loading current scheduling settings..."}
+                  </p>
+                </div>
+              </div>
+
+              {integrationsFeedback && (
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[12px] text-emerald-700 dark:text-emerald-300">
+                  {integrationsFeedback}
+                </div>
+              )}
+              {integrationsError && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
+                  {integrationsError}
+                </div>
+              )}
+
+              {configLoading && !config ? (
+                <div className="rounded-lg border border-border bg-card px-4 py-8 text-[13px] text-muted-foreground">
+                  Loading integrations configuration…
+                </div>
+              ) : config ? (
+                <>
                   <div className="space-y-3">
-                    {["Brave Search", "GitHub", "Slack"].map((name) => (
-                      <div key={name} className="bg-card border border-border rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="h-4 w-8 rounded-full bg-muted-foreground/30 relative">
-                              <span className="absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white" />
+                    {integrationEntries.map(([id, server]) => {
+                      const configured = isIntegrationServerConfigured(server);
+                      return (
+                        <div key={id} className="rounded-lg border border-border bg-card p-4 space-y-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <p className="text-[13px] font-semibold">{server.name}</p>
+                                <span className={cn(
+                                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                                  server.enabled ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground"
+                                )}>
+                                  {server.enabled ? "Enabled" : "Disabled"}
+                                </span>
+                                <span className={cn(
+                                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                                  configured ? "bg-primary/10 text-primary" : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                                )}>
+                                  {configured ? "Configured" : "Needs credentials"}
+                                </span>
+                              </div>
+                              <p className="text-[12px] text-muted-foreground">{server.description || "External integration server"}</p>
                             </div>
-                            <span className="text-[13px] font-medium">{name}</span>
+                            <button
+                              type="button"
+                              onClick={() => updateMcp(id, "enabled", !server.enabled)}
+                              className={cn(
+                                "inline-flex items-center rounded-full p-1 transition-colors",
+                                server.enabled ? "bg-emerald-500/20 justify-end" : "bg-muted justify-start"
+                              )}
+                              aria-pressed={server.enabled}
+                              aria-label={`${server.enabled ? "Disable" : "Enable"} ${server.name}`}
+                            >
+                              <span className={cn(
+                                "block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                                server.enabled && "translate-x-4"
+                              )} />
+                              <span className="sr-only">{server.enabled ? "Enabled" : "Disabled"}</span>
+                            </button>
                           </div>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                            {t("settings.providers.disabledBadge")}
-                          </span>
+
+                          <div>
+                            <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Launch command</label>
+                            <Input
+                              value={server.command}
+                              onChange={(event) => updateMcp(id, "command", event.target.value)}
+                              className="mt-1 h-8 text-[12px]"
+                            />
+                          </div>
+
+                          <div className="grid gap-3 md:grid-cols-2">
+                            {Object.entries(server.env).map(([envKey, envValue]) => {
+                              const revealKey = `${id}:${envKey}`;
+                              const revealed = revealedKeys.has(revealKey);
+                              return (
+                                <div key={envKey}>
+                                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground">{formatEnvLabel(envKey)}</label>
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <Input
+                                      type={revealed ? "text" : "password"}
+                                      value={envValue}
+                                      onChange={(event) => updateMcpEnv(id, envKey, event.target.value)}
+                                      placeholder={`Set ${envKey}`}
+                                      className="h-8 text-[12px]"
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => toggleReveal(revealKey)}
+                                      className="h-8 px-2"
+                                    >
+                                      {revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                    </Button>
+                                  </div>
+                                  <p className="mt-1 text-[10px] text-muted-foreground font-mono">{envKey}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                        <div className="space-y-1.5">
+                      );
+                    })}
+                  </div>
+
+                  <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+                    <div>
+                      <h4 className="text-[13px] font-semibold">Agent scheduling</h4>
+                      <p className="text-[12px] text-muted-foreground">Control concurrency and runtime guardrails for integration-backed agents.</p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Max concurrent agents</label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={String(config.scheduling.max_concurrent_agents)}
+                          onChange={(event) => updateScheduling("max_concurrent_agents", Number(event.target.value) || 1)}
+                          className="mt-1 h-8 text-[12px]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Heartbeat interval</label>
+                        <Input
+                          value={config.scheduling.default_heartbeat_interval}
+                          onChange={(event) => updateScheduling("default_heartbeat_interval", event.target.value)}
+                          className="mt-1 h-8 text-[12px]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Active hours</label>
+                        <Input
+                          value={config.scheduling.active_hours}
+                          onChange={(event) => updateScheduling("active_hours", event.target.value)}
+                          className="mt-1 h-8 text-[12px]"
+                        />
+                      </div>
+                      <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+                        <div className="flex items-center justify-between gap-3">
                           <div>
-                            <label className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">{t("settings.integrations.command")}</label>
-                            <div className="w-full mt-0.5 h-7 bg-muted/30 border border-border/50 rounded" />
+                            <p className="text-[12px] font-medium">Pause agents on errors</p>
+                            <p className="text-[11px] text-muted-foreground">Automatically pause follow-up runs after a failing integration cycle.</p>
                           </div>
-                          <div>
-                            <label className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">{t("settings.integrations.apiKey")}</label>
-                            <div className="w-full mt-0.5 h-7 bg-muted/30 border border-border/50 rounded" />
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => updateScheduling("pause_on_error", !config.scheduling.pause_on_error)}
+                            className={cn(
+                              "inline-flex items-center rounded-full p-1 transition-colors",
+                              config.scheduling.pause_on_error ? "bg-emerald-500/20 justify-end" : "bg-muted justify-start"
+                            )}
+                            aria-pressed={config.scheduling.pause_on_error}
+                            aria-label="Toggle pause on error"
+                          >
+                            <span className={cn(
+                              "block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                              config.scheduling.pause_on_error && "translate-x-4"
+                            )} />
+                          </button>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border-t border-border pt-6 mt-6">
-                  <h3 className="text-[14px] font-semibold mb-1">{t("settings.integrations.schedulingTitle")}</h3>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    {t("settings.integrations.description")}
-                  </p>
-                  <div className="bg-card border border-border rounded-lg p-3 space-y-3">
-                    <div>
-                      <label className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">{t("settings.integrations.maxConcurrentAgents")}</label>
-                      <div className="w-full mt-0.5 h-7 bg-muted/30 border border-border/50 rounded" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-muted-foreground/70 uppercase tracking-wide flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {t("settings.integrations.activeHours")}
-                      </label>
-                      <div className="w-full mt-0.5 h-7 bg-muted/30 border border-border/50 rounded" />
                     </div>
                   </div>
+                </>
+              ) : (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-8 text-[13px] text-destructive">
+                  Unable to load integrations configuration.
                 </div>
-              </div>
-
-              {/* Coming Soon overlay */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-2 bg-background/80 backdrop-blur-sm rounded-xl px-8 py-6 border border-border shadow-lg">
-                  <Plug className="h-6 w-6 text-muted-foreground/50" />
-                  <span className="text-[13px] font-semibold">{t("settings.common.comingSoon")}</span>
-                  <p className="text-[12px] text-muted-foreground text-center max-w-[220px]">
-                    {t("settings.integrations.comingSoonDescription")}
-                  </p>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
           {/* Notifications Tab */}
           {tab === "notifications" && (
-            <div className="relative">
-              {/* Blurred content preview */}
-              <div className="pointer-events-none select-none blur-[2px] opacity-70" aria-hidden="true">
+            <div className="space-y-6">
+              <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="text-[14px] font-semibold mb-1">{t("settings.notifications.title")}</h3>
-                  <p className="text-xs text-muted-foreground mb-4">
+                  <p className="text-xs text-muted-foreground mb-0">
                     {t("settings.notifications.description")}
                   </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      void handleLoadConfig();
+                    }}
+                    disabled={configLoading || saving || notificationTestPending}
+                    className="gap-2"
+                  >
+                    <RotateCw className={cn("h-3.5 w-3.5", configLoading && "animate-spin")} />
+                    Refresh
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      void handleSendTestNotification();
+                    }}
+                    disabled={!config || configLoading || saving || notificationTestPending}
+                    className="gap-2"
+                  >
+                    {notificationTestPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bell className="h-3.5 w-3.5" />}
+                    Send test
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      void handleSaveNotifications();
+                    }}
+                    disabled={!config || configLoading || saving || notificationTestPending}
+                    className="gap-2"
+                  >
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    Save notifications
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Configured channels</p>
+                  <p className="mt-2 text-2xl font-semibold">{configuredNotificationChannels}/4</p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">Browser push plus three external delivery channels.</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Enabled channels</p>
+                  <p className="mt-2 text-2xl font-semibold">{enabledNotificationChannels}</p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">Channels currently allowed to receive notifications.</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Digest policy</p>
+                  <p className="mt-2 text-sm font-medium">
+                    {notificationsConfig?.email.enabled ? `Email digest ${notificationsConfig.email.frequency}` : "Email digest disabled"}
+                  </p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">Tune the daily/hourly summary without leaving Settings.</p>
+                </div>
+              </div>
+
+              {notificationsFeedback && (
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[12px] text-emerald-700 dark:text-emerald-300">
+                  {notificationsFeedback}
+                </div>
+              )}
+              {notificationsError && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
+                  {notificationsError}
+                </div>
+              )}
+
+              {configLoading && !config ? (
+                <div className="rounded-lg border border-border bg-card px-4 py-8 text-[13px] text-muted-foreground">
+                  Loading notifications configuration…
+                </div>
+              ) : notificationsConfig ? (
+                <>
                   <div className="space-y-3">
-                    {[
-                      { icon: "🔔", name: t("settings.notifications.browserPush"), desc: t("settings.notifications.browserPushDescription") },
-                      { icon: "✈️", name: t("settings.notifications.telegram"), desc: t("settings.notifications.telegramDescription") },
-                      { icon: "💬", name: t("settings.notifications.slackWebhook"), desc: t("settings.notifications.slackWebhookDescription") },
-                      { icon: "📧", name: t("settings.notifications.emailDigest"), desc: t("settings.notifications.emailDigestDescription") },
-                    ].map((ch) => (
-                      <div key={ch.name} className="bg-card border border-border rounded-lg p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className="text-lg">{ch.icon}</span>
-                            <div>
-                              <p className="text-[13px] font-medium">{ch.name}</p>
-                              <p className="text-[11px] text-muted-foreground">{ch.desc}</p>
-                            </div>
-                          </div>
-                          <div className="h-4 w-8 rounded-full bg-muted-foreground/30 relative">
-                            <span className="absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white" />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border-t border-border pt-6 mt-6">
-                  <h3 className="text-[14px] font-semibold mb-1">{t("settings.notifications.alertRules")}</h3>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    {t("settings.notifications.alertRulesDescription")}
-                  </p>
-                  <div className="space-y-2">
-                    {[
-                      { event: t("settings.notifications.alertsChannelMessages"), desc: t("settings.notifications.alertsChannelMessagesDescription") },
-                      { event: t("settings.notifications.humanMentions"), desc: t("settings.notifications.humanMentionsDescription") },
-                      { event: t("settings.notifications.goalFloorBreached"), desc: t("settings.notifications.goalFloorBreachedDescription") },
-                      { event: t("settings.notifications.agentHealthDegraded"), desc: t("settings.notifications.agentHealthDegradedDescription") },
-                    ].map((rule) => (
-                      <div key={rule.event} className="flex items-center justify-between bg-card border border-border rounded-lg px-3 py-2">
+                    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-[12px] font-medium">{rule.event}</p>
-                          <p className="text-[10px] text-muted-foreground/60">{rule.desc}</p>
+                          <p className="text-[13px] font-semibold">Browser push</p>
+                          <p className="text-[12px] text-muted-foreground">In-app and browser delivery for real-time attention when Cabinet is open.</p>
                         </div>
-                        <span className="text-[10px] text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">{t("settings.notifications.alwaysOn")}</span>
+                        <button
+                          type="button"
+                          onClick={() => updateNotif("browser_push", !notificationsConfig.browser_push)}
+                          className={cn(
+                            "inline-flex items-center rounded-full p-1 transition-colors",
+                            notificationsConfig.browser_push ? "bg-emerald-500/20 justify-end" : "bg-muted justify-start"
+                          )}
+                          aria-pressed={notificationsConfig.browser_push}
+                          aria-label="Toggle browser push notifications"
+                        >
+                          <span className={cn(
+                            "block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                            notificationsConfig.browser_push && "translate-x-4"
+                          )} />
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                    </div>
 
-              {/* Coming Soon overlay */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-2 bg-background/80 backdrop-blur-sm rounded-xl px-8 py-6 border border-border shadow-lg">
-                  <Bell className="h-6 w-6 text-muted-foreground/50" />
-                  <span className="text-[13px] font-semibold">{t("settings.common.comingSoon")}</span>
-                  <p className="text-[12px] text-muted-foreground text-center max-w-[220px]">
-                    {t("settings.notifications.comingSoonDescription")}
-                  </p>
+                    <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[13px] font-semibold">Telegram</p>
+                          <p className="text-[12px] text-muted-foreground">Route alerts to a bot for fast mobile delivery.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => updateNotif("telegram.enabled", !notificationsConfig.telegram.enabled)}
+                          className={cn(
+                            "inline-flex items-center rounded-full p-1 transition-colors",
+                            notificationsConfig.telegram.enabled ? "bg-emerald-500/20 justify-end" : "bg-muted justify-start"
+                          )}
+                          aria-pressed={notificationsConfig.telegram.enabled}
+                          aria-label="Toggle Telegram notifications"
+                        >
+                          <span className={cn(
+                            "block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                            notificationsConfig.telegram.enabled && "translate-x-4"
+                          )} />
+                        </button>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div>
+                          <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Bot token</label>
+                          <Input
+                            value={notificationsConfig.telegram.bot_token}
+                            onChange={(event) => updateNotif("telegram.bot_token", event.target.value)}
+                            placeholder="Enter Telegram bot token"
+                            className="mt-1 h-8 text-[12px]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Chat ID</label>
+                          <Input
+                            value={notificationsConfig.telegram.chat_id}
+                            onChange={(event) => updateNotif("telegram.chat_id", event.target.value)}
+                            placeholder="Enter Telegram chat ID"
+                            className="mt-1 h-8 text-[12px]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[13px] font-semibold">Slack webhook</p>
+                          <p className="text-[12px] text-muted-foreground">Send delivery copies into a shared incident or operations channel.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => updateNotif("slack_webhook.enabled", !notificationsConfig.slack_webhook.enabled)}
+                          className={cn(
+                            "inline-flex items-center rounded-full p-1 transition-colors",
+                            notificationsConfig.slack_webhook.enabled ? "bg-emerald-500/20 justify-end" : "bg-muted justify-start"
+                          )}
+                          aria-pressed={notificationsConfig.slack_webhook.enabled}
+                          aria-label="Toggle Slack webhook notifications"
+                        >
+                          <span className={cn(
+                            "block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                            notificationsConfig.slack_webhook.enabled && "translate-x-4"
+                          )} />
+                        </button>
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Webhook URL</label>
+                        <Input
+                          value={notificationsConfig.slack_webhook.url}
+                          onChange={(event) => updateNotif("slack_webhook.url", event.target.value)}
+                          placeholder="https://hooks.slack.com/services/..."
+                          className="mt-1 h-8 text-[12px]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[13px] font-semibold">Email digest</p>
+                          <p className="text-[12px] text-muted-foreground">Summaries for operators who prefer batched delivery over instant notifications.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => updateNotif("email.enabled", !notificationsConfig.email.enabled)}
+                          className={cn(
+                            "inline-flex items-center rounded-full p-1 transition-colors",
+                            notificationsConfig.email.enabled ? "bg-emerald-500/20 justify-end" : "bg-muted justify-start"
+                          )}
+                          aria-pressed={notificationsConfig.email.enabled}
+                          aria-label="Toggle email digest notifications"
+                        >
+                          <span className={cn(
+                            "block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                            notificationsConfig.email.enabled && "translate-x-4"
+                          )} />
+                        </button>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div>
+                          <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Recipient</label>
+                          <Input
+                            value={notificationsConfig.email.to}
+                            onChange={(event) => updateNotif("email.to", event.target.value)}
+                            placeholder="operator@example.com"
+                            className="mt-1 h-8 text-[12px]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Frequency</label>
+                          <div className="mt-1 grid grid-cols-2 gap-2">
+                            {(["hourly", "daily"] as const).map((frequency) => {
+                              const active = notificationsConfig.email.frequency === frequency;
+                              return (
+                                <button
+                                  key={frequency}
+                                  type="button"
+                                  onClick={() => updateNotif("email.frequency", frequency)}
+                                  className={cn(
+                                    "rounded-md border px-3 py-2 text-[12px] font-medium transition-colors",
+                                    active ? "border-primary bg-primary/5 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+                                  )}
+                                >
+                                  {frequency === "hourly" ? "Hourly" : "Daily"}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                    <div>
+                      <h4 className="text-[13px] font-semibold">Alert policy</h4>
+                      <p className="text-[12px] text-muted-foreground">This phase keeps event delivery broad while making the delivery channels configurable.</p>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        "Channel messages requiring follow-up",
+                        "Human mentions and assignment handoffs",
+                        "Goal floor breaches and SLA misses",
+                        "Agent health degradation or paused runs",
+                      ].map((rule) => (
+                        <div key={rule} className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2">
+                          <p className="text-[12px] font-medium">{rule}</p>
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Always on</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-8 text-[13px] text-destructive">
+                  Unable to load notifications configuration.
                 </div>
-              </div>
+              )}
             </div>
           )}
 

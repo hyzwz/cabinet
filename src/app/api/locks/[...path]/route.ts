@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/auth/request-user";
-import { checkPageAccess, loadPageMeta } from "@/lib/auth/access-control";
+import {
+  authorizeUserAction,
+  resolveActorFromRequest,
+  resolveCabinetContextForResource,
+  resolveCompanyContextForRequest,
+  resolvePageResourceContext,
+  toHttpErrorResponse,
+} from "@/lib/auth/page-authorization";
 import {
   getLock,
   acquireLock,
@@ -14,11 +21,28 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const { path: segments } = await params;
     const virtualPath = segments.join("/");
 
-    const user = getRequestUser(req);
-    const meta = await loadPageMeta(virtualPath);
-    const access = checkPageAccess(user, virtualPath, "read", meta);
-    if (!access.allowed) {
-      return NextResponse.json({ error: access.reason }, { status: 403 });
+    const actor = await resolveActorFromRequest(req);
+    const companyContext = await resolveCompanyContextForRequest(req, actor);
+    const resourceContext = await resolvePageResourceContext({
+      virtualPath,
+      actor,
+      companyContext,
+    });
+    const cabinetContext = await resolveCabinetContextForResource({
+      actor,
+      companyContext,
+      resourceContext,
+    });
+    const decision = await authorizeUserAction({
+      actor,
+      companyContext,
+      resourceContext,
+      cabinetContext,
+      action: "read_raw",
+    });
+
+    if (!decision.allowed) {
+      return toHttpErrorResponse(decision);
     }
 
     const lock = getLock(virtualPath);
@@ -42,10 +66,28 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const meta = await loadPageMeta(virtualPath);
-    const access = checkPageAccess(user, virtualPath, "write", meta);
-    if (!access.allowed) {
-      return NextResponse.json({ error: access.reason }, { status: 403 });
+    const actor = await resolveActorFromRequest(req);
+    const companyContext = await resolveCompanyContextForRequest(req, actor);
+    const resourceContext = await resolvePageResourceContext({
+      virtualPath,
+      actor,
+      companyContext,
+    });
+    const cabinetContext = await resolveCabinetContextForResource({
+      actor,
+      companyContext,
+      resourceContext,
+    });
+    const decision = await authorizeUserAction({
+      actor,
+      companyContext,
+      resourceContext,
+      cabinetContext,
+      action: "write_raw",
+    });
+
+    if (!decision.allowed) {
+      return toHttpErrorResponse(decision);
     }
 
     const result = acquireLock(virtualPath, user.userId, user.username);
@@ -78,6 +120,30 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
         { error: "Authentication required" },
         { status: 401 }
       );
+    }
+
+    const actor = await resolveActorFromRequest(req);
+    const companyContext = await resolveCompanyContextForRequest(req, actor);
+    const resourceContext = await resolvePageResourceContext({
+      virtualPath,
+      actor,
+      companyContext,
+    });
+    const cabinetContext = await resolveCabinetContextForResource({
+      actor,
+      companyContext,
+      resourceContext,
+    });
+    const decision = await authorizeUserAction({
+      actor,
+      companyContext,
+      resourceContext,
+      cabinetContext,
+      action: "write_raw",
+    });
+
+    if (!decision.allowed) {
+      return toHttpErrorResponse(decision);
     }
 
     const released = releaseLock(

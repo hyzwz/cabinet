@@ -50,11 +50,11 @@ export function formatRelative(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+export function getGreetingKey(date = new Date()): "home.greeting.morning" | "home.greeting.afternoon" | "home.greeting.evening" {
+  const hour = date.getHours();
+  if (hour < 12) return "home.greeting.morning";
+  if (hour < 17) return "home.greeting.afternoon";
+  return "home.greeting.evening";
 }
 
 /* ─── Trigger styles / labels ─── */

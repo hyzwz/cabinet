@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { authenticateUser, getUserCount } from "@/lib/storage/user-io";
+import { authenticateUserWithStatus, getUserCount } from "@/lib/storage/user-io";
 import { signToken, TOKEN_COOKIE, TOKEN_MAX_AGE } from "@/lib/auth/jwt";
 
 const KB_PASSWORD = process.env.KB_PASSWORD || "";
@@ -24,12 +24,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Username and password required" }, { status: 400 });
     }
 
-    const user = await authenticateUser(username, password);
-    if (!user) {
+    const auth = await authenticateUserWithStatus(username, password);
+    if (!auth.user) {
+      if (auth.status === "pending") {
+        return NextResponse.json({ error: "Account pending approval", status: "pending" }, { status: 403 });
+      }
+      if (auth.status === "disabled") {
+        return NextResponse.json({ error: "Account disabled", status: "disabled" }, { status: 403 });
+      }
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
-    const token = await signToken(user);
+    const token = await signToken(auth.user);
     const cookieStore = await cookies();
     cookieStore.set(TOKEN_COOKIE, token, {
       httpOnly: true,
@@ -41,7 +47,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      user: { id: user.id, username: user.username, displayName: user.displayName, role: user.role },
+      user: {
+        id: auth.user.id,
+        username: auth.user.username,
+        displayName: auth.user.displayName,
+        role: auth.user.role,
+        systemRole: auth.user.systemRole,
+        status: auth.user.status,
+      },
     });
   }
 

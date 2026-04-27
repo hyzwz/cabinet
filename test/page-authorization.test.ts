@@ -15,17 +15,21 @@ import {
   buildAuthorizationSubjectContext,
   buildResourceOwnershipChain,
   canCompanyRoleAccessCabinetAction,
+  evaluateUserAction,
   getCabinetMembershipAccess,
+  resolveActiveCompanySelection,
   resolveCabinetActionFromAuthorizationAction,
-  resetCabinetMembershipProvider,
-  resetCabinetResourceMappingProvider,
-  resetCompanyMembershipProvider,
+  resolveCabinetMappingForPath,
   resolveCabinetContextForRequest,
   resolveCabinetContextForResource,
   resolveCompanyContextForRequest,
   resolveOwnershipChainFromPageResource,
+  resolveOwnershipChainFromVirtualPath,
   resolvePageDerivedResourceContext,
   resolvePageResourceContext,
+  resetCabinetMembershipProvider,
+  resetCabinetResourceMappingProvider,
+  resetCompanyMembershipProvider,
   setCabinetMembershipProvider,
   setCabinetResourceMappingProvider,
   setCompanyMembershipProvider,
@@ -44,6 +48,7 @@ import {
   buildReportingSnapshotSchema,
   buildReportingSnapshotSummary,
   createReportingReadService,
+  createReportingSnapshotRefreshService,
   getReportingReadService,
   createReportingRelationService,
   getReportingRelationService,
@@ -75,6 +80,16 @@ const editorActor: Actor = {
   username: "editor",
   role: "editor",
 };
+
+function createActor(userId: string, overrides: Partial<Actor> = {}): Actor {
+  return {
+    kind: "user",
+    userId,
+    username: userId,
+    role: "editor",
+    ...overrides,
+  };
+}
 
 const baseCompanyContext: CompanyContext = {
   companyId: null,
@@ -160,38 +175,343 @@ test("authorization action mapping keeps reporting actions distinct from raw cab
   assert.equal(resolveCabinetActionFromAuthorizationAction("manage_reporting"), "cabinet_reporting_manage");
 });
 
-test("authorization subject context exposes resolved company and cabinet memberships", () => {
-  const subject = buildAuthorizationSubjectContext({
-    actor: editorActor,
-    companyContext: {
-      ...companyAdminContext,
-      membershipDefaultCompanyId: "company-1",
-    },
-    cabinetContext: {
-      ...parentCabinetAdminContext,
-      membershipCabinetIds: ["cab-parent"],
-      membershipDefaultCabinetId: "cab-parent",
-      source: "membership_default",
+test("resolveActiveCompanySelection prefers membership default over unrelated workspace default for authenticated users", () => {
+  const companyContext = resolveActiveCompanySelection({
+    actor: { kind: "user", id: "user-1" },
+    requestCompanyId: null,
+    workspaceCompanyId: "company-workspace",
+    membershipCompanyIds: ["company-a", "company-b"],
+    membershipDefaultCompanyId: "company-b",
+    membershipRoleByCompanyId: {
+      "company-a": "company_member",
+      "company-b": "company_admin",
     },
   });
 
-  assert.equal(subject.company.companyId, "company-1");
-  assert.equal(subject.company.source, "none");
-  assert.deepEqual(subject.companyMemberships, [
+  assert.equal(companyContext.companyId, "company-b");
+  assert.equal(companyContext.source, "membership_default");
+  assert.equal(companyContext.workspaceCompanyId, "company-workspace");
+});
+
+test("resolveActiveCompanySelection keeps workspace default for anonymous actors", () => {
+  const companyContext = resolveActiveCompanySelection({
+    actor: { kind: "anonymous" },
+    requestCompanyId: null,
+    workspaceCompanyId: "company-workspace",
+    membershipCompanyIds: [],
+    membershipDefaultCompanyId: null,
+    membershipRoleByCompanyId: {},
+  });
+
+  assert.equal(companyContext.companyId, "company-workspace");
+  assert.equal(companyContext.source, "workspace_default");
+});
+
+test("resolveActiveCompanySelection returns none when authenticated users have no memberships", () => {
+  const companyContext = resolveActiveCompanySelection({
+    actor: { kind: "user", id: "user-1" },
+    requestCompanyId: null,
+    workspaceCompanyId: "company-workspace",
+    membershipCompanyIds: [],
+    membershipDefaultCompanyId: null,
+    membershipRoleByCompanyId: {},
+  });
+
+  assert.equal(companyContext.companyId, null);
+  assert.equal(companyContext.source, "none");
+});
+
+test("resolveActiveCompanySelection keeps workspace default for admin users without memberships", () => {
+  const companyContext = resolveActiveCompanySelection({
+    actor: { kind: "user", userId: "user-1", username: "admin", role: "admin" },
+    requestCompanyId: null,
+    workspaceCompanyId: "company-workspace",
+    membershipCompanyIds: [],
+    membershipDefaultCompanyId: null,
+    membershipRoleByCompanyId: {},
+  });
+
+  assert.equal(companyContext.companyId, "company-workspace");
+  assert.equal(companyContext.source, "workspace_default");
+});
+
+test("authorization subject context exposes resolved company and cabinet memberships", () => {
+  const subjectContext = buildAuthorizationSubjectContext({
+    actor: { kind: "user", id: "user-1", email: "user@example.com" },
+    companyContext: {
+      companyId: "company-1",
+      source: "membership_default",
+      requestCompanyId: null,
+      workspaceCompanyId: null,
+      membershipCompanyIds: ["company-1", "company-2"],
+      membershipDefaultCompanyId: "company-1",
+      membershipRoleByCompanyId: {
+        "company-1": "company_admin",
+        "company-2": "member",
+      },
+    },
+    cabinetContext: {
+      cabinetId: "cabinet-1",
+      companyId: "company-1",
+      source: "membership_default",
+      cabinetPath: "company-1/root",
+      membershipCabinetIds: ["cabinet-1", "cabinet-2"],
+      membershipDefaultCabinetId: "cabinet-1",
+      roleByCabinetId: {
+        "cabinet-1": "cabinet_admin",
+        "cabinet-2": "cabinet_editor",
+      },
+    },
+  });
+
+  assert.equal(subjectContext.company.companyId, "company-1");
+  assert.equal(subjectContext.company.source, "membership_default");
+  assert.equal(subjectContext.cabinet.cabinetId, "cabinet-1");
+  assert.equal(subjectContext.cabinet.companyId, "company-1");
+  assert.deepEqual(subjectContext.companyMemberships, [
     {
       companyId: "company-1",
       isDefault: true,
       role: "company_admin",
     },
-  ]);
-  assert.deepEqual(subject.cabinetMemberships, [
     {
-      cabinetId: "cab-parent",
+      companyId: "company-2",
+      isDefault: false,
+      role: "member",
+    },
+  ]);
+  assert.deepEqual(subjectContext.cabinetMemberships, [
+    {
+      cabinetId: "cabinet-1",
       companyId: "company-1",
       role: "cabinet_admin",
       isDefault: true,
     },
+    {
+      cabinetId: "cabinet-2",
+      companyId: "company-1",
+      role: "cabinet_editor",
+      isDefault: false,
+    },
   ]);
+});
+
+test("authorization subject context keeps cabinet membership list when active cabinet is outside memberships", () => {
+  const subjectContext = buildAuthorizationSubjectContext({
+    actor: { kind: "user", id: "user-1" },
+    companyContext: {
+      companyId: "company-1",
+      source: "membership_default",
+      requestCompanyId: null,
+      workspaceCompanyId: null,
+      membershipCompanyIds: ["company-1"],
+      membershipDefaultCompanyId: "company-1",
+      membershipRoleByCompanyId: { "company-1": "member" },
+    },
+    cabinetContext: {
+      cabinetId: "cabinet-unknown",
+      companyId: "company-1",
+      source: "request",
+      cabinetPath: "company-1/unknown",
+      membershipCabinetIds: ["cabinet-1"],
+      membershipDefaultCabinetId: "cabinet-1",
+      roleByCabinetId: {
+        "cabinet-1": "cabinet_viewer",
+      },
+    },
+  });
+
+  assert.equal(subjectContext.cabinet.cabinetId, "cabinet-unknown");
+  assert.equal(subjectContext.cabinet.source, "request");
+  assert.equal(subjectContext.cabinetMemberships.length, 1);
+  assert.deepEqual(subjectContext.cabinetMemberships[0], {
+    cabinetId: "cabinet-1",
+    companyId: "company-1",
+    role: "cabinet_viewer",
+    isDefault: true,
+  });
+});
+
+test("authorization subject context preserves anonymous actors without memberships", () => {
+  const subjectContext = buildAuthorizationSubjectContext({
+    actor: { kind: "anonymous" },
+    companyContext: {
+      companyId: null,
+      source: "none",
+      requestCompanyId: null,
+      workspaceCompanyId: null,
+      membershipCompanyIds: [],
+      membershipDefaultCompanyId: null,
+      membershipRoleByCompanyId: {},
+    },
+    cabinetContext: {
+      cabinetId: null,
+      companyId: null,
+      source: "none",
+      requestCabinetId: null,
+      membershipCabinetIds: [],
+      membershipDefaultCabinetId: null,
+      roleByCabinetId: {},
+      resourceCabinetId: null,
+    },
+  });
+
+  assert.equal(subjectContext.actor.kind, "anonymous");
+  assert.equal(subjectContext.company.companyId, null);
+  assert.equal(subjectContext.cabinet.cabinetId, null);
+  assert.equal(subjectContext.companyMemberships.length, 0);
+  assert.equal(subjectContext.cabinetMemberships.length, 0);
+});
+
+test("authorization subject context uses membership default cabinet when request and resource cabinets are absent", () => {
+  const subjectContext = buildAuthorizationSubjectContext({
+    actor: { kind: "user", id: "user-1" },
+    companyContext: {
+      companyId: "company-1",
+      source: "membership_default",
+      requestCompanyId: null,
+      workspaceCompanyId: null,
+      membershipCompanyIds: ["company-1"],
+      membershipDefaultCompanyId: "company-1",
+      membershipRoleByCompanyId: { "company-1": "member" },
+    },
+    cabinetContext: {
+      cabinetId: "cabinet-b",
+      companyId: "company-1",
+      source: "membership_default",
+      requestCabinetId: null,
+      membershipCabinetIds: ["cabinet-a", "cabinet-b"],
+      membershipDefaultCabinetId: "cabinet-b",
+      roleByCabinetId: {
+        "cabinet-a": "cabinet_viewer",
+        "cabinet-b": "cabinet_admin",
+      },
+      resourceCabinetId: null,
+    },
+  });
+
+  assert.equal(subjectContext.cabinet.cabinetId, "cabinet-b");
+  assert.equal(subjectContext.cabinet.source, "membership_default");
+  assert.deepEqual(
+    subjectContext.cabinetMemberships.map((membership) => membership.cabinetId),
+    ["cabinet-a", "cabinet-b"],
+  );
+});
+
+
+
+test("cabinet context resolves membership default cabinet when request and resource cabinets are absent", async () => {
+  const req = new NextRequest("http://localhost/api/cabinets");
+  const actor = createActor("cabinet-default-user");
+  const companyContext = {
+    companyId: "company-1",
+    source: "membership_default" as const,
+    requestCompanyId: null,
+    workspaceCompanyId: null,
+    membershipCompanyIds: ["company-1"],
+    membershipDefaultCompanyId: "company-1",
+    membershipRoleByCompanyId: { "company-1": "member" },
+  };
+
+  setCabinetMembershipProvider({
+    async getMemberships() {
+      return {
+        memberships: [
+          { cabinetId: "cabinet-a", companyId: "company-1", role: "cabinet_viewer", isDefault: false },
+          { cabinetId: "cabinet-b", companyId: "company-1", role: "cabinet_admin", isDefault: true },
+        ],
+        defaultCabinetId: null,
+      };
+    },
+  });
+
+  const cabinetContext = await resolveCabinetContextForRequest({
+    req,
+    actor,
+    companyContext,
+    resourceContext: null,
+  });
+
+  assert.equal(cabinetContext.cabinetId, "cabinet-b");
+  assert.equal(cabinetContext.source, "membership_default");
+  assert.deepEqual(cabinetContext.membershipCabinetIds, ["cabinet-a", "cabinet-b"]);
+  assert.equal(cabinetContext.membershipDefaultCabinetId, "cabinet-b");
+});
+
+test("cabinet context keeps request cabinet active even when it is outside memberships", async () => {
+  const req = new NextRequest("http://localhost/api/cabinets?cabinetId=cabinet-external");
+  const actor = createActor("cabinet-request-mismatch-user");
+  const companyContext = {
+    companyId: "company-1",
+    source: "membership_default" as const,
+    requestCompanyId: null,
+    workspaceCompanyId: null,
+    membershipCompanyIds: ["company-1"],
+    membershipDefaultCompanyId: "company-1",
+    membershipRoleByCompanyId: { "company-1": "member" },
+  };
+
+  setCabinetMembershipProvider({
+    async getMemberships() {
+      return {
+        memberships: [
+          { cabinetId: "cabinet-a", companyId: "company-1", role: "cabinet_viewer", isDefault: false },
+          { cabinetId: "cabinet-b", companyId: "company-1", role: "cabinet_admin", isDefault: true },
+        ],
+        defaultCabinetId: "cabinet-b",
+      };
+    },
+  });
+
+  const cabinetContext = await resolveCabinetContextForRequest({
+    req,
+    actor,
+    companyContext,
+    resourceContext: null,
+  });
+
+  assert.equal(cabinetContext.cabinetId, null);
+  assert.equal(cabinetContext.source, "none");
+  assert.equal(cabinetContext.denyReason, "cabinet_mismatch");
+  assert.deepEqual(cabinetContext.membershipCabinetIds, ["cabinet-a", "cabinet-b"]);
+  assert.equal(cabinetContext.membershipDefaultCabinetId, "cabinet-b");
+});
+
+
+
+test("authorization subject context falls back to unresolved cabinet when membership default is missing", () => {
+  const subjectContext = buildAuthorizationSubjectContext({
+    actor: { kind: "user", id: "user-no-cabinet-default" },
+    companyContext: {
+      companyId: "company-1",
+      source: "membership_default",
+      requestCompanyId: null,
+      workspaceCompanyId: null,
+      membershipCompanyIds: ["company-1"],
+      membershipDefaultCompanyId: "company-1",
+      membershipRoleByCompanyId: { "company-1": "member" },
+    },
+    cabinetContext: {
+      cabinetId: null,
+      companyId: "company-1",
+      source: "none",
+      requestCabinetId: null,
+      membershipCabinetIds: ["cabinet-a", "cabinet-b"],
+      membershipDefaultCabinetId: null,
+      roleByCabinetId: {
+        "cabinet-a": "cabinet_viewer",
+        "cabinet-b": "cabinet_admin",
+      },
+      resourceCabinetId: null,
+    },
+  });
+
+  assert.equal(subjectContext.cabinet.cabinetId, null);
+  assert.equal(subjectContext.cabinet.source, "none");
+  assert.deepEqual(
+    subjectContext.cabinetMemberships.map((membership) => membership.cabinetId),
+    ["cabinet-a", "cabinet-b"],
+  );
 });
 
 test("resource ownership chain resolves page to cabinet and company", () => {
@@ -202,6 +522,96 @@ test("resource ownership chain resolves page to cabinet and company", () => {
       cabinetId: "cab-parent",
     },
   });
+
+  assert.deepEqual(ownership, {
+    resourceType: "page",
+    virtualPath: "company-a/parent/page-a",
+    companyId: "company-a",
+    cabinetId: "cab-parent",
+    source: "resource_mapping",
+  });
+});
+
+test("cabinet mapping resolution exposes provider-backed mapping metadata", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage(virtualPath) {
+      if (virtualPath !== "company-a/parent/page-a") {
+        return null;
+      }
+      return {
+        companyId: "company-a",
+        cabinetId: "cab-parent",
+      };
+    },
+  });
+
+  const resolution = await resolveCabinetMappingForPath("company-a/parent/page-a");
+
+  assert.deepEqual(resolution, {
+    virtualPath: "company-a/parent/page-a",
+    mapping: {
+      companyId: "company-a",
+      cabinetId: "cab-parent",
+    },
+    source: "provider",
+  });
+});
+
+test("cabinet mapping resolution normalizes wrapped paths before provider lookup", async () => {
+  let receivedPath: string | null = null;
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage(virtualPath) {
+      receivedPath = virtualPath;
+      return {
+        companyId: "company-a",
+        cabinetId: "cab-parent",
+      };
+    },
+  });
+
+  const resolution = await resolveCabinetMappingForPath("/company-a/parent/page-a/");
+
+  assert.equal(receivedPath, "company-a/parent/page-a");
+  assert.deepEqual(resolution, {
+    virtualPath: "company-a/parent/page-a",
+    mapping: {
+      companyId: "company-a",
+      cabinetId: "cab-parent",
+    },
+    source: "provider",
+  });
+});
+
+test("cabinet mapping resolution reports none when provider cannot map path", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage() {
+      return null;
+    },
+  });
+
+  const resolution = await resolveCabinetMappingForPath("company-a/unmapped/page-a");
+
+  assert.deepEqual(resolution, {
+    virtualPath: "company-a/unmapped/page-a",
+    mapping: null,
+    source: "none",
+  });
+});
+
+test("ownership chain can be reconstructed directly from virtual path mapping", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage(virtualPath) {
+      if (virtualPath === "company-a/parent/page-a") {
+        return {
+          companyId: "company-a",
+          cabinetId: "cab-parent",
+        };
+      }
+      return null;
+    },
+  });
+
+  const ownership = await resolveOwnershipChainFromVirtualPath("/company-a/parent/page-a/");
 
   assert.deepEqual(ownership, {
     resourceType: "page",
@@ -227,6 +637,26 @@ test("ownership chain can be reconstructed from page resource context", () => {
     cabinetId: "cab-parent",
     source: "resource_mapping",
   });
+});
+
+test("derived resource context reuses unified cabinet mapping resolution when ancestor page is absent", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage(virtualPath) {
+      if (virtualPath === "company-a/parent/assets/diagram.png") {
+        return {
+          companyId: "company-a",
+          cabinetId: "cab-parent",
+        };
+      }
+      return null;
+    },
+  });
+
+  const resource = await resolvePageDerivedResourceContext("company-a/parent/assets/diagram.png");
+
+  assert.equal(resource.sourcePath, "company-a/parent/assets/diagram.png");
+  assert.equal(resource.companyId, "company-a");
+  assert.equal(resource.cabinetId, "cab-parent");
 });
 
 test("ownership validation rejects company mismatches before cabinet checks", () => {
@@ -765,6 +1195,67 @@ test("company admin has minimal override for cabinet management only", async () 
   assert.equal(writeDecision.reason, "read_only_role");
 });
 
+test("cabinet context falls back to membership default when request and resource cabinet are absent", async () => {
+  setCabinetMembershipProvider({
+    async getMemberships() {
+      return {
+        memberships: [
+          { cabinetId: "cab-a", companyId: "company-1", role: "cabinet_viewer" },
+          { cabinetId: "cab-b", companyId: "company-1", role: "cabinet_admin", isDefault: true },
+        ],
+        defaultCabinetId: "cab-b",
+      };
+    },
+  });
+
+  const cabinetContext = await resolveCabinetContextForRequest({
+    req: new NextRequest("http://localhost/api/pages/notes/example"),
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+    },
+  });
+
+  assert.equal(cabinetContext.cabinetId, "cab-b");
+  assert.equal(cabinetContext.source, "membership_default");
+  assert.equal(cabinetContext.membershipDefaultCabinetId, "cab-b");
+  assert.deepEqual(cabinetContext.membershipCabinetIds, ["cab-a", "cab-b"]);
+  assert.equal(cabinetContext.roleByCabinetId["cab-b"], "cabinet_admin");
+});
+
+test("cabinet context reports mismatch when request cabinet is outside active company memberships", async () => {
+  setCabinetMembershipProvider({
+    async getMemberships() {
+      return {
+        memberships: [
+          { cabinetId: "cab-a", companyId: "company-1", role: "cabinet_viewer" },
+          { cabinetId: "cab-external", companyId: "company-2", role: "cabinet_admin" },
+        ],
+        defaultCabinetId: "cab-a",
+      };
+    },
+  });
+
+  const cabinetContext = await resolveCabinetContextForRequest({
+    req: new NextRequest("http://localhost/api/pages/notes/example?cabinetId=cab-external"),
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+    },
+  });
+
+  assert.equal(cabinetContext.cabinetId, null);
+  assert.equal(cabinetContext.source, "none");
+  assert.equal(cabinetContext.denyReason, "cabinet_mismatch");
+  assert.equal(cabinetContext.membershipDefaultCabinetId, "cab-a");
+  assert.deepEqual(cabinetContext.membershipCabinetIds, ["cab-a"]);
+  assert.deepEqual(cabinetContext.roleByCabinetId, { "cab-a": "cabinet_viewer" });
+});
+
 test("cabinet context resolves request cabinet and membership roles", async () => {
   setCabinetMembershipProvider({
     async getMemberships() {
@@ -1011,6 +1502,154 @@ test("cabinet admin can manage reporting without company admin override", async 
 });
 
 
+test("cabinet viewer receives reporting-specific denial messages for read and manage actions", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: "cab-parent",
+      companyId: "company-1",
+      requiresCabinetContext: true,
+    },
+    cabinetContext: {
+      ...baseCabinetContext,
+      cabinetId: "cab-parent",
+      companyId: "company-1",
+      roleByCabinetId: { "cab-parent": "cabinet_viewer" },
+    },
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, false);
+  assert.equal(readDecision.reason, "forbidden");
+  assert.equal(readDecision.status, 403);
+  assert.equal(readDecision.message, "Cabinet admin access required for reporting reads");
+  assert.equal(manageDecision.allowed, false);
+  assert.equal(manageDecision.reason, "forbidden");
+  assert.equal(manageDecision.status, 403);
+  assert.equal(
+    manageDecision.message,
+    "Cabinet admin access required for reporting management",
+  );
+});
+
+test("company admin reporting override does not bypass cabinet mismatch", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: companyAdminContext,
+    resourceContext: {
+      ...baseResource,
+      cabinetId: "cab-parent",
+      companyId: "company-1",
+      requiresCabinetContext: true,
+    },
+    cabinetContext: {
+      ...baseCabinetContext,
+      cabinetId: "cab-other",
+      companyId: "company-1",
+      roleByCabinetId: { "cab-other": "cabinet_viewer" },
+    },
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, false);
+  assert.equal(readDecision.reason, "cabinet_mismatch");
+  assert.equal(readDecision.status, 403);
+  assert.equal(manageDecision.allowed, false);
+  assert.equal(manageDecision.reason, "cabinet_mismatch");
+  assert.equal(manageDecision.status, 403);
+});
+
+test("company admin reporting override does not bypass company mismatch", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: companyAdminContext,
+    resourceContext: {
+      ...baseResource,
+      cabinetId: "cab-parent",
+      companyId: "company-2",
+      requiresCabinetContext: true,
+    },
+    cabinetContext: {
+      ...baseCabinetContext,
+      cabinetId: "cab-parent",
+      companyId: "company-1",
+      roleByCabinetId: { "cab-parent": "cabinet_admin" },
+    },
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, false);
+  assert.equal(readDecision.reason, "company_mismatch");
+  assert.equal(readDecision.status, 403);
+  assert.equal(manageDecision.allowed, false);
+  assert.equal(manageDecision.reason, "company_mismatch");
+  assert.equal(manageDecision.status, 403);
+});
+
+test("cabinet admin reporting access does not bypass company mismatch", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: "cab-parent",
+      companyId: "company-2",
+      requiresCabinetContext: true,
+    },
+    cabinetContext: parentCabinetAdminContext,
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, false);
+  assert.equal(readDecision.reason, "company_mismatch");
+  assert.equal(readDecision.status, 403);
+  assert.equal(manageDecision.allowed, false);
+  assert.equal(manageDecision.reason, "company_mismatch");
+  assert.equal(manageDecision.status, 403);
+});
+
 test("cabinet editor cannot read or manage reporting for cabinet resources", async () => {
   const sharedInput = {
     actor: editorActor,
@@ -1093,6 +1732,451 @@ test("parent cabinet admin can read reporting but cannot derive child raw write"
   assert.equal(childWriteDecision.reason, "cabinet_mismatch");
 });
 
+test("cabinet admin reporting access requires parent cabinet context for read and manage", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: "cab-parent",
+      companyId: "company-1",
+      requiresCabinetContext: true,
+    },
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    cabinetContext: null,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    cabinetContext: null,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, false);
+  assert.equal(readDecision.reason, "missing_cabinet_context");
+  assert.equal(readDecision.status, 400);
+  assert.equal(manageDecision.allowed, false);
+  assert.equal(manageDecision.reason, "missing_cabinet_context");
+  assert.equal(manageDecision.status, 400);
+});
+
+test("reporting actions still allow company admin override without active membership resolution", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-2"],
+      roleByCompanyId: { "company-1": "company_admin" },
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: "cab-parent",
+      companyId: "company-1",
+      requiresCabinetContext: true,
+    },
+    cabinetContext: parentCabinetAdminContext,
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, true);
+  assert.equal(manageDecision.allowed, true);
+});
+
+test("reporting actions still allow company admin override without active company context", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: null,
+      membershipCompanyIds: ["company-1"],
+      roleByCompanyId: { "company-1": "company_admin" },
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: "cab-parent",
+      companyId: "company-1",
+      requiresCabinetContext: true,
+    },
+    cabinetContext: parentCabinetAdminContext,
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, true);
+  assert.equal(manageDecision.allowed, true);
+});
+
+test("reporting actions can still resolve through cabinet admin context when resource cabinet id is absent", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: null,
+      companyId: "company-1",
+      requiresCabinetContext: true,
+    },
+    cabinetContext: parentCabinetAdminContext,
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, true);
+  assert.equal(manageDecision.allowed, true);
+});
+
+test("company admin reporting override still requires cabinet context when resource cabinet id is absent", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+      roleByCompanyId: { "company-1": "company_admin" },
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: null,
+      companyId: "company-1",
+      requiresCabinetContext: true,
+    },
+    cabinetContext: null,
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, false);
+  assert.equal(readDecision.reason, "missing_cabinet_context");
+  assert.equal(readDecision.status, 400);
+  assert.equal(manageDecision.allowed, false);
+  assert.equal(manageDecision.reason, "missing_cabinet_context");
+  assert.equal(manageDecision.status, 400);
+});
+
+test("cabinet admin reporting access still rejects company mismatch when cabinet context is present", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: "cab-parent",
+      companyId: "company-2",
+      requiresCabinetContext: true,
+    },
+    cabinetContext: parentCabinetAdminContext,
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, false);
+  assert.equal(readDecision.reason, "company_mismatch");
+  assert.equal(readDecision.status, 403);
+  assert.equal(manageDecision.allowed, false);
+  assert.equal(manageDecision.reason, "company_mismatch");
+  assert.equal(manageDecision.status, 403);
+});
+
+test("cabinet admin reporting access still allows missing resource company id when cabinet context is present", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: "cab-parent",
+      companyId: null,
+      requiresCabinetContext: true,
+    },
+    cabinetContext: parentCabinetAdminContext,
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, true);
+  assert.equal(manageDecision.allowed, true);
+});
+
+test("company admin reporting override still allows missing resource company id when cabinet context is present", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+      roleByCompanyId: { "company-1": "company_admin" },
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: "cab-parent",
+      companyId: null,
+      requiresCabinetContext: true,
+    },
+    cabinetContext: parentCabinetAdminContext,
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, true);
+  assert.equal(manageDecision.allowed, true);
+});
+
+test("reporting actions still reject known company mismatch when resource cabinet id is absent", async () => {
+  const cabinetAdminInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: null,
+      companyId: "company-2",
+      requiresCabinetContext: true,
+    },
+    cabinetContext: parentCabinetAdminContext,
+  };
+
+  const companyAdminInput = {
+    ...cabinetAdminInput,
+    companyContext: {
+      ...cabinetAdminInput.companyContext,
+      roleByCompanyId: { "company-1": "company_admin" },
+    },
+  };
+
+  const cabinetReadDecision = await authorizeUserAction({
+    ...cabinetAdminInput,
+    action: "read_reporting",
+  });
+  const cabinetManageDecision = await authorizeUserAction({
+    ...cabinetAdminInput,
+    action: "manage_reporting",
+  });
+  const companyReadDecision = await authorizeUserAction({
+    ...companyAdminInput,
+    action: "read_reporting",
+  });
+  const companyManageDecision = await authorizeUserAction({
+    ...companyAdminInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(cabinetReadDecision.allowed, false);
+  assert.equal(cabinetReadDecision.reason, "company_mismatch");
+  assert.equal(cabinetReadDecision.status, 403);
+  assert.equal(cabinetManageDecision.allowed, false);
+  assert.equal(cabinetManageDecision.reason, "company_mismatch");
+  assert.equal(cabinetManageDecision.status, 403);
+
+  assert.equal(companyReadDecision.allowed, false);
+  assert.equal(companyReadDecision.reason, "company_mismatch");
+  assert.equal(companyReadDecision.status, 403);
+  assert.equal(companyManageDecision.allowed, false);
+  assert.equal(companyManageDecision.reason, "company_mismatch");
+  assert.equal(companyManageDecision.status, 403);
+});
+
+test("reporting fallback does not bypass known resource cabinet mismatches when company id is missing", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+      roleByCompanyId: { "company-1": "company_admin" },
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: "cab-other",
+      companyId: null,
+      requiresCabinetContext: true,
+    },
+    cabinetContext: parentCabinetAdminContext,
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, false);
+  assert.equal(readDecision.reason, "cabinet_mismatch");
+  assert.equal(readDecision.status, 403);
+  assert.equal(manageDecision.allowed, false);
+  assert.equal(manageDecision.reason, "cabinet_mismatch");
+  assert.equal(manageDecision.status, 403);
+});
+
+test("cabinet admin reporting access still allows missing resource company and cabinet ids when cabinet context is present", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: null,
+      companyId: null,
+      requiresCabinetContext: true,
+    },
+    cabinetContext: parentCabinetAdminContext,
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, true);
+  assert.equal(manageDecision.allowed, true);
+});
+
+test("company admin reporting override still allows missing resource company and cabinet ids when cabinet context is present", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+      roleByCompanyId: { "company-1": "company_admin" },
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: null,
+      companyId: null,
+      requiresCabinetContext: true,
+    },
+    cabinetContext: parentCabinetAdminContext,
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, true);
+  assert.equal(manageDecision.allowed, true);
+});
+
+test("company admin unresolved ownership override still requires concrete cabinet context", async () => {
+  const sharedInput = {
+    actor: editorActor,
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+      roleByCompanyId: { "company-1": "company_admin" },
+    },
+    resourceContext: {
+      ...baseResource,
+      cabinetId: null,
+      companyId: null,
+      requiresCabinetContext: true,
+    },
+    cabinetContext: null,
+  };
+
+  const readDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "read_reporting",
+  });
+  const manageDecision = await authorizeUserAction({
+    ...sharedInput,
+    action: "manage_reporting",
+  });
+
+  assert.equal(readDecision.allowed, false);
+  assert.equal(readDecision.reason, "missing_cabinet_context");
+  assert.equal(readDecision.status, 400);
+  assert.equal(manageDecision.allowed, false);
+  assert.equal(manageDecision.reason, "missing_cabinet_context");
+  assert.equal(manageDecision.status, 400);
+});
+
 test("reporting relation service rejects self link", async () => {
   const relationService = createReportingRelationService({
     provider: createInMemoryReportingRelationProvider(),
@@ -1133,6 +2217,88 @@ test("reporting relation service rejects unresolved cabinets", async () => {
       }),
     (error: unknown) => error instanceof ReportingRelationValidationError && error.code === "invalid_cabinet",
   );
+});
+
+test("reporting relation service resolves child ownership from cabinet mapping path fallback", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage(virtualPath) {
+      if (virtualPath === "company-1/child-cabinet") {
+        return {
+          companyId: "company-1",
+          cabinetId: "cab-child",
+        };
+      }
+      return null;
+    },
+  });
+
+  const relationService = createReportingRelationService({
+    provider: createInMemoryReportingRelationProvider(),
+    cabinetOwnershipProvider: {
+      async getCabinet({ cabinetId }) {
+        if (cabinetId === "cab-parent") {
+          return { cabinetId, companyId: "company-1" };
+        }
+        return null;
+      },
+    },
+  });
+
+  const link = await relationService.createLink({
+    companyId: "company-1",
+    parentCabinetId: "cab-parent",
+    childCabinetId: "cab-child",
+    childCabinetPath: "company-1/child-cabinet",
+    actor: editorActor,
+  });
+
+  assert.equal(link.parentCabinetId, "cab-parent");
+  assert.equal(link.childCabinetId, "cab-child");
+  assert.equal(link.companyId, "company-1");
+  assert.equal(link.status, "active");
+});
+
+test("reporting relation service resolves both parent and child ownership from cabinet mapping path fallback", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage(virtualPath) {
+      if (virtualPath === "company-1/parent-cabinet") {
+        return {
+          companyId: "company-1",
+          cabinetId: "cab-parent",
+        };
+      }
+      if (virtualPath === "company-1/child-cabinet") {
+        return {
+          companyId: "company-1",
+          cabinetId: "cab-child",
+        };
+      }
+      return null;
+    },
+  });
+
+  const relationService = createReportingRelationService({
+    provider: createInMemoryReportingRelationProvider(),
+    cabinetOwnershipProvider: {
+      async getCabinet() {
+        return null;
+      },
+    },
+  });
+
+  const link = await relationService.createLink({
+    companyId: "company-1",
+    parentCabinetId: "cab-parent",
+    parentCabinetPath: "company-1/parent-cabinet",
+    childCabinetId: "cab-child",
+    childCabinetPath: "company-1/child-cabinet",
+    actor: editorActor,
+  });
+
+  assert.equal(link.parentCabinetId, "cab-parent");
+  assert.equal(link.childCabinetId, "cab-child");
+  assert.equal(link.companyId, "company-1");
+  assert.equal(link.status, "active");
 });
 
 test("reporting relation service rejects duplicate active parent", async () => {
@@ -1471,8 +2637,8 @@ test("reporting API services expose active linked snapshots", async () => {
 });
 
 
-test("reporting scope validation rejects company mismatches before cabinet checks", () => {
-  const decision = validateReportingScopeAlignment({
+test("reporting scope validation rejects company mismatches before cabinet checks", async () => {
+  const decision = await validateReportingScopeAlignment({
     companyId: "company-b",
     parentCabinetId: "cab-parent",
     companyContext: {
@@ -1491,8 +2657,8 @@ test("reporting scope validation rejects company mismatches before cabinet check
   assert.equal(decision?.reason, "company_mismatch");
 });
 
-test("reporting scope validation rejects cabinet mismatches for parent cabinet", () => {
-  const decision = validateReportingScopeAlignment({
+test("reporting scope validation rejects cabinet mismatches for parent cabinet", async () => {
+  const decision = await validateReportingScopeAlignment({
     companyId: "company-a",
     parentCabinetId: "cab-parent",
     companyContext: {
@@ -1509,6 +2675,58 @@ test("reporting scope validation rejects cabinet mismatches for parent cabinet",
 
   assert.equal(decision?.allowed, false);
   assert.equal(decision?.reason, "cabinet_mismatch");
+});
+
+test("reporting scope validation ignores unresolved company mismatches inferred from parent cabinet path mapping", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage() {
+      return null;
+    },
+  });
+
+  const decision = await validateReportingScopeAlignment({
+    companyId: "company-a",
+    parentCabinetId: "cab-parent",
+    parentCabinetPath: "company-b/parent-cabinet",
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-a",
+      membershipCompanyIds: ["company-a"],
+    },
+    cabinetContext: {
+      ...baseCabinetContext,
+      cabinetId: "cab-parent",
+      companyId: "company-a",
+    },
+  });
+
+  assert.equal(decision, null);
+});
+
+test("reporting scope validation ignores unresolved cabinet mismatches inferred from parent cabinet path mapping", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage() {
+      return null;
+    },
+  });
+
+  const decision = await validateReportingScopeAlignment({
+    companyId: "company-a",
+    parentCabinetId: "cab-parent",
+    parentCabinetPath: "company-a/other-cabinet",
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-a",
+      membershipCompanyIds: ["company-a"],
+    },
+    cabinetContext: {
+      ...baseCabinetContext,
+      cabinetId: "cab-parent",
+      companyId: "company-a",
+    },
+  });
+
+  assert.equal(decision, null);
 });
 
 test("reporting relation service updates link status", async () => {
@@ -1535,6 +2753,166 @@ test("reporting relation service updates link status", async () => {
   });
 
   assert.equal(updated.status, "paused");
+});
+
+test("reporting read service rejects reporting scope company mismatch inferred from parent cabinet path mapping", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage(virtualPath) {
+      if (virtualPath === "company-2/parent-cabinet") {
+        return {
+          companyId: "company-2",
+          cabinetId: "cab-parent",
+        };
+      }
+      return null;
+    },
+  });
+
+  const readService = createReportingReadService({
+    relationService: createReportingRelationService({
+      provider: createInMemoryReportingRelationProvider(),
+    }),
+    snapshotProvider: createInMemoryReportingSnapshotProvider(),
+  });
+
+  await assert.rejects(
+    () =>
+      readService.getReportingForParent({
+        companyId: "company-1",
+        parentCabinetId: "cab-parent",
+        parentCabinetPath: "company-2/parent-cabinet",
+        actor: editorActor,
+        companyContext: {
+          ...baseCompanyContext,
+          companyId: "company-1",
+          membershipCompanyIds: ["company-1"],
+        },
+        cabinetContext: {
+          ...baseCabinetContext,
+          cabinetId: "cab-parent",
+          companyId: "company-1",
+          roleByCabinetId: { "cab-parent": "cabinet_admin" },
+        },
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      "decision" in error &&
+      (error as Error & { decision?: { reason?: string } }).decision?.reason === "company_mismatch",
+  );
+});
+
+test("reporting read service rejects reporting scope cabinet mismatch inferred from parent cabinet path mapping", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage(virtualPath) {
+      if (virtualPath === "company-1/other-parent") {
+        return {
+          companyId: "company-1",
+          cabinetId: "cab-other",
+        };
+      }
+      return null;
+    },
+  });
+
+  const readService = createReportingReadService({
+    relationService: createReportingRelationService({
+      provider: createInMemoryReportingRelationProvider(),
+    }),
+    snapshotProvider: createInMemoryReportingSnapshotProvider(),
+  });
+
+  await assert.rejects(
+    () =>
+      readService.getReportingForParent({
+        companyId: "company-1",
+        parentCabinetId: "cab-parent",
+        parentCabinetPath: "company-1/other-parent",
+        actor: editorActor,
+        companyContext: {
+          ...baseCompanyContext,
+          companyId: "company-1",
+          membershipCompanyIds: ["company-1"],
+        },
+        cabinetContext: {
+          ...baseCabinetContext,
+          cabinetId: "cab-parent",
+          companyId: "company-1",
+          roleByCabinetId: { "cab-parent": "cabinet_admin" },
+        },
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      "decision" in error &&
+      (error as Error & { decision?: { reason?: string } }).decision?.reason === "cabinet_mismatch",
+  );
+});
+
+test("reporting refresh service rejects reporting scope company mismatch inferred from parent cabinet path mapping", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage(virtualPath) {
+      if (virtualPath === "company-2/parent-cabinet") {
+        return {
+          companyId: "company-2",
+          cabinetId: "cab-parent",
+        };
+      }
+      return null;
+    },
+  });
+
+  const refreshService = createReportingSnapshotRefreshService({
+    relationService: createReportingRelationService({
+      provider: createInMemoryReportingRelationProvider(),
+    }),
+    snapshotProvider: createInMemoryReportingSnapshotProvider(),
+  });
+
+  await assert.rejects(
+    () =>
+      refreshService.refreshSnapshotsForParent({
+        companyId: "company-1",
+        parentCabinetId: "cab-parent",
+        parentCabinetPath: "company-2/parent-cabinet",
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      "decision" in error &&
+      (error as Error & { decision?: { reason?: string } }).decision?.reason === "company_mismatch",
+  );
+});
+
+test("reporting refresh service rejects reporting scope cabinet mismatch inferred from parent cabinet path mapping", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage(virtualPath) {
+      if (virtualPath === "company-1/other-parent") {
+        return {
+          companyId: "company-1",
+          cabinetId: "cab-other",
+        };
+      }
+      return null;
+    },
+  });
+
+  const refreshService = createReportingSnapshotRefreshService({
+    relationService: createReportingRelationService({
+      provider: createInMemoryReportingRelationProvider(),
+    }),
+    snapshotProvider: createInMemoryReportingSnapshotProvider(),
+  });
+
+  await assert.rejects(
+    () =>
+      refreshService.refreshSnapshotsForParent({
+        companyId: "company-1",
+        parentCabinetId: "cab-parent",
+        parentCabinetPath: "company-1/other-parent",
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      "decision" in error &&
+      (error as Error & { decision?: { reason?: string } }).decision?.reason === "cabinet_mismatch",
+  );
 });
 
 test("reporting route returns snapshots for authorized parent cabinet admin", async () => {
@@ -1642,6 +3020,118 @@ test("reporting read service rejects reporting scope company mismatch", async ()
       "decision" in error &&
       (error as Error & { decision?: { reason?: string } }).decision?.reason === "company_mismatch",
   );
+});
+
+test("reporting route accepts mapped cabinetPath when it resolves to the requested company and cabinet", async () => {
+  setCompanyMembershipProvider({
+    async getMemberships() {
+      return {
+        memberships: [{ companyId: "company-1", role: "company_member" }],
+        defaultCompanyId: null,
+      };
+    },
+    async getWorkspaceDefaultCompanyId() {
+      return null;
+    },
+  });
+  setCabinetMembershipProvider({
+    async getMemberships() {
+      return {
+        memberships: [{ cabinetId: "cab-parent", companyId: "company-1", role: "cabinet_admin" }],
+        defaultCabinetId: null,
+      };
+    },
+  });
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage(virtualPath) {
+      if (virtualPath === "company-1/parent-cabinet") {
+        return {
+          companyId: "company-1",
+          cabinetId: "cab-parent",
+        };
+      }
+      return null;
+    },
+  });
+  setReportingRelationProvider(createInMemoryReportingRelationProvider());
+  setReportingSnapshotProvider(createInMemoryReportingSnapshotProvider());
+
+  const req = new NextRequest(
+    "http://localhost/api/cabinets/cab-parent/reporting?companyId=company-1&cabinetPath=company-1/parent-cabinet",
+    {
+      method: "GET",
+      headers: {
+        "x-user-id": "editor-1",
+        "x-user-name": "editor",
+        "x-user-role": "editor",
+        "x-company-id": "company-1",
+        "x-cabinet-id": "cab-parent",
+      },
+    },
+  );
+
+  const response = await getCabinetReporting(req, {
+    params: Promise.resolve({ cabinetId: "cab-parent" }),
+  });
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.scope?.companyId, "company-1");
+  assert.equal(payload.scope?.parentCabinetId, "cab-parent");
+});
+
+test("validateReportingScopeAlignment ignores unresolved company mappings from cabinetPath", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage() {
+      return null;
+    },
+  });
+
+  const decision = await validateReportingScopeAlignment({
+    companyId: "company-1",
+    parentCabinetId: "cab-parent",
+    parentCabinetPath: "company-2/parent-cabinet",
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+    },
+    cabinetContext: {
+      ...baseCabinetContext,
+      cabinetId: "cab-parent",
+      companyId: "company-1",
+      roleByCabinetId: { "cab-parent": "cabinet_admin" },
+    },
+  });
+
+  assert.equal(decision, null);
+});
+
+test("validateReportingScopeAlignment ignores cabinetPath mappings that cannot be resolved", async () => {
+  setCabinetResourceMappingProvider({
+    async resolveCabinetForPage() {
+      return null;
+    },
+  });
+
+  const decision = await validateReportingScopeAlignment({
+    companyId: "company-1",
+    parentCabinetId: "cab-parent",
+    parentCabinetPath: "company-1/unmapped-parent",
+    companyContext: {
+      ...baseCompanyContext,
+      companyId: "company-1",
+      membershipCompanyIds: ["company-1"],
+    },
+    cabinetContext: {
+      ...baseCabinetContext,
+      cabinetId: "cab-parent",
+      companyId: "company-1",
+      roleByCabinetId: { "cab-parent": "cabinet_admin" },
+    },
+  });
+
+  assert.equal(decision, null);
 });
 
 test("reporting route rejects cabinet mismatch before refresh", async () => {
@@ -1877,7 +3367,7 @@ test("reporting route uses configured relation and snapshot providers", async ()
   );
   resetReportingReadService();
 
-  const req = new NextRequest("http://localhost/api/cabinets/cab-parent/reporting?companyId=company-1", {
+  const req = new NextRequest("http://localhost/api/cabinets/cab-parent/reporting?companyId=company-1&cabinetPath=company-1/root-parent", {
     method: "GET",
     headers: {
       "x-user-id": "user-company-admin",
@@ -1896,6 +3386,8 @@ test("reporting route uses configured relation and snapshot providers", async ()
   assert.equal(response.status, 200);
   assert.equal(payload.scope?.companyId, "company-1");
   assert.equal(payload.scope?.parentCabinetId, "cab-parent");
+  assert.equal(payload.scope?.parentCabinetPath, "company-1/root-parent");
+  assert.deepEqual(payload.scope?.activeChildCabinetIds, ["cab-child-from-service"]);
   assert.equal(payload.snapshots?.length, 1);
   assert.equal(payload.snapshots?.[0]?.childCabinetId, "cab-child-from-service");
   assert.equal(payload.snapshots?.[0]?.summary.itemCount, 9);
@@ -1946,15 +3438,18 @@ test("reporting-links GET returns configured links for company admin", async () 
     ]),
   );
 
-  const req = new NextRequest("http://localhost/api/cabinets/cab-parent/reporting-links", {
-    headers: {
-      "x-user-id": "user-company-admin",
-      "x-user-name": "company-admin",
-      "x-user-role": "admin",
-      "x-company-id": "company-1",
-      "x-cabinet-id": "cab-parent",
+  const req = new NextRequest(
+    "http://localhost/api/cabinets/cab-parent/reporting-links?cabinetPath=company-1/root-parent",
+    {
+      headers: {
+        "x-user-id": "user-company-admin",
+        "x-user-name": "company-admin",
+        "x-user-role": "admin",
+        "x-company-id": "company-1",
+        "x-cabinet-id": "cab-parent",
+      },
     },
-  });
+  );
 
   const response = await getCabinetReportingLinks(req, {
     params: Promise.resolve({ cabinetId: "cab-parent" }),
@@ -1964,6 +3459,8 @@ test("reporting-links GET returns configured links for company admin", async () 
   assert.equal(response.status, 200);
   assert.equal(payload.scope?.companyId, "company-1");
   assert.equal(payload.scope?.parentCabinetId, "cab-parent");
+  assert.equal(payload.scope?.parentCabinetPath, "company-1/root-parent");
+  assert.deepEqual(payload.scope?.activeChildCabinetIds, ["cab-child-a"]);
   assert.equal(payload.links.length, 2);
   assert.equal(payload.links[0]?.childCabinetId, "cab-child-a");
   assert.equal(payload.links[1]?.status, "paused");
@@ -2149,6 +3646,86 @@ test("reporting-links GET requires company context", async () => {
   );
 });
 
+test("reporting route derives workspace company context from legacy company config when request company is absent", async () => {
+  setCompanyMembershipProvider({
+    async getMemberships() {
+      return {
+        memberships: [{ companyId: "jyutech.cn", role: "company_admin" }],
+        defaultCompanyId: null,
+      };
+    },
+  });
+  setCabinetMembershipProvider({
+    async getMemberships() {
+      return {
+        memberships: [{ cabinetId: "jyutechcn-root", companyId: "jyutech.cn", role: "cabinet_admin" }],
+        defaultCabinetId: null,
+      };
+    },
+  });
+  setReportingRelationProvider(createInMemoryReportingRelationProvider());
+  setReportingSnapshotProvider(createInMemoryReportingSnapshotProvider());
+
+  const req = new NextRequest("http://localhost/api/cabinets/jyutechcn-root/reporting?cabinetPath=.", {
+    headers: {
+      "x-user-id": "editor-1",
+      "x-user-name": "editor",
+      "x-user-role": "editor",
+      "x-cabinet-id": "jyutechcn-root",
+    },
+  });
+
+  const response = await getCabinetReporting(req, {
+    params: Promise.resolve({ cabinetId: "jyutechcn-root" }),
+  });
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.scope.companyId, "jyutech.cn");
+  assert.equal(payload.scope.parentCabinetId, "jyutechcn-root");
+});
+
+test("reporting routes derive legacy workspace company context for admin users without membership providers", async () => {
+  setReportingRelationProvider(createInMemoryReportingRelationProvider());
+  setReportingSnapshotProvider(createInMemoryReportingSnapshotProvider());
+
+  const reportingReq = new NextRequest("http://localhost/api/cabinets/jyutechcn-root/reporting?cabinetPath=.", {
+    headers: {
+      "x-user-id": "22ee8838-b11d-4723-83ea-41e8233ed4a3",
+      "x-user-name": "admin",
+      "x-user-role": "admin",
+      "x-cabinet-id": "jyutechcn-root",
+    },
+  });
+
+  const reportingResponse = await getCabinetReporting(reportingReq, {
+    params: Promise.resolve({ cabinetId: "jyutechcn-root" }),
+  });
+  const reportingPayload = await reportingResponse.json();
+
+  assert.equal(reportingResponse.status, 200);
+  assert.equal(reportingPayload.scope.companyId, "jyutech.cn");
+  assert.equal(reportingPayload.scope.parentCabinetId, "jyutechcn-root");
+
+  const linksReq = new NextRequest("http://localhost/api/cabinets/jyutechcn-root/reporting-links?cabinetPath=.", {
+    headers: {
+      "x-user-id": "22ee8838-b11d-4723-83ea-41e8233ed4a3",
+      "x-user-name": "admin",
+      "x-user-role": "admin",
+      "x-cabinet-id": "jyutechcn-root",
+    },
+  });
+
+  const linksResponse = await getCabinetReportingLinks(linksReq, {
+    params: Promise.resolve({ cabinetId: "jyutechcn-root" }),
+  });
+  const linksPayload = await linksResponse.json();
+
+  assert.equal(linksResponse.status, 200);
+  assert.equal(linksPayload.scope.companyId, "jyutech.cn");
+  assert.equal(linksPayload.scope.parentCabinetId, "jyutechcn-root");
+});
+
 test("reporting-links POST and PATCH work for company admin", async () => {
   setCompanyMembershipProvider({
     async getMemberships() {
@@ -2188,7 +3765,11 @@ test("reporting-links POST and PATCH work for company admin", async () => {
       "x-user-role": "editor",
       "x-company-id": "company-1",
     },
-    body: JSON.stringify({ childCabinetId: "cab-child" }),
+    body: JSON.stringify({
+      childCabinetId: "cab-child",
+      parentCabinetPath: "company-1/parent-cabinet",
+      childCabinetPath: "company-1/child-cabinet",
+    }),
   });
 
   const createResponse = await postCabinetReportingLinks(createReq, {
@@ -2236,3 +3817,54 @@ test("reporting-links POST and PATCH work for company admin", async () => {
   assert.equal(patchPayload.link.status, "paused");
 });
 
+test("reporting-links POST resolves runtime cabinet ownership from manifest paths without injected providers", async () => {
+  setCompanyMembershipProvider({
+    async getMemberships() {
+      return {
+        memberships: [{ companyId: "company-1", role: "company_admin" }],
+        defaultCompanyId: null,
+      };
+    },
+    async getWorkspaceDefaultCompanyId() {
+      return null;
+    },
+  });
+  setCabinetMembershipProvider({
+    async getMemberships() {
+      return {
+        memberships: [{ cabinetId: "jyutechcn-root", companyId: "company-1", role: "cabinet_admin" }],
+        defaultCabinetId: null,
+      };
+    },
+  });
+  setReportingRelationProvider(createInMemoryReportingRelationProvider());
+
+  const createReq = new NextRequest(
+    "http://localhost/api/cabinets/jyutechcn-root/reporting-links?cabinetPath=.",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": "editor-1",
+        "x-user-name": "editor",
+        "x-user-role": "editor",
+        "x-company-id": "company-1",
+      },
+      body: JSON.stringify({
+        childCabinetId: "vc-os",
+        childCabinetPath: "vc-os",
+        parentCabinetPath: ".",
+      }),
+    },
+  );
+
+  const createResponse = await postCabinetReportingLinks(createReq, {
+    params: Promise.resolve({ cabinetId: "jyutechcn-root" }),
+  });
+  const createPayload = await createResponse.json();
+
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.link.parentCabinetId, "jyutechcn-root");
+  assert.equal(createPayload.link.childCabinetId, "vc-os-root");
+  assert.equal(createPayload.link.companyId, "company-1");
+});

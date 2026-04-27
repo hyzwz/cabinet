@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FolderTree } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CABINET_VISIBILITY_OPTIONS } from "@/lib/cabinets/visibility";
+import { getCabinetVisibilityOptions } from "@/lib/cabinets/visibility";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { sortOrgAgents, startCase } from "./cabinet-utils";
 import { AgentStatusCard } from "./agent-status-card";
@@ -39,7 +39,11 @@ export function AgentStatusGrid({
   onAgentSend,
   onChildCabinetClick,
 }: AgentStatusGridProps) {
-  const { t, format } = useLocale();
+  const { locale, t, format } = useLocale();
+  const cabinetVisibilityOptions = useMemo(
+    () => getCabinetVisibilityOptions(locale),
+    [locale]
+  );
   const [conversationMap, setConversationMap] = useState<
     Map<string, AgentConversationInfo>
   >(new Map());
@@ -127,7 +131,7 @@ export function AgentStatusGrid({
           <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/55">
             {t("cabinets.grid.scope")}
           </span>
-          {CABINET_VISIBILITY_OPTIONS.map((option) => (
+          {cabinetVisibilityOptions.map((option) => (
             <button
               key={option.value}
               onClick={() => onVisibilityChange(option.value)}

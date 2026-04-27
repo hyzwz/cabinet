@@ -8,6 +8,21 @@ export type ReportingSnapshotFilter = "all" | "present" | "missing";
 export type ReportingFreshnessFilter = "all" | "fresh" | "stale";
 export type ReportingHealthState = "healthy" | "missing" | "stale" | null;
 
+export function buildCabinetReportingApiPath(input: {
+  cabinetId: string;
+  cabinetPath?: string | null;
+  resource: "reporting" | "reporting-links";
+}) {
+  const pathname = `/api/cabinets/${encodeURIComponent(input.cabinetId)}/${input.resource}`;
+  const cabinetPath = input.cabinetPath?.trim();
+  if (!cabinetPath) {
+    return pathname;
+  }
+
+  const searchParams = new URLSearchParams({ cabinetPath });
+  return `${pathname}?${searchParams.toString()}`;
+}
+
 export function formatReportingStatusTone(status: CabinetReportingLinkView["status"]) {
   if (status === "active") return "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
   if (status === "paused") return "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300";

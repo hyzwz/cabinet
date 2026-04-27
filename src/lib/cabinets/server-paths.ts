@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { CABINET_MANIFEST_FILE } from "@/lib/cabinets/files";
-import { DATA_DIR, resolveContentPath } from "@/lib/storage/path-utils";
+import { DATA_DIR, isPathInsideDataDir, resolveContentPath } from "@/lib/storage/path-utils";
 import { fileExists } from "@/lib/storage/fs-operations";
 import { ROOT_CABINET_PATH, normalizeCabinetPath } from "@/lib/cabinets/paths";
 
@@ -34,7 +34,7 @@ export async function findOwningCabinetPathForPage(pagePath: string): Promise<st
     cursor = path.dirname(resolvedPagePath);
   }
 
-  while (cursor.startsWith(DATA_DIR)) {
+  while (isPathInsideDataDir(cursor)) {
     if (await fileExists(path.join(cursor, CABINET_MANIFEST_FILE))) {
       return cabinetPathFromFs(cursor);
     }

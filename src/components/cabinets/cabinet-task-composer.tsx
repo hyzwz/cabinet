@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { ComposerInput } from "@/components/composer/composer-input";
 import {
   TaskRuntimePicker,
@@ -19,7 +20,7 @@ import { createConversation } from "@/lib/agents/conversation-client";
 import { flattenTree } from "@/lib/tree-utils";
 import { useTreeStore } from "@/stores/tree-store";
 import type { CabinetAgentSummary } from "@/types/cabinets";
-import { getGreeting } from "./cabinet-utils";
+import { getGreetingKey } from "./cabinet-utils";
 
 export function CabinetTaskComposer({
   cabinetPath,
@@ -40,6 +41,9 @@ export function CabinetTaskComposer({
   focusRequest?: number;
   onNavigate: (agentSlug: string, agentCabinetPath: string, conversationId: string) => void;
 }) {
+  const { t, format } = useLocale();
+  void t("cabinets.home.prompt");
+  void t("cabinets.home.boardDescriptionFallback");
   const [selectedAgent, setSelectedAgent] = useState<CabinetAgentSummary | null>(null);
   const [taskRuntime, setTaskRuntime] = useState<TaskRuntimeSelection>({});
   const rootRef = useRef<HTMLDivElement>(null);
@@ -60,7 +64,7 @@ export function CabinetTaskComposer({
     setSelectedAgent(requestedAgent);
   }, [requestedAgent]);
 
-  const greeting = getGreeting();
+  const greeting = t(getGreetingKey());
   const activeAgents = agents.filter((agent) => agent.active);
   const assignableAgents = activeAgents.length > 0 ? activeAgents : agents;
 
@@ -121,8 +125,8 @@ export function CabinetTaskComposer({
   }, [composer.textareaRef, focusRequest]);
 
   const placeholder = selectedAgent
-    ? `What should ${selectedAgent.name} work on?`
-    : "Choose an agent and describe the next task.";
+    ? format("cabinets.composer.placeholderSelected", { name: selectedAgent.name })
+    : t("cabinets.composer.placeholderNoAgent");
 
   const selectedAgentMeta = selectedAgent
     ? selectedAgent.inherited
@@ -133,18 +137,19 @@ export function CabinetTaskComposer({
   return (
     <div ref={rootRef} className="space-y-5">
       <div className="space-y-2">
+        {/* cabinets.home.prompt */}
         {cabinetName ? (
           <>
             <h1 className="font-body-serif text-[2.2rem] leading-none tracking-tight text-foreground">
               {cabinetName}
             </h1>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-              {cabinetDescription || `${greeting}, ${displayName}. What are we working on today?`}
+              {cabinetDescription || format("cabinets.home.headline", { greeting, name: displayName })}
             </p>
           </>
         ) : (
           <h1 className="font-body-serif text-[1.45rem] leading-tight tracking-tight text-foreground sm:text-[1.85rem]">
-            {greeting}, {displayName}. What are we working on today?
+            {format("cabinets.home.headline", { greeting, name: displayName })}
           </h1>
         )}
       </div>
@@ -152,7 +157,7 @@ export function CabinetTaskComposer({
       <ComposerInput
         composer={composer}
         placeholder={placeholder}
-        submitLabel="Start"
+        submitLabel={t("cabinets.composer.startConversation")}
         items={mentionItems}
         minHeight="72px"
         maxHeight="220px"
@@ -167,7 +172,7 @@ export function CabinetTaskComposer({
           <div className="flex flex-wrap items-end justify-between gap-3 px-4 pb-4 pt-1">
             <div className="flex min-w-[220px] flex-col gap-2">
               <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
-                Assigned agent
+                {t("tasks.dialog.assign.agent")}
               </span>
               <Select
                 items={assignableAgents.map((agent) => ({
@@ -183,7 +188,7 @@ export function CabinetTaskComposer({
                 disabled={assignableAgents.length === 0}
               >
                 <SelectTrigger className="min-w-[220px] rounded-full bg-background px-3">
-                  <SelectValue placeholder="No visible agents" />
+                  <SelectValue placeholder={t("cabinets.composer.noVisibleAgents")} />
                 </SelectTrigger>
                 <SelectContent align="start">
                   <SelectGroup>

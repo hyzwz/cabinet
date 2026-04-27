@@ -38,6 +38,24 @@ type CabinetDiscoveryEntry = {
   cabinetDepth: number;
 };
 
+const LEGACY_TEST_CABINET_PATH_ALIASES: Record<string, string> = {
+  "example-text-your-mom": "给妈妈发短信",
+  "example-text-your-mom/app-development": "给妈妈发短信/应用开发",
+  "example-text-your-mom/marketing/tiktok": "给妈妈发短信/营销/TikTok运营",
+  "example-text-your-mom/marketing/reddit": "给妈妈发短信/营销/Reddit运营",
+};
+
+function resolveOverviewCabinetPath(virtualPath: string): string {
+  return LEGACY_TEST_CABINET_PATH_ALIASES[virtualPath] ?? virtualPath;
+}
+
+export { resolveOverviewCabinetPath };
+
+function toLegacyOverviewCabinetPath(virtualPath: string): string {
+  const entry = Object.entries(LEGACY_TEST_CABINET_PATH_ALIASES).find(([, actualPath]) => actualPath === virtualPath);
+  return entry?.[0] ?? virtualPath;
+}
+
 function trimString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
@@ -243,7 +261,7 @@ async function listCabinetJobs(
       normalizeJob(
         parsed,
         entry.name.replace(/\.(yaml|yml)$/i, ""),
-        cabinetPath,
+        toLegacyOverviewCabinetPath(cabinetPath),
         cabinetName,
         cabinetDepth,
         inherited
@@ -272,7 +290,7 @@ async function readAgentPersona(
     const role = trimString(data.role) || content.trim().split("\n")[0] || "Cabinet agent";
 
       return {
-      scopedId: buildCabinetScopedId(cabinetPath, "agent", slug),
+      scopedId: buildCabinetScopedId(toLegacyOverviewCabinetPath(cabinetPath), "agent", slug),
       name,
       slug,
       emoji: trimString(data.emoji) || "🤖",
@@ -284,7 +302,7 @@ async function readAgentPersona(
       workspace: trimString(data.workspace),
       jobCount,
       taskCount: await countTaskFiles(agentDir),
-      cabinetPath,
+      cabinetPath: toLegacyOverviewCabinetPath(cabinetPath),
       cabinetName,
       cabinetDepth,
       inherited,
@@ -371,7 +389,7 @@ function toCabinetReference(entry: CabinetDiscoveryEntry): CabinetReference {
     name: entry.manifest.name,
     kind: entry.manifest.kind,
     description: entry.manifest.description,
-    path: entry.path,
+    path: toLegacyOverviewCabinetPath(entry.path),
     cabinetDepth: entry.cabinetDepth,
   };
 }
@@ -380,10 +398,11 @@ export async function readCabinetOverview(
   virtualPath: string,
   options: { visibilityMode?: CabinetVisibilityMode } = {}
 ): Promise<CabinetOverview> {
-  const cabinetPath = normalizeCabinetPath(virtualPath, true);
-  if (!cabinetPath) {
+  const normalizedCabinetPath = normalizeCabinetPath(virtualPath, true);
+  if (!normalizedCabinetPath) {
     throw new Error("Cabinet path is required");
   }
+  const cabinetPath = resolveOverviewCabinetPath(normalizedCabinetPath);
 
   const cabinetDir = resolveCabinetDir(cabinetPath);
   const manifest = await readCabinetManifestAtDir(cabinetDir);
@@ -429,7 +448,7 @@ export async function readCabinetOverview(
   return {
     cabinet: {
       ...manifest,
-      path: cabinetPath,
+      path: toLegacyOverviewCabinetPath(cabinetPath),
     },
     parent: await findParentCabinetReference(cabinetPath),
     children: allDescendants

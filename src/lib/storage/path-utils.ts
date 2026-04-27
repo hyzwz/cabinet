@@ -12,9 +12,18 @@ export const BACKUP_ROOT = isElectronRuntime()
   ? path.join(path.dirname(DATA_DIR), "cabinet-backups")
   : path.resolve(PROJECT_ROOT, "..", ".cabinet-backups", path.basename(PROJECT_ROOT));
 
+export function isPathInside(basePath: string, fsPath: string): boolean {
+  const relative = path.relative(basePath, fsPath);
+  return relative === "" || (!!relative && !relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+export function isPathInsideDataDir(fsPath: string): boolean {
+  return isPathInside(DATA_DIR, fsPath);
+}
+
 export function resolveContentPath(virtualPath: string): string {
   const resolved = path.resolve(DATA_DIR, virtualPath);
-  if (!resolved.startsWith(DATA_DIR)) {
+  if (!isPathInsideDataDir(resolved)) {
     throw new Error("Path traversal detected");
   }
   return resolved;
@@ -24,13 +33,7 @@ export function virtualPathFromFs(fsPath: string): string {
   return fsPath.replace(DATA_DIR, "").replace(/^\//, "");
 }
 
-export function sanitizeFilename(name: string): string {
-  return name
-    .replace(/[^\p{L}\p{N}\s_-]/gu, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .toLowerCase();
-}
+export { sanitizeFilename } from "./sanitize-filename";
 
 /** Shared slug generator — supports CJK and other Unicode scripts */
 export { slugify } from "./slugify";

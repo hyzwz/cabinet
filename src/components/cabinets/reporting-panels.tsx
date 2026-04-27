@@ -1,14 +1,14 @@
-import { ArrowUpRight, Hand, Loader2, RefreshCw, Search, Sparkles } from "lucide-react";
-import type { ReactNode } from "react";
+import { ArrowUpRight, Hand, Loader2, RefreshCw, Search } from "lucide-react";
+import type { RefObject } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/components/i18n/locale-provider";
 import type {
   CabinetReportingLinkView,
   CabinetReportingSnapshotView,
 } from "@/types/cabinets";
 import type { CabinetReportingLinkStatus } from "@/lib/auth/reporting";
 import {
-  getReportingSnapshotAgeMs,
   isReportingSnapshotStale,
   formatReportingStatusTone,
   formatReportingVisibilityTone,
@@ -89,25 +89,26 @@ function formatReportingMissingSeverityLabel(updatedAt?: string | null, status?:
   return "missing severity unknown";
 }
 
-function formatReportingSnapshotFreshnessLabel(generatedAt?: string | null) {
-  if (!generatedAt) return "freshness unknown";
-
-  const ageMs = Date.now() - Date.parse(generatedAt);
-  if (!Number.isFinite(ageMs)) return "freshness unknown";
-
-  const ageDays = ageMs / (1000 * 60 * 60 * 24);
-  if (ageDays >= 7) return "stale for 7d+";
-  if (ageDays >= 3) return "stale for 3d+";
-  if (ageDays >= 1) return "stale for 1d+";
-  return "fresh";
-}
-
 function formatRefreshStatus(lastUpdatedAt?: string | null) {
   if (!lastUpdatedAt) return null;
   return `Last refreshed ${formatReportingTime(lastUpdatedAt)} · ${formatReportingDateTime(lastUpdatedAt)}`;
 }
 
 type RefreshStatusChipVariant = "loading" | "success";
+type RefreshSource = "sync" | "manual" | "review" | "open";
+
+function RefreshSourceIcon({ source }: { source: RefreshSource }) {
+  switch (source) {
+    case "manual":
+      return <Hand className="h-3 w-3" aria-hidden="true" />;
+    case "review":
+      return <Search className="h-3 w-3" aria-hidden="true" />;
+    case "open":
+      return <ArrowUpRight className="h-3 w-3" aria-hidden="true" />;
+    default:
+      return <RefreshCw className="h-3 w-3" aria-hidden="true" />;
+  }
+}
 
 function ReportingRefreshStatusChip({
   variant,
@@ -121,7 +122,6 @@ function ReportingRefreshStatusChip({
       ? formatRefreshActivityTone(message)
       : formatRefreshFeedbackBadgeTone(message);
   const sourceLabel = formatRefreshSourceLabel(message);
-  const SourceIcon = formatRefreshSourceIcon(message);
   const iconPrefix = formatRefreshSourcePrefix(message);
 
   return (
@@ -136,7 +136,7 @@ function ReportingRefreshStatusChip({
     >
       <span className="inline-flex items-center gap-1 rounded-full border border-current/20 bg-background/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-current/80">
         <span aria-hidden="true" className="text-[11px] leading-none">{iconPrefix}</span>
-        <SourceIcon className="h-3 w-3" aria-hidden="true" />
+        <RefreshSourceIcon source={sourceLabel} />
         <span>{sourceLabel}</span>
       </span>
       <span className="normal-case tracking-normal">{message ?? (variant === "loading" ? "Refreshing" : "Refreshed just now")}</span>
@@ -144,25 +144,7 @@ function ReportingRefreshStatusChip({
   );
 }
 
-function formatRefreshFeedbackTone(message?: string | null) {
-  if (!message) {
-    return "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
-  }
-
-  const normalized = message.toLowerCase();
-  if (normalized.includes("manually")) {
-    return "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300";
-  }
-  if (normalized.includes("review")) {
-    return "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300";
-  }
-  if (normalized.includes("opening") || normalized.includes("opened")) {
-    return "border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300";
-  }
-  return "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
-}
-
-function formatRefreshSourceLabel(message?: string | null) {
+function formatRefreshSourceLabel(message?: string | null): RefreshSource {
   if (!message) return "sync";
 
   const normalized = message.toLowerCase();
@@ -190,19 +172,11 @@ function formatRefreshFeedbackBadgeTone(message?: string | null) {
   return "border-emerald-500/25 bg-emerald-100 text-emerald-700 ring-1 ring-emerald-500/10 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300";
 }
 
-function formatRefreshSourceIcon(message?: string | null) {
-  const normalized = (message ?? "").toLowerCase();
-  if (normalized.includes("manually")) return Hand;
-  if (normalized.includes("review")) return Search;
-  if (normalized.includes("opening")) return ArrowUpRight;
-  return RefreshCw;
-}
-
 function formatRefreshSourcePrefix(message?: string | null) {
   const normalized = (message ?? "").toLowerCase();
   if (normalized.includes("manually")) return "✦";
   if (normalized.includes("review")) return "◉";
-  if (normalized.includes("opening")) return "↗";
+  if (normalized.includes("opening") || normalized.includes("opened")) return "↗";
   return "↻";
 }
 
@@ -229,42 +203,6 @@ function formatRefreshStatusLabel(message?: string | null) {
   return "border-sky-500/20 bg-sky-100 text-sky-700 ring-1 ring-sky-500/10 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300";
 }
 
-function formatRefreshFeedbackPanelTone(message?: string | null) {
-  if (!message) {
-    return "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 shadow-emerald-500/10 dark:text-emerald-300";
-  }
-
-  const normalized = message.toLowerCase();
-  if (normalized.includes("manually")) {
-    return "border-sky-500/20 bg-sky-500/10 text-sky-700 shadow-sky-500/10 dark:text-sky-300";
-  }
-  if (normalized.includes("review")) {
-    return "border-amber-500/20 bg-amber-500/10 text-amber-700 shadow-amber-500/10 dark:text-amber-300";
-  }
-  if (normalized.includes("opening") || normalized.includes("opened")) {
-    return "border-violet-500/20 bg-violet-500/10 text-violet-700 shadow-violet-500/10 dark:text-violet-300";
-  }
-  return "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 shadow-emerald-500/10 dark:text-emerald-300";
-}
-
-function formatRefreshActivityPanelTone(message?: string | null) {
-  if (!message) {
-    return "border-sky-500/20 bg-sky-100 text-sky-700 shadow-sky-500/10 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300";
-  }
-
-  const normalized = message.toLowerCase();
-  if (normalized.includes("manually")) {
-    return "border-sky-500/20 bg-sky-100 text-sky-700 shadow-sky-500/10 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300";
-  }
-  if (normalized.includes("review")) {
-    return "border-amber-500/20 bg-amber-100 text-amber-700 shadow-amber-500/10 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300";
-  }
-  if (normalized.includes("opening")) {
-    return "border-violet-500/20 bg-violet-100 text-violet-700 shadow-violet-500/10 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300";
-  }
-  return "border-sky-500/20 bg-sky-100 text-sky-700 shadow-sky-500/10 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300";
-}
-
 function formatReportingSnapshotAge(value?: string | null) {
   if (!value) return "Unknown snapshot age";
   return `Snapshot age ${formatReportingTime(value)}`;
@@ -281,40 +219,6 @@ function formatReportingFreshnessTag(value?: string | null) {
   if (ageHours >= 24 * 3) return "stale for 3d+";
   if (ageHours >= 24) return "stale for 1d+";
   return "fresh";
-}
-
-function formatMissingFreshnessTag(value?: string | null, status?: CabinetReportingLinkView["status"]) {
-  const normalizedStatus = status ?? "unknown";
-  if (normalizedStatus === "paused") return "missing with paused status";
-  if (normalizedStatus === "revoked") return "missing with revoked status";
-  if (!value) return `missing with ${normalizedStatus} status`;
-
-  const timestamp = Date.parse(value);
-  if (Number.isNaN(timestamp)) return `missing with ${normalizedStatus} status`;
-
-  const ageHours = Math.max(0, Math.floor((Date.now() - timestamp) / 3_600_000));
-  if (ageHours >= 24 * 7) return `missing for 7d+ · ${normalizedStatus}`;
-  if (ageHours >= 24 * 3) return `missing for 3d+ · ${normalizedStatus}`;
-  if (ageHours >= 24) return `missing for 1d+ · ${normalizedStatus}`;
-  if (ageHours >= 6) return `missing for 6h+ · ${normalizedStatus}`;
-  return `missing after recent update · ${normalizedStatus}`;
-}
-
-function formatMissingSeverityTag(value?: string | null, status?: CabinetReportingLinkView["status"]) {
-  const normalizedStatus = status ?? "unknown";
-  if (normalizedStatus === "paused") return "severity watch paused";
-  if (normalizedStatus === "revoked") return "severity historical revoked";
-  if (!value) return `severity unknown · ${normalizedStatus}`;
-
-  const timestamp = Date.parse(value);
-  if (Number.isNaN(timestamp)) return `severity unknown · ${normalizedStatus}`;
-
-  const ageHours = Math.max(0, Math.floor((Date.now() - timestamp) / 3_600_000));
-  if (ageHours >= 24 * 7) return "severity critical missing";
-  if (ageHours >= 24 * 3) return "severity elevated missing";
-  if (ageHours >= 24) return "severity persistent missing";
-  if (ageHours >= 6) return "severity watch missing";
-  return "severity recent drift";
 }
 
 function formatReportingMissingWindowLabel(value?: string | null) {
@@ -354,14 +258,22 @@ export function ReportingLinksHeader({
   onStatusFilterChange: (status: "all" | CabinetReportingLinkView["status"]) => void;
   onRefresh: () => void;
 }) {
+  const { t } = useLocale();
+  const statusLabels: Record<"all" | CabinetReportingLinkView["status"], string> = {
+    all: t("cabinets.reporting.filters.all"),
+    active: t("cabinets.reporting.filters.active"),
+    paused: t("cabinets.reporting.filters.paused"),
+    revoked: t("cabinets.reporting.filters.revoked"),
+  };
+
   return (
     <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
       <div>
         <h2 className="text-[1.65rem] font-semibold tracking-tight text-foreground">
-          Reporting links
+          {t("cabinets.reporting.links.title")}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Minimal management surface for linked child cabinets that publish reporting snapshots here.
+          {t("cabinets.reporting.links.description")}
         </p>
         {isLoading ? (
           <div className="mt-2">
@@ -387,7 +299,7 @@ export function ReportingLinksHeader({
               onClick={() => onStatusFilterChange(status)}
               disabled={isLoading}
             >
-              {status}
+              {statusLabels[status]}
               <span className="ml-1.5 text-[11px] text-current/80">{statusCounts[status]}</span>
             </Button>
           ))}
@@ -400,7 +312,9 @@ export function ReportingLinksHeader({
           disabled={isLoading || isSaving || didJustRefresh}
         >
           {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          {isLoading ? refreshActivityLabel ?? "Refreshing" : "Refresh links"}
+          {isLoading
+            ? refreshActivityLabel ?? t("cabinets.reporting.filters.refreshing")
+            : t("cabinets.reporting.links.refresh")}
         </Button>
       </div>
     </div>
@@ -783,6 +697,7 @@ export function ReportingLinksFilters({
   onFreshnessFilterChange,
   onNewChildCabinetIdChange,
   onCreateLink,
+  newChildCabinetInputRef,
 }: {
   scopeParentCabinetId: string;
   isScopeAligned: boolean;
@@ -797,12 +712,25 @@ export function ReportingLinksFilters({
   onFreshnessFilterChange: (filter: ReportingFreshnessFilter) => void;
   onNewChildCabinetIdChange: (value: string) => void;
   onCreateLink: () => void;
+  newChildCabinetInputRef?: RefObject<HTMLInputElement | null>;
 }) {
+  const { t } = useLocale();
+  const snapshotFilterLabels: Record<ReportingSnapshotFilter, string> = {
+    all: t("cabinets.reporting.filters.all"),
+    present: t("cabinets.reporting.filters.present"),
+    missing: t("cabinets.reporting.filters.missing"),
+  };
+  const freshnessFilterLabels: Record<ReportingFreshnessFilter, string> = {
+    all: t("cabinets.reporting.filters.all"),
+    fresh: t("cabinets.reporting.filters.fresh"),
+    stale: t("cabinets.reporting.filters.stale"),
+  };
+
   return (
     <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/80 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-          Snapshot coverage
+          {t("cabinets.reporting.filters.snapshotCoverage")}
         </p>
         {(["all", "present", "missing"] as const).map((filter) => (
           <Button
@@ -813,14 +741,14 @@ export function ReportingLinksFilters({
             onClick={() => onSnapshotFilterChange(filter)}
             disabled={isLoading}
           >
-            {filter}
+            {snapshotFilterLabels[filter]}
             <span className="ml-1.5 text-[11px] text-current/80">{snapshotCounts[filter]}</span>
           </Button>
         ))}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-          Snapshot freshness
+          {t("cabinets.reporting.filters.snapshotFreshness")}
         </p>
         {(["all", "fresh", "stale"] as const).map((filter) => (
           <Button
@@ -831,7 +759,7 @@ export function ReportingLinksFilters({
             onClick={() => onFreshnessFilterChange(filter)}
             disabled={isLoading}
           >
-            {filter}
+            {freshnessFilterLabels[filter]}
             <span className="ml-1.5 text-[11px] text-current/80">{freshnessCounts[filter]}</span>
           </Button>
         ))}
@@ -839,9 +767,10 @@ export function ReportingLinksFilters({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
         <div className="flex-1">
           <label className="mb-2 block text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-            Child cabinet path
+            {t("cabinets.reporting.filters.childCabinetPath")}
           </label>
           <input
+            ref={newChildCabinetInputRef}
             value={newChildCabinetId}
             onChange={(event) => onNewChildCabinetIdChange(event.target.value)}
             placeholder={scopeParentCabinetId ? `${scopeParentCabinetId}/child-cabinet` : "example-company/marketing/tiktok"}
@@ -855,7 +784,7 @@ export function ReportingLinksFilters({
         </div>
         <Button className="h-10" onClick={onCreateLink} disabled={isSaving || isLoading || !isScopeAligned}>
           {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          Add link
+          {t("cabinets.reporting.links.add")}
         </Button>
       </div>
       {snapshotFilter === "missing" ? (
@@ -880,6 +809,10 @@ export function ReportingLinksFeedback({
   statusFilter,
   snapshotFilter,
   freshnessFilter,
+  pauseStatusNotice,
+  reactivateStatusNotice,
+  revokeStatusNotice,
+  onCreateFirstLink,
 }: {
   error: string | null;
   isLoading: boolean;
@@ -888,7 +821,12 @@ export function ReportingLinksFeedback({
   statusFilter: "all" | CabinetReportingLinkView["status"];
   snapshotFilter: ReportingSnapshotFilter;
   freshnessFilter: ReportingFreshnessFilter;
+  pauseStatusNotice?: string | null;
+  reactivateStatusNotice?: string | null;
+  revokeStatusNotice?: string | null;
+  onCreateFirstLink?: () => void;
 }) {
+  const { t } = useLocale();
   if (error) {
     return (
       <div className="mb-4 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -897,30 +835,53 @@ export function ReportingLinksFeedback({
     );
   }
 
-  if (isLoading || filteredLinksCount > 0) {
-    return null;
-  }
-
   return (
-    <div className="rounded-xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-      {totalLinks === 0
-        ? "No reporting links configured for this cabinet."
-        : statusFilter !== "all" && snapshotFilter !== "all" && freshnessFilter !== "all"
-          ? `No ${statusFilter} reporting links with ${snapshotFilter} snapshots and ${freshnessFilter} freshness match the current filters.`
-          : statusFilter !== "all" && snapshotFilter !== "all"
-            ? `No ${statusFilter} reporting links with ${snapshotFilter} snapshots match the current filters.`
-            : statusFilter !== "all" && freshnessFilter !== "all"
-              ? `No ${statusFilter} reporting links with ${freshnessFilter} snapshots match the current filters.`
-              : snapshotFilter !== "all" && freshnessFilter !== "all"
-                ? `No reporting links with ${snapshotFilter} snapshots and ${freshnessFilter} freshness match the current filters.`
-                : statusFilter !== "all"
-                  ? `No ${statusFilter} reporting links match the current filter.`
-                  : snapshotFilter !== "all"
-                    ? `No reporting links with ${snapshotFilter} snapshots match the current filter.`
-                    : freshnessFilter !== "all"
-                      ? `No reporting links with ${freshnessFilter} snapshots match the current filter.`
-                      : "No reporting links match the current filters."}
-    </div>
+    <>
+      {pauseStatusNotice ? (
+        <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+          {pauseStatusNotice}
+        </div>
+      ) : null}
+      {reactivateStatusNotice ? (
+        <div className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-100">
+          {reactivateStatusNotice}
+        </div>
+      ) : null}
+      {revokeStatusNotice ? (
+        <div className="mb-4 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-900 dark:text-rose-100">
+          {revokeStatusNotice}
+        </div>
+      ) : null}
+      {isLoading || filteredLinksCount > 0 ? null : totalLinks === 0 ? (
+        <div className="rounded-xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
+          <p>{t("cabinets.reporting.links.zeroState.title")}</p>
+          <p className="mt-2">{t("cabinets.reporting.links.zeroState.description")}</p>
+          {onCreateFirstLink ? (
+            <Button className="mt-4 h-9" variant="outline" onClick={onCreateFirstLink}>
+              {t("cabinets.reporting.links.zeroState.cta")}
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
+          {statusFilter !== "all" && snapshotFilter !== "all" && freshnessFilter !== "all"
+            ? `No ${statusFilter} reporting links with ${snapshotFilter} snapshots and ${freshnessFilter} freshness match the current filters.`
+            : statusFilter !== "all" && snapshotFilter !== "all"
+              ? `No ${statusFilter} reporting links with ${snapshotFilter} snapshots match the current filters.`
+              : statusFilter !== "all" && freshnessFilter !== "all"
+                ? `No ${statusFilter} reporting links with ${freshnessFilter} snapshots match the current filters.`
+                : snapshotFilter !== "all" && freshnessFilter !== "all"
+                  ? `No reporting links with ${snapshotFilter} snapshots and ${freshnessFilter} freshness match the current filters.`
+                  : statusFilter !== "all"
+                    ? `No ${statusFilter} reporting links match the current filter.`
+                    : snapshotFilter !== "all"
+                      ? `No reporting links with ${snapshotFilter} snapshots match the current filter.`
+                      : freshnessFilter !== "all"
+                        ? `No reporting links with ${freshnessFilter} snapshots match the current filter.`
+                        : "No reporting links match the current filters."}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1194,17 +1155,21 @@ export function ReportingSnapshotHeader({
   refreshActivityLabel?: string | null;
   onRefresh?: () => void;
 }) {
+  const { t, format } = useLocale();
+
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-sm font-semibold text-slate-900">Reporting</h3>
+          <h3 className="text-sm font-semibold text-slate-900">
+            {t("cabinets.reporting.snapshots.title")}
+          </h3>
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-slate-600">
-            {snapshotCount} snapshots
+            {format("cabinets.reporting.snapshots.count", { count: snapshotCount })}
           </span>
           {staleSnapshotCount > 0 ? (
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-amber-700">
-              {staleSnapshotCount} stale snapshots
+              {format("cabinets.reporting.snapshots.staleCount", { count: staleSnapshotCount })}
             </span>
           ) : null}
           {isLoading ? (
@@ -1212,7 +1177,7 @@ export function ReportingSnapshotHeader({
           ) : null}
         </div>
         <p className="mt-1 text-xs text-slate-500">
-          Read-only child cabinet reporting snapshots linked to this workspace.
+          {t("cabinets.reporting.snapshots.description")}
         </p>
         {didJustRefresh ? (
           <div className="mt-1">
@@ -1232,7 +1197,9 @@ export function ReportingSnapshotHeader({
           disabled={isLoading || didJustRefresh}
         >
           {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          {isLoading ? refreshActivityLabel ?? "Refreshing" : "Refresh reporting"}
+          {isLoading
+            ? refreshActivityLabel ?? t("cabinets.reporting.filters.refreshing")
+            : t("cabinets.reporting.snapshots.refresh")}
         </Button>
       ) : null}
     </div>
@@ -1250,6 +1217,7 @@ export function ReportingSnapshotFeedback({
   staleSnapshotCount: number;
   snapshotCount: number;
 }) {
+  const { t } = useLocale();
   if (error) {
     return (
       <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -1277,7 +1245,8 @@ export function ReportingSnapshotFeedback({
   if (!isLoading && snapshotCount === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-        No reporting snapshots available for this cabinet yet.
+        <p>{t("cabinets.reporting.snapshots.zeroState.title")}</p>
+        <p className="mt-2">{t("cabinets.reporting.snapshots.zeroState.description")}</p>
       </div>
     );
   }

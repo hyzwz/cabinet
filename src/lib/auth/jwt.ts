@@ -5,6 +5,7 @@ import path from "path";
 import crypto from "crypto";
 import { CABINET_INTERNAL_DIR } from "@/lib/storage/path-utils";
 import { ensureDirectory } from "@/lib/storage/fs-operations";
+import { getUserById } from "@/lib/storage/user-io";
 import type { JwtPayload, SafeUser } from "@/types";
 
 const SECRET_FILE = path.join(CABINET_INTERNAL_DIR, "jwt-secret.txt");
@@ -37,6 +38,8 @@ export async function signToken(user: SafeUser): Promise<string> {
     username: user.username,
     displayName: user.displayName,
     role: user.role,
+    systemRole: user.systemRole,
+    status: user.status,
   };
 
   return new SignJWT(payload as unknown as Record<string, unknown>)
@@ -56,6 +59,8 @@ export async function verifyToken(token: string): Promise<JwtPayload | null> {
       username: payload.username as string,
       displayName: payload.displayName as string,
       role: payload.role as JwtPayload["role"],
+      systemRole: (payload.systemRole as JwtPayload["systemRole"]) || (payload.role === "admin" ? "platform_admin" : "user"),
+      status: (payload.status as JwtPayload["status"]) || "active",
     };
   } catch (e) {
     if (e instanceof errors.JWTExpired) {
@@ -68,7 +73,18 @@ export async function verifyToken(token: string): Promise<JwtPayload | null> {
 export async function getCurrentUser(req: NextRequest): Promise<JwtPayload | null> {
   const token = req.cookies.get(TOKEN_COOKIE)?.value;
   if (!token) return null;
-  return verifyToken(token);
+  const payload = await verifyToken(token);
+  if (!payload) return null;
+  const user = await getUserById(payload.userId);
+  if (!user || user.status !== "active") return null;
+  return {
+    userId: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    role: user.role,
+    systemRole: user.systemRole,
+    status: user.status,
+  };
 }
 
 export { TOKEN_COOKIE, TOKEN_MAX_AGE };

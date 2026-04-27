@@ -11,9 +11,12 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [requestAccess, setRequestAccess] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [authMode, setAuthMode] = useState<AuthMode>("loading");
+  const [authMode, setAuthMode] = useState<AuthMode>("multi");
   const router = useRouter();
   const { t } = useLocale();
 
@@ -41,6 +44,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setPendingMessage("");
     setLoading(true);
 
     try {
@@ -57,16 +61,37 @@ export default function LoginPage() {
           setError(t("login.wrongPassword"));
         }
       } else if (authMode === "multi") {
-        const res = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password }),
-        });
-        if (res.ok) {
-          router.push("/");
-          router.refresh();
+        if (requestAccess) {
+          const res = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username,
+              password,
+              displayName: displayName || username,
+              joinCode,
+            }),
+          });
+          const data = await res.json().catch(() => null);
+          if (res.ok) {
+            setPendingMessage("申请已提交，等待公司管理员审批。");
+            setPassword("");
+          } else {
+            setError(data?.error || t("login.connectionError"));
+          }
         } else {
-          setError(t("login.invalidCredentials"));
+          const res = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+          });
+          if (res.ok) {
+            router.push("/");
+            router.refresh();
+          } else {
+            const data = await res.json().catch(() => null);
+            setError(data?.error || t("login.invalidCredentials"));
+          }
         }
       }
     } catch {
@@ -110,6 +135,7 @@ export default function LoginPage() {
   const isSetup = authMode === "setup";
   const isMulti = authMode === "multi";
   const showUsername = isSetup || isMulti;
+  const showDisplayName = isSetup || (isMulti && requestAccess);
 
   return (
     <div className="min-h-screen bg-background">
@@ -140,13 +166,23 @@ export default function LoginPage() {
               className="w-full px-3 py-2 rounded-md border border-border bg-background text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           )}
-          {isSetup && (
+          {showDisplayName && (
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder={t("login.displayNamePlaceholder")}
               autoComplete="name"
+              className="w-full px-3 py-2 rounded-md border border-border bg-background text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          )}
+          {isMulti && requestAccess && (
+            <input
+              type="text"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+              placeholder="公司邀请码"
+              autoComplete="off"
               className="w-full px-3 py-2 rounded-md border border-border bg-background text-[14px] focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           )}
@@ -162,17 +198,35 @@ export default function LoginPage() {
           {error && (
             <p className="text-[12px] text-red-400">{error}</p>
           )}
+          {pendingMessage && (
+            <p className="text-[12px] text-emerald-500">{pendingMessage}</p>
+          )}
           <button
             type="submit"
-            disabled={loading || !password || (showUsername && !username)}
+            disabled={loading || !password || (showUsername && !username) || (isMulti && requestAccess && !joinCode)}
             className="w-full px-3 py-2 rounded-md bg-primary text-primary-foreground text-[14px] font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {loading
               ? t("login.loading")
               : isSetup
                 ? t("login.createAccount")
-                : t("login.signIn")}
+                : requestAccess
+                  ? "申请加入"
+                  : t("login.signIn")}
           </button>
+          {isMulti && (
+            <button
+              type="button"
+              className="w-full text-[12px] text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setError("");
+                setPendingMessage("");
+                setRequestAccess((value) => !value);
+              }}
+            >
+              {requestAccess ? "已有账号，返回登录" : "没有账号？申请加入公司"}
+            </button>
+          )}
         </form>
       </div>
       </div>

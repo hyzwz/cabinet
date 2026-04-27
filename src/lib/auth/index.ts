@@ -17,13 +17,47 @@
 
 // JWT operations
 export {
-  signToken,
-  verifyToken,
-  getCurrentUser,
-  TOKEN_COOKIE,
-  TOKEN_MAX_AGE,
-} from "./jwt";
+  authorizeAdminActor,
+  authorizeUserAction,
+  resolveActorFromRequest,
+  resolveCabinetContextForRequest,
+  resolveCabinetContextForResource,
+  resolveCompanyContextForRequest,
+  resolvePageDerivedResourceContext,
+  resolvePageResourceContext,
+  resetCabinetMembershipProvider,
+  resetCabinetResourceMappingProvider,
+  resetCompanyMembershipProvider,
+  setCabinetMembershipProvider,
+  setCabinetResourceMappingProvider,
+  setCompanyMembershipProvider,
+  toHttpErrorResponse,
+} from "./page-authorization";
 
-// Request user extraction (from middleware headers)
 export { getRequestUser } from "./request-user";
-export type { RequestUser } from "./request-user";
+export {
+  createFileReportingRelationProvider,
+  createFileReportingSnapshotProvider,
+  createInMemoryReportingRelationProvider,
+  createInMemoryReportingSnapshotProvider,
+  getReportingReadService,
+  getReportingRelationService,
+  getReportingSnapshotRefreshService,
+  resetReportingReadService,
+  resetReportingRelationProvider,
+  resetReportingSnapshotProvider,
+  setCabinetOwnershipProvider,
+  setReportingRelationProvider,
+  setReportingSnapshotProvider,
+} from "./reporting";
+export type {
+  CabinetOwnershipProvider,
+  CabinetReportingLink,
+  CabinetReportingLinkStatus,
+  CabinetReportingSnapshot,
+  ReportingReadService,
+  ReportingRelationProvider,
+  ReportingRelationService,
+  ReportingSnapshotProvider,
+  ReportingSnapshotRefreshService,
+} from "./reporting";

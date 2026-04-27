@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeInitializer } from "@/components/layout/theme-initializer";
 import { LocaleProvider } from "@/components/i18n/locale-provider";
@@ -25,6 +26,11 @@ const instrumentSerif = localFont({
   display: "swap",
 });
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
   title: "GreatClaw",
   description: "AI-first knowledge base and startup OS",
@@ -41,10 +47,10 @@ export default function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: `if(window.GreatClawDesktop)document.documentElement.classList.add("electron-desktop")` }} />
-      </head>
       <body className="min-h-full flex flex-col font-sans">
+        <Script id="greatclaw-desktop-class" strategy="beforeInteractive">
+          {`if(window.GreatClawDesktop)document.documentElement.classList.add("electron-desktop")`}
+        </Script>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

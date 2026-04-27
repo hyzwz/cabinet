@@ -4,6 +4,7 @@ import { readCabinetOverview } from "@/lib/cabinets/overview";
 import { getManagedDataDir } from "@/lib/runtime/runtime-config";
 import {
   authorizeUserAction,
+  resolveOwnershipChainFromVirtualPath,
   type Actor,
   type AuthorizationDecision,
   type CabinetContext,
@@ -342,7 +343,9 @@ export function createFileReportingSnapshotProvider(): ReportingSnapshotProvider
 export type CreateCabinetReportingLinkInput = {
   companyId: string;
   parentCabinetId: string;
+  parentCabinetPath?: string | null;
   childCabinetId: string;
+  childCabinetPath?: string | null;
   actor: Actor;
 };
 
@@ -400,6 +403,59 @@ const defaultCabinetOwnershipProvider: CabinetOwnershipProvider = {
 
 let activeCabinetOwnershipProvider: CabinetOwnershipProvider = defaultCabinetOwnershipProvider;
 
+export async function resolveCabinetOwnership(input: {
+  cabinetId: string;
+  cabinetPath?: string | null;
+  companyId?: string | null;
+  cabinetOwnershipProvider?: CabinetOwnershipProvider;
+}): Promise<CabinetOwnershipRef | null> {
+  const provider = input.cabinetOwnershipProvider ?? activeCabinetOwnershipProvider;
+  const directOwnership = await provider.getCabinet({ cabinetId: input.cabinetId });
+  if (directOwnership) {
+    return directOwnership;
+  }
+
+  if (!input.cabinetPath) {
+    return null;
+  }
+
+  try {
+    const overview = await readCabinetOverview(input.cabinetPath);
+    const manifestCabinetId = overview.cabinet.id?.trim();
+    if (manifestCabinetId) {
+      const manifestOwnership = await provider.getCabinet({ cabinetId: manifestCabinetId });
+      if (manifestOwnership) {
+        return manifestOwnership;
+      }
+      if (input.companyId?.trim()) {
+        return {
+          cabinetId: manifestCabinetId,
+          companyId: input.companyId.trim(),
+        };
+      }
+    }
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.startsWith("Cabinet not found:")) {
+      throw error;
+    }
+  }
+
+  const ownership = await resolveOwnershipChainFromVirtualPath(input.cabinetPath);
+  if (!ownership.cabinetId) {
+    return null;
+  }
+
+  const resolvedCompanyId = ownership.companyId ?? input.companyId?.trim() ?? null;
+  if (!resolvedCompanyId) {
+    return null;
+  }
+
+  return {
+    cabinetId: ownership.cabinetId,
+    companyId: resolvedCompanyId,
+  };
+}
+
 function normalizeCabinetId(value: string): string {
   return value.trim();
 }
@@ -434,11 +490,13 @@ function validateCreateInput(input: CreateCabinetReportingLinkInput): {
     );
   }
 
+  return { companyId, parentCabinetId, childCabinetId };
+}
+
+function validateNoSelfLink(parentCabinetId: string, childCabinetId: string): void {
   if (parentCabinetId === childCabinetId) {
     throw new ReportingRelationValidationError("self_link", "A cabinet cannot report to itself");
   }
-
-  return { companyId, parentCabinetId, childCabinetId };
 }
 
 function validateCabinetOwnershipForReportingLink(input: {
@@ -550,6 +608,7 @@ export type ReportingRelationService = {
 export type ReportingLinkScope = {
   companyId: string;
   parentCabinetId: string;
+  parentCabinetPath: string | null;
   links: CabinetReportingLink[];
   activeLinks: CabinetReportingLink[];
   activeChildCabinetIds: string[];
@@ -558,10 +617,12 @@ export type ReportingLinkScope = {
 export function buildReportingLinkScope(input: {
   companyId: string;
   parentCabinetId: string;
+  parentCabinetPath?: string | null;
   links: CabinetReportingLink[];
 }): ReportingLinkScope {
   const companyId = normalizeCompanyId(input.companyId);
   const parentCabinetId = normalizeCabinetId(input.parentCabinetId);
+  const parentCabinetPath = input.parentCabinetPath?.trim() || null;
   const links = input.links.filter((link) => link.companyId === companyId);
   const activeLinks = links.filter(
     (link) => link.parentCabinetId === parentCabinetId && link.status === "active",
@@ -570,6 +631,7 @@ export function buildReportingLinkScope(input: {
   return {
     companyId,
     parentCabinetId,
+    parentCabinetPath,
     links,
     activeLinks,
     activeChildCabinetIds: activeLinks.map((link) => link.childCabinetId),
@@ -585,12 +647,31 @@ export function createReportingRelationService(input: {
   return {
     async createLink(createInput) {
       assertSupportedActor(createInput.actor);
-      const { companyId, parentCabinetId, childCabinetId } = validateCreateInput(createInput);
+      const {
+        companyId,
+        parentCabinetId: requestedParentCabinetId,
+        childCabinetId: requestedChildCabinetId,
+      } = validateCreateInput(createInput);
       const [existingLinks, parentCabinet, childCabinet] = await Promise.all([
         input.provider.listLinksByCompany(companyId),
-        cabinetOwnershipProvider.getCabinet({ cabinetId: parentCabinetId }),
-        cabinetOwnershipProvider.getCabinet({ cabinetId: childCabinetId }),
+        resolveCabinetOwnership({
+          cabinetId: requestedParentCabinetId,
+          cabinetPath: createInput.parentCabinetPath,
+          companyId,
+          cabinetOwnershipProvider,
+        }),
+        resolveCabinetOwnership({
+          cabinetId: requestedChildCabinetId,
+          cabinetPath: createInput.childCabinetPath,
+          companyId,
+          cabinetOwnershipProvider,
+        }),
       ]);
+
+      const parentCabinetId = parentCabinet?.cabinetId ?? requestedParentCabinetId;
+      const childCabinetId = childCabinet?.cabinetId ?? requestedChildCabinetId;
+
+      validateNoSelfLink(parentCabinetId, childCabinetId);
 
       validateCabinetOwnershipForReportingLink({
         companyId,
@@ -770,6 +851,7 @@ export type ReportingSnapshotRefreshService = {
   refreshSnapshotsForParent(input: {
     companyId: string;
     parentCabinetId: string;
+    parentCabinetPath?: string | null;
   }): Promise<ReportingSnapshotRefreshResult>;
 };
 
@@ -782,6 +864,7 @@ export type ReportingReadService = {
   getReportingForParent(input: {
     companyId: string;
     parentCabinetId: string;
+    parentCabinetPath?: string | null;
     actor: Actor;
     companyContext: CompanyContext;
     cabinetContext?: CabinetContext | null;
@@ -791,13 +874,19 @@ export type ReportingReadService = {
 export type ReportingScopeValidationInput = {
   companyId: string;
   parentCabinetId: string;
+  parentCabinetPath?: string | null;
   companyContext: CompanyContext;
   cabinetContext?: CabinetContext | null;
 };
 
-export function validateReportingScopeAlignment(input: ReportingScopeValidationInput): AuthorizationDecision | null {
+export async function validateReportingScopeAlignment(
+  input: ReportingScopeValidationInput,
+): Promise<AuthorizationDecision | null> {
   const companyId = normalizeCompanyId(input.companyId);
   const parentCabinetId = normalizeCabinetId(input.parentCabinetId);
+  const parentOwnership = input.parentCabinetPath
+    ? await resolveOwnershipChainFromVirtualPath(input.parentCabinetPath)
+    : null;
   const activeCompanyId = input.companyContext.companyId ?? null;
   const activeCabinetId = input.cabinetContext?.cabinetId ?? null;
 
@@ -828,11 +917,39 @@ export function validateReportingScopeAlignment(input: ReportingScopeValidationI
     };
   }
 
+  if (
+    parentOwnership &&
+    parentOwnership.companyId &&
+    companyId &&
+    parentOwnership.companyId !== companyId
+  ) {
+    return {
+      allowed: false,
+      reason: "company_mismatch",
+      message: "Requested reporting scope path belongs to a different company than the reporting company",
+      status: 403,
+    };
+  }
+
   if (activeCabinetId && parentCabinetId && activeCabinetId !== parentCabinetId) {
     return {
       allowed: false,
       reason: "cabinet_mismatch",
       message: "Requested reporting scope belongs to a different cabinet than the active cabinet",
+      status: 403,
+    };
+  }
+
+  if (
+    parentOwnership &&
+    parentOwnership.cabinetId &&
+    parentCabinetId &&
+    parentOwnership.cabinetId !== parentCabinetId
+  ) {
+    return {
+      allowed: false,
+      reason: "cabinet_mismatch",
+      message: "Requested reporting scope path belongs to a different cabinet than the reporting parent cabinet",
       status: 403,
     };
   }
@@ -932,9 +1049,33 @@ export function createReportingSnapshotRefreshService(input: {
 }): ReportingSnapshotRefreshService {
   return {
     async refreshSnapshotsForParent(refreshInput) {
+      const scopeDecision = await validateReportingScopeAlignment({
+        companyId: refreshInput.companyId,
+        parentCabinetId: refreshInput.parentCabinetId,
+        parentCabinetPath: refreshInput.parentCabinetPath,
+        companyContext: {
+          companyId: refreshInput.companyId,
+          source: "request",
+          requestCompanyId: refreshInput.companyId,
+          workspaceCompanyId: null,
+          membershipCompanyIds: [refreshInput.companyId],
+          membershipDefaultCompanyId: refreshInput.companyId,
+          membershipRoleByCompanyId: {},
+        },
+        cabinetContext: null,
+      });
+      if (scopeDecision) {
+        const error = new Error(scopeDecision.message ?? scopeDecision.reason ?? "Reporting scope refresh denied") as Error & {
+          decision?: AuthorizationDecision;
+        };
+        error.decision = scopeDecision;
+        throw error;
+      }
+
       const scope = buildReportingLinkScope({
         companyId: refreshInput.companyId,
         parentCabinetId: refreshInput.parentCabinetId,
+        parentCabinetPath: refreshInput.parentCabinetPath,
         links: await input.relationService.listLinksForCabinet({
           companyId: refreshInput.companyId,
           cabinetId: refreshInput.parentCabinetId,
@@ -1008,10 +1149,11 @@ export function createReportingReadService(input: {
 }): ReportingReadService {
   return {
     async getReportingForParent(readInput) {
-      const { companyId, parentCabinetId, actor, companyContext, cabinetContext } = readInput;
-      const scopeDecision = validateReportingScopeAlignment({
+      const { companyId, parentCabinetId, parentCabinetPath, actor, companyContext, cabinetContext } = readInput;
+      const scopeDecision = await validateReportingScopeAlignment({
         companyId,
         parentCabinetId,
+        parentCabinetPath,
         companyContext,
         cabinetContext,
       });
@@ -1042,6 +1184,7 @@ export function createReportingReadService(input: {
       const scope = buildReportingLinkScope({
         companyId,
         parentCabinetId,
+        parentCabinetPath,
         links: await input.relationService.listLinksForCabinet({
           companyId,
           cabinetId: parentCabinetId,

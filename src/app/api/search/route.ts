@@ -3,7 +3,7 @@ import path from "path";
 import matter from "gray-matter";
 import { DATA_DIR, isHiddenEntry } from "@/lib/storage/path-utils";
 import { listDirectory, readFileContent, fileExists } from "@/lib/storage/fs-operations";
-import { getRequestUser, type RequestUser } from "@/lib/auth/request-user";
+import { canReadPageForRequest } from "@/lib/auth/route-guards";
 
 interface SearchResult {
   path: string;
@@ -19,10 +19,10 @@ interface SearchOptions {
 }
 
 async function collectPages(
+  req: NextRequest,
   dirPath: string,
   opts: SearchOptions,
   results: SearchResult[],
-  user: RequestUser | null,
 ) {
   const entries = await listDirectory(dirPath);
   const lowerQuery = opts.query.toLowerCase();
@@ -43,22 +43,23 @@ async function collectPages(
       if (hasIndexHtml && !hasIndexMd) continue;
 
       if (hasIndexMd) {
+        const vPath = fullPath.replace(DATA_DIR + "/", "");
+        const canRead = await canReadPageForRequest(req, vPath).catch(() => false);
+        if (!canRead) {
+          await collectPages(req, fullPath, opts, results);
+          continue;
+        }
+
         const raw = await readFileContent(indexMd);
         const { data, content } = matter(raw);
         const title = (data.title as string) || entry.name;
         const tags = (data.tags as string[]) || [];
         const modified = data.modified as string | undefined;
 
-        // Skip private pages the user cannot access
-        if (data.visibility === "private" && user?.role !== "admin" && user?.username !== data.owner) {
-          await collectPages(fullPath, opts, results, user);
-          continue;
-        }
-
         // Tag filter
         if (opts.tag && !tags.some((t) => t.toLowerCase() === opts.tag!.toLowerCase())) {
           // Still recurse into children
-          await collectPages(fullPath, opts, results, user);
+          await collectPages(req, fullPath, opts, results);
           continue;
         }
 
@@ -69,25 +70,27 @@ async function collectPages(
           tags.some((t) => t.toLowerCase().includes(lowerQuery));
 
         if (matches) {
-          const vPath = fullPath.replace(DATA_DIR + "/", "");
           const snippet = opts.query
             ? extractSnippet(content, lowerQuery)
             : content.slice(0, 120).trim() + "...";
           results.push({ path: vPath, title, snippet, tags, modified });
         }
       }
-      await collectPages(fullPath, opts, results, user);
+      await collectPages(req, fullPath, opts, results);
     } else if (entry.name.endsWith(".md") && entry.name !== "index.md") {
+      const vPath = fullPath
+        .replace(DATA_DIR + "/", "")
+        .replace(/\.md$/, "");
+      const canRead = await canReadPageForRequest(req, vPath).catch(() => false);
+      if (!canRead) {
+        continue;
+      }
+
       const raw = await readFileContent(fullPath);
       const { data, content } = matter(raw);
       const title = (data.title as string) || entry.name.replace(/\.md$/, "");
       const tags = (data.tags as string[]) || [];
       const modified = data.modified as string | undefined;
-
-      // Skip private pages the user cannot access
-      if (data.visibility === "private" && user?.role !== "admin" && user?.username !== data.owner) {
-        continue;
-      }
 
       if (opts.tag && !tags.some((t) => t.toLowerCase() === opts.tag!.toLowerCase())) {
         continue;
@@ -100,9 +103,6 @@ async function collectPages(
         tags.some((t) => t.toLowerCase().includes(lowerQuery));
 
       if (matches) {
-        const vPath = fullPath
-          .replace(DATA_DIR + "/", "")
-          .replace(/\.md$/, "");
         const snippet = opts.query
           ? extractSnippet(content, lowerQuery)
           : content.slice(0, 120).trim() + "...";
@@ -135,8 +135,7 @@ export async function GET(req: NextRequest) {
     }
 
     const results: SearchResult[] = [];
-    const user = getRequestUser(req);
-    await collectPages(DATA_DIR, { query: q, tag }, results, user);
+    await collectPages(req, DATA_DIR, { query: q, tag }, results);
 
     return NextResponse.json(results.slice(0, 20));
   } catch (error) {

@@ -8,6 +8,7 @@ import type {
   ReportingScopeView,
 } from "@/types/cabinets";
 import {
+  buildCabinetReportingApiPath,
   buildLinkedSnapshotMap,
   buildReportingFreshnessCounts,
   buildReportingHealthSummary,
@@ -24,10 +25,12 @@ import {
 } from "./reporting-helpers";
 
 export function useReportingLinksData({
+  cabinetId,
   cabinetPath,
   snapshots,
   onRefreshSnapshots,
 }: {
+  cabinetId?: string | null;
   cabinetPath: string;
   snapshots: CabinetReportingSnapshotView[];
   onRefreshSnapshots?: (source?: "create" | "update" | "manual" | "review-missing" | "review-stale" | "open-missing" | "open-stale") => Promise<void>;
@@ -40,13 +43,16 @@ export function useReportingLinksData({
   const [healthScope, setHealthScope] = useState<ReportingHealthScope>("active");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const [didJustRefresh, setDidJustRefresh] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const [refreshActivityLabel, setRefreshActivityLabel] = useState<string | null>(null);
   const [openCompletionNotice, setOpenCompletionNotice] = useState<string | null>(null);
+  const [statusUpdateNotice, setStatusUpdateNotice] = useState<string | null>(null);
   const refreshFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openCompletionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusUpdateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [newChildCabinetId, setNewChildCabinetId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -108,6 +114,9 @@ export function useReportingLinksData({
       if (openCompletionTimerRef.current) {
         clearTimeout(openCompletionTimerRef.current);
       }
+      if (statusUpdateTimerRef.current) {
+        clearTimeout(statusUpdateTimerRef.current);
+      }
     };
   }, []);
 
@@ -122,6 +131,13 @@ export function useReportingLinksData({
   const groupedLinks = useMemo(() => {
     return groupReportingLinksByStatus(filteredLinks);
   }, [filteredLinks]);
+  const resolvedCabinetId = cabinetId?.trim() || cabinetPath;
+  const requestCabinetPath = cabinetId?.trim() ? cabinetPath : null;
+  const reportingLinksPath = buildCabinetReportingApiPath({
+    cabinetId: resolvedCabinetId,
+    cabinetPath: requestCabinetPath,
+    resource: "reporting-links",
+  });
 
   const refreshLinks = useCallback(async (source: "auto" | "manual" | "create" | "update" | "review-missing" | "review-stale" | "open-missing" | "open-stale" = "auto") => {
     setIsLoading(true);
@@ -143,21 +159,23 @@ export function useReportingLinksData({
                     : "Refreshing links"
     );
     try {
-      const response = await fetch(
-        `/api/cabinets/${encodeURIComponent(cabinetPath)}/reporting-links`,
-        { cache: "no-store" },
-      );
+      const response = await fetch(reportingLinksPath, { cache: "no-store" });
       const payload = (await response.json().catch(() => null)) as
-        | (ReportingLinksResponse & { error?: string; scope?: ReportingScopeView | null })
+        | (ReportingLinksResponse & { error?: string; code?: string; scope?: ReportingScopeView | null })
         | null;
 
       if (!response.ok) {
-        throw new Error(payload?.error ?? "Failed to load reporting links");
+        const responseError = new Error(payload?.error ?? "Failed to load reporting links") as Error & {
+          code?: string;
+        };
+        responseError.code = payload?.code ?? undefined;
+        throw responseError;
       }
 
       setLinks(payload?.links ?? []);
       setScope(payload?.scope ?? null);
       setError(null);
+      setErrorCode(null);
       setLastUpdatedAt(new Date().toISOString());
       const nextRefreshNotice =
         source === "manual"
@@ -194,11 +212,16 @@ export function useReportingLinksData({
           ? requestError.message
           : "Failed to load reporting links",
       );
+      setErrorCode(
+        requestError instanceof Error && "code" in requestError
+          ? String((requestError as Error & { code?: unknown }).code ?? "")
+          : null,
+      );
     } finally {
       setIsLoading(false);
       setRefreshActivityLabel(null);
     }
-  }, [cabinetPath]);
+  }, [reportingLinksPath]);
 
   const acknowledgeOpenCompletion = useCallback((notice: string) => {
     setOpenCompletionNotice(notice);
@@ -207,6 +230,16 @@ export function useReportingLinksData({
     }
     openCompletionTimerRef.current = setTimeout(() => {
       setOpenCompletionNotice(null);
+    }, 4_000);
+  }, []);
+
+  const acknowledgeStatusUpdate = useCallback((notice: string) => {
+    setStatusUpdateNotice(notice);
+    if (statusUpdateTimerRef.current) {
+      clearTimeout(statusUpdateTimerRef.current);
+    }
+    statusUpdateTimerRef.current = setTimeout(() => {
+      setStatusUpdateNotice(null);
     }, 4_000);
   }, []);
 
@@ -223,14 +256,20 @@ export function useReportingLinksData({
 
     setIsSaving(true);
     try {
-      const response = await fetch(
-        `/api/cabinets/${encodeURIComponent(cabinetPath)}/reporting-links`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ childCabinetId } satisfies ReportingLinkCreateRequest),
-        },
-      );
+      const requestBody = {
+        childCabinetId,
+        ...(requestCabinetPath
+          ? {
+              childCabinetPath: childCabinetId,
+              parentCabinetPath: requestCabinetPath,
+            }
+          : {}),
+      } satisfies ReportingLinkCreateRequest;
+      const response = await fetch(reportingLinksPath, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
       const payload = (await response.json().catch(() => null)) as
         | { error?: string }
         | null;
@@ -250,20 +289,17 @@ export function useReportingLinksData({
     } finally {
       setIsSaving(false);
     }
-  }, [cabinetPath, newChildCabinetId, onRefreshSnapshots, refreshLinks]);
+  }, [newChildCabinetId, onRefreshSnapshots, refreshLinks, reportingLinksPath, requestCabinetPath]);
 
   const updateLinkStatus = useCallback(
     async (linkId: string, status: ReportingLinkUpdateRequest["status"]) => {
       setIsSaving(true);
       try {
-        const response = await fetch(
-          `/api/cabinets/${encodeURIComponent(cabinetPath)}/reporting-links`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ linkId, status } satisfies ReportingLinkUpdateRequest),
-          },
-        );
+        const response = await fetch(reportingLinksPath, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ linkId, status } satisfies ReportingLinkUpdateRequest),
+        });
         const payload = (await response.json().catch(() => null)) as
           | { error?: string }
           | null;
@@ -273,6 +309,13 @@ export function useReportingLinksData({
         }
 
         await Promise.all([refreshLinks("update"), onRefreshSnapshots?.("update") ?? Promise.resolve()]);
+        acknowledgeStatusUpdate(
+          status === "active"
+            ? "Link reactivated and scope refreshed"
+            : status === "paused"
+              ? "Link paused and scope refreshed"
+              : "Link revoked and scope refreshed",
+        );
       } catch (requestError) {
         setError(
           requestError instanceof Error
@@ -283,7 +326,7 @@ export function useReportingLinksData({
         setIsSaving(false);
       }
     },
-    [cabinetPath, onRefreshSnapshots, refreshLinks],
+    [acknowledgeStatusUpdate, onRefreshSnapshots, refreshLinks, reportingLinksPath],
   );
 
   return {
@@ -295,11 +338,13 @@ export function useReportingLinksData({
     healthScope,
     isLoading,
     error,
+    errorCode,
     lastUpdatedAt,
     didJustRefresh,
     refreshNotice,
     refreshActivityLabel,
     openCompletionNotice,
+    statusUpdateNotice,
     newChildCabinetId,
     isSaving,
     linkedSnapshots,
@@ -325,11 +370,13 @@ export function useReportingLinksData({
 }
 
 export function useReportingSnapshotsData({
+  cabinetId,
   cabinetPath,
   initialSnapshots,
   initialError,
   refreshToken = 0,
 }: {
+  cabinetId?: string | null;
   cabinetPath: string;
   initialSnapshots: CabinetReportingSnapshotView[];
   initialError?: string | null;
@@ -339,6 +386,7 @@ export function useReportingSnapshotsData({
   const [scope, setScope] = useState<ReportingScopeView | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(initialError ?? null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const [didJustRefresh, setDidJustRefresh] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
@@ -370,6 +418,13 @@ export function useReportingSnapshotsData({
       }
     };
   }, []);
+  const resolvedCabinetId = cabinetId?.trim() || cabinetPath;
+  const requestCabinetPath = cabinetId?.trim() ? cabinetPath : null;
+  const reportingSnapshotsPath = buildCabinetReportingApiPath({
+    cabinetId: resolvedCabinetId,
+    cabinetPath: requestCabinetPath,
+    resource: "reporting",
+  });
 
   const refreshSnapshots = useCallback(async (source: "auto" | "manual" | "create" | "update" | "review-missing" | "review-stale" | "open-missing" | "open-stale" = "auto") => {
     setIsLoading(true);
@@ -392,20 +447,19 @@ export function useReportingSnapshotsData({
     );
 
     try {
-      const response = await fetch(
-        `/api/cabinets/${encodeURIComponent(cabinetPath)}/reporting`,
-        { cache: "no-store" },
-      );
+      const response = await fetch(reportingSnapshotsPath, { cache: "no-store" });
       const payload = (await response.json().catch(() => null)) as
         | {
             snapshots?: CabinetReportingSnapshotView[];
             scope?: ReportingScopeView | null;
             error?: string;
+            code?: string;
           }
         | null;
 
       if (!response.ok) {
         setError(payload?.error ?? "Failed to load cabinet reporting");
+        setErrorCode(payload?.code ?? null);
         setScope(null);
         return;
       }
@@ -413,6 +467,7 @@ export function useReportingSnapshotsData({
       setSnapshots(payload?.snapshots ?? []);
       setScope(payload?.scope ?? null);
       setError(null);
+      setErrorCode(null);
       setLastUpdatedAt(new Date().toISOString());
       const nextRefreshNotice =
         source === "manual"
@@ -447,12 +502,17 @@ export function useReportingSnapshotsData({
           ? fetchError.message
           : "Failed to load cabinet reporting",
       );
+      setErrorCode(
+        fetchError instanceof Error && "code" in fetchError
+          ? String((fetchError as Error & { code?: unknown }).code ?? "")
+          : null,
+      );
       setScope(null);
     } finally {
       setIsLoading(false);
       setRefreshActivityLabel(null);
     }
-  }, [cabinetPath]);
+  }, [reportingSnapshotsPath]);
 
   useEffect(() => {
     void refreshSnapshots();
@@ -463,6 +523,7 @@ export function useReportingSnapshotsData({
     snapshots,
     isLoading,
     error,
+    errorCode,
     sortedSnapshots,
     staleSnapshotCount,
     lastUpdatedAt,

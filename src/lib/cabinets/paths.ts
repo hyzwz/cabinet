@@ -17,10 +17,25 @@ export function normalizeCabinetPath(
     return ROOT_CABINET_PATH;
   }
 
-  return trimmed
+  const normalized = trimmed
     .replace(/^\.\//, "")
     .replace(/^\/+/, "")
     .replace(/\/+$/, "");
+
+  if (
+    normalized.length === 0 ||
+    pathHasTraversal(normalized)
+  ) {
+    return fallbackToRoot ? ROOT_CABINET_PATH : undefined;
+  }
+
+  return normalized;
+}
+
+function pathHasTraversal(value: string): boolean {
+  return value
+    .split("/")
+    .some((segment) => segment === ".." || segment === "." || segment.length === 0);
 }
 
 export function isRootCabinetPath(value?: string | null): boolean {

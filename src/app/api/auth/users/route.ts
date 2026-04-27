@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listUsers, deleteUser, updateUser } from "@/lib/storage/user-io";
 import { getCurrentUser } from "@/lib/auth/jwt";
+import { isPlatformAdminPayload } from "@/lib/auth/admin-guards";
 import { deleteNotificationsByUser, deleteCommentsByUser } from "@/lib/collaboration/notification-service";
-import type { UserRole } from "@/types";
+import type { SystemRole, UserRole, UserStatus } from "@/types";
 
 export async function GET(req: NextRequest) {
   const currentUser = await getCurrentUser(req);
-  if (!currentUser || currentUser.role !== "admin") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  if (!currentUser || !isPlatformAdminPayload(currentUser)) {
+    return NextResponse.json({ error: "Platform admin access required" }, { status: 403 });
   }
 
   const users = await listUsers();
@@ -16,8 +17,8 @@ export async function GET(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const currentUser = await getCurrentUser(req);
-  if (!currentUser || currentUser.role !== "admin") {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  if (!currentUser || !isPlatformAdminPayload(currentUser)) {
+    return NextResponse.json({ error: "Platform admin access required" }, { status: 403 });
   }
 
   const { userId } = await req.json();
@@ -52,17 +53,24 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { userId, displayName, password, role } = await req.json();
+  const { userId, displayName, password, role, systemRole, status } = await req.json();
   if (!userId) {
     return NextResponse.json({ error: "userId required" }, { status: 400 });
   }
 
   // Non-admin can only update themselves (password & displayName only)
-  if (currentUser.role !== "admin" && userId !== currentUser.userId) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  const isPlatformAdmin = isPlatformAdminPayload(currentUser);
+  if (!isPlatformAdmin && userId !== currentUser.userId) {
+    return NextResponse.json({ error: "Platform admin access required" }, { status: 403 });
   }
 
-  const updates: { displayName?: string; password?: string; role?: UserRole } = {};
+  const updates: {
+    displayName?: string;
+    password?: string;
+    role?: UserRole;
+    systemRole?: SystemRole;
+    status?: UserStatus;
+  } = {};
   if (displayName !== undefined) updates.displayName = displayName;
   if (password) {
     if (password.length < 4) {
@@ -71,8 +79,14 @@ export async function PATCH(req: NextRequest) {
     updates.password = password;
   }
   // Only admin can change roles
-  if (role !== undefined && currentUser.role === "admin") {
+  if (role !== undefined && isPlatformAdmin) {
     updates.role = role;
+  }
+  if (systemRole !== undefined && isPlatformAdmin) {
+    updates.systemRole = systemRole === "platform_admin" ? "platform_admin" : "user";
+  }
+  if (status !== undefined && isPlatformAdmin) {
+    updates.status = status === "pending" || status === "disabled" ? status : "active";
   }
 
   try {

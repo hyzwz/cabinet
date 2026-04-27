@@ -28,7 +28,7 @@ export function UserMenu() {
         <span className="hidden sm:inline max-w-[80px] truncate">
           {user.displayName || user.username}
         </span>
-        {user.role === "admin" && (
+        {(user.role === "admin" || user.systemRole === "platform_admin") && (
           <Shield className="h-3 w-3 text-amber-500" />
         )}
       </div>
