@@ -9,8 +9,8 @@ test("getMessage returns localized settings copy for covered demo surfaces", () 
   assert.equal(getMessage("settings.appearance.themeTitle", "zh"), "主题");
   assert.equal(getMessage("settings.storage.restartRequired", "zh"), "需要重启");
   assert.equal(getMessage("settings.providers.defaultProvider", "zh"), "默认 provider");
-  assert.equal(getMessage("settings.integrations.description", "zh"), "配置 AI 代理 可用的工具服务器。启用服务器并提供 API 凭证，以便 AI 代理 访问外部服务。");
-  assert.equal(getMessage("settings.notifications.description", "zh"), "配置当 AI 代理 需要你关注时如何接收提醒。");
+  assert.equal(getMessage("settings.integrations.description", "zh"), "配置 AI 员工 可用的工具服务器。启用服务器并提供 API 凭证，以便 AI 员工 访问外部服务。");
+  assert.equal(getMessage("settings.notifications.description", "zh"), "配置当 AI 员工 需要你关注时如何接收提醒。");
   assert.equal(getMessage("settings.providers.openTerminalError", "zh"), "无法自动打开终端。请手动打开 Terminal.app（Mac）或系统终端。");
   assert.equal(getMessage("settings.common.comingSoon", "zh"), "即将推出");
   assert.equal(getMessage("settings.updates.checking", "en"), "Checking for GreatClaw updates...");
@@ -31,7 +31,6 @@ test("covered settings workspace component uses locale message keys instead of h
     't("settings.providers.title")',
     't("settings.integrations.title")',
     't("settings.notifications.title")',
-    't("settings.common.comingSoon")',
     't("settings.about.title")',
   ];
 
