@@ -5,64 +5,9 @@ import yaml from "js-yaml";
 import { CABINET_LINK_META_CANDIDATES, CABINET_MANIFEST_FILE } from "@/lib/cabinets/files";
 import { ROOT_CABINET_PATH } from "@/lib/cabinets/paths";
 import type { TreeNode } from "@/types";
+import { classifyFileExtension } from "@/lib/editor/file-types";
 import { DATA_DIR, virtualPathFromFs, isHiddenEntry } from "./path-utils";
 import { listDirectory, readFileContent, fileExists } from "./fs-operations";
-
-const CODE_EXTENSIONS = new Set([
-  // Notes and plain text
-  ".txt", ".text", ".log", ".mdx", ".rst",
-  // Web and app code
-  ".js", ".cjs", ".mjs", ".ts", ".tsx", ".jsx", ".css", ".scss", ".html",
-  // Mobile and native code
-  ".swift", ".kt", ".kts", ".java", ".go", ".rs", ".c", ".cpp", ".h",
-  // Backend and scripting
-  ".py", ".rb", ".php", ".sh", ".bash", ".zsh", ".ps1",
-  // Config and structured text
-  ".json", ".jsonc", ".yaml", ".yml", ".toml", ".ini", ".env", ".xml",
-  // Query and schema files
-  ".sql", ".graphql", ".gql", ".prisma",
-]);
-
-const IMAGE_EXTENSIONS = new Set([
-  ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif", ".ico",
-]);
-
-const VIDEO_EXTENSIONS = new Set([
-  ".mp4", ".webm", ".mov", ".m4v",
-]);
-
-const AUDIO_EXTENSIONS = new Set([
-  ".mp3", ".wav", ".ogg", ".m4a", ".aac",
-]);
-
-const MERMAID_EXTENSIONS = new Set([".mermaid", ".mmd"]);
-
-// Files that should appear in the sidebar as "unknown" with an Open in Finder fallback.
-// Only common document/archive types that a user would intentionally put in a KB.
-// Everything not in a known set is silently skipped.
-const UNKNOWN_EXTENSIONS = new Set([
-  // Office documents
-  ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
-  ".pages", ".numbers", ".key", ".odt", ".ods", ".odp",
-  // Archives
-  ".zip", ".tar", ".tgz", ".gz", ".rar", ".7z",
-  // Installers / packages
-  ".dmg", ".pkg", ".apk", ".ipa", ".msi", ".deb", ".rpm",
-  // Design
-  ".fig", ".sketch", ".psd", ".ai", ".xd",
-  // Other documents
-  ".epub", ".mobi", ".rtf",
-]);
-
-function classifyFile(ext: string): TreeNode["type"] | null {
-  if (CODE_EXTENSIONS.has(ext)) return "code";
-  if (IMAGE_EXTENSIONS.has(ext)) return "image";
-  if (VIDEO_EXTENSIONS.has(ext)) return "video";
-  if (AUDIO_EXTENSIONS.has(ext)) return "audio";
-  if (MERMAID_EXTENSIONS.has(ext)) return "mermaid";
-  if (UNKNOWN_EXTENSIONS.has(ext)) return "unknown";
-  return null;
-}
 
 async function readFrontmatter(
   filePath: string
@@ -74,6 +19,29 @@ async function readFrontmatter(
   } catch {
     return {};
   }
+}
+
+export function normalizeFrontmatterTitle(
+  value: unknown,
+  fallback: string
+): string {
+  if (typeof value === "string" && value.trim()) {
+    return value;
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return fallback;
+}
+
+function getTreeNodeSortName(node: TreeNode): string {
+  return normalizeFrontmatterTitle(node.frontmatter?.title, node.name);
 }
 
 async function readCabinetMeta(
@@ -188,7 +156,7 @@ async function buildTreeRecursive(
         hasRepo: hasRepo || undefined,
         isLinked,
         frontmatter: {
-          title: (fm.title as string) || entry.name,
+          title: normalizeFrontmatterTitle(fm.title, entry.name),
           icon: fm.icon as string | undefined,
           order: fm.order as number | undefined,
           owner: fm.owner as string | undefined,
@@ -216,7 +184,7 @@ async function buildTreeRecursive(
       });
     } else {
       const ext = path.extname(entry.name).toLowerCase();
-      const fileType = classifyFile(ext);
+      const fileType = classifyFileExtension(ext);
       if (fileType) {
         nodes.push({
           name: entry.name,
@@ -242,7 +210,7 @@ async function buildTreeRecursive(
         path: vPath.replace(/\.md$/, ""),
         type: "file",
         frontmatter: {
-          title: (fm.title as string) || entry.name.replace(/\.md$/, ""),
+          title: normalizeFrontmatterTitle(fm.title, entry.name.replace(/\.md$/, "")),
           icon: fm.icon as string | undefined,
           order: fm.order as number | undefined,
           owner: fm.owner as string | undefined,
@@ -257,8 +225,8 @@ async function buildTreeRecursive(
     const orderA = a.frontmatter?.order ?? 999;
     const orderB = b.frontmatter?.order ?? 999;
     if (orderA !== orderB) return orderA - orderB;
-    const nameA = a.frontmatter?.title || a.name;
-    const nameB = b.frontmatter?.title || b.name;
+    const nameA = getTreeNodeSortName(a);
+    const nameB = getTreeNodeSortName(b);
     return nameA.localeCompare(nameB);
   });
 
@@ -286,10 +254,10 @@ export async function buildTree(showHidden = false): Promise<TreeNode[]> {
       path: ROOT_CABINET_PATH,
       type: "cabinet",
       frontmatter: {
-        title:
-          (rootFrontmatter.title as string | undefined) ||
-          (rootManifest.name as string | undefined) ||
-          "Cabinet",
+        title: normalizeFrontmatterTitle(
+          rootFrontmatter.title,
+          normalizeFrontmatterTitle(rootManifest.name, "Cabinet")
+        ),
         icon: rootFrontmatter.icon as string | undefined,
         order: rootFrontmatter.order as number | undefined,
       },

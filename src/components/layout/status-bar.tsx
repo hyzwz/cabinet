@@ -76,7 +76,7 @@ function StarExplosion() {
 }
 
 export function StatusBar() {
-  const { t } = useLocale();
+  const { t, format } = useLocale();
   const { saveStatus, currentPath } = useEditorStore();
   const loadTree = useTreeStore((s) => s.loadTree);
   const selectedPath = useTreeStore((s) => s.selectedPath);
@@ -481,31 +481,43 @@ export function StatusBar() {
                         ) : installKind === "source-managed" ? (
                           <p className="text-[10px] text-muted-foreground">
                             {!appAlive && !daemonAlive ? (
-                              <>Both servers are down. Restart with:{" "}
-                              <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npx cabinet</code></>
+                              <>
+                                {t("layout.status.sourceManagedBothDownPrefix")} {" "}
+                                <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npx cabinet</code>
+                              </>
                             ) : !appAlive ? (
-                              <>The app server crashed. Restart with:{" "}
-                              <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npx cabinet</code></>
+                              <>
+                                {t("layout.status.sourceManagedAppDownPrefix")} {" "}
+                                <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npx cabinet</code>
+                              </>
                             ) : (
-                              <>The daemon is not running. It should start automatically with{" "}
-                              <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npx cabinet</code>
-                              . Try restarting.</>
+                              <>
+                                {t("layout.status.sourceManagedDaemonDownPrefix")} {" "}
+                                <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npx cabinet</code>
+                                {t("layout.status.sourceManagedDaemonDownSuffix")}
+                              </>
                             )}
                           </p>
                         ) : (
                           <p className="text-[10px] text-muted-foreground">
                             {!appAlive && !daemonAlive ? (
-                              <>Both servers are down. Start everything with:{" "}
-                              <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npm run dev:all</code></>
+                              <>
+                                {t("layout.status.sourceCustomBothDownPrefix")} {" "}
+                                <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npm run dev:all</code>
+                              </>
                             ) : !appAlive ? (
-                              <>The Next.js app server crashed or was stopped. Restart with:{" "}
-                              <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npm run dev</code></>
+                              <>
+                                {t("layout.status.sourceCustomAppDownPrefix")} {" "}
+                                <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npm run dev</code>
+                              </>
                             ) : (
-                              <>The daemon is not running. If you started only{" "}
-                              <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npm run dev</code>
-                              , use{" "}
-                              <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npm run dev:all</code>
-                              {" "}instead to start both servers.</>
+                              <>
+                                {t("layout.status.sourceCustomDaemonDownPrefix")} {" "}
+                                <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npm run dev</code>
+                                {t("layout.status.sourceCustomDaemonDownMiddle")} {" "}
+                                <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npm run dev:all</code>
+                                {" "}{t("layout.status.sourceCustomDaemonDownSuffix")}
+                              </>
                             )}
                           </p>
                         )
@@ -590,15 +602,15 @@ export function StatusBar() {
           <button
             onClick={() => setSection({ type: "settings" })}
             className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-blue-500 hover:bg-muted hover:text-foreground transition-colors"
-            title={t("layout.status.updateAvailableTitle").replace("{version}", update.latest.version)}
+            title={format("layout.status.updateAvailableTitle", { version: update.latest.version })}
           >
             <CloudDownload className="h-3 w-3" />
-            {t("layout.status.updateAvailableLabel").replace("{version}", update.latest.version)}
+            {format("layout.status.updateAvailableLabel", { version: update.latest.version })}
           </button>
         )}
         <span className="flex items-center gap-1">
           <GitBranch className="h-3 w-3" />
-          {uncommitted > 0 ? t("layout.status.uncommitted").replace("{count}", String(uncommitted)) : t("layout.status.allCommitted")}
+          {uncommitted > 0 ? format("layout.status.uncommitted", { count: uncommitted }) : t("layout.status.allCommitted")}
         </span>
         <button
           onClick={pullAndRefresh}
@@ -642,14 +654,14 @@ export function StatusBar() {
           href={GITHUB_REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={`Star Cabinet on GitHub (${formatGithubStars(githubStars)} stars)`}
-          title={`Star on GitHub (${formatGithubStars(githubStars)} stars)`}
+          aria-label={format("layout.status.starsAria", { count: formatGithubStars(githubStars) })}
+          title={format("layout.status.starsTitle", { count: formatGithubStars(githubStars) })}
           className="relative inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-amber-700 transition-all hover:-translate-y-px hover:border-amber-500/35 hover:bg-amber-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 dark:text-amber-300"
         >
           {starsExploding && <StarExplosion />}
           <Star className="h-3.5 w-3.5 fill-current" />
           <span className="text-[10px] font-semibold tracking-[0.04em] text-foreground">
-            {formatGithubStars(displayStars || githubStars)} stars
+            {format("layout.status.starsLabel", { count: formatGithubStars(displayStars || githubStars) })}
           </span>
         </a>
       </div>

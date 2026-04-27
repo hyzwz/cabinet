@@ -11,6 +11,7 @@ import { SourceViewer } from "@/components/editor/source-viewer";
 import { ImageViewer } from "@/components/editor/image-viewer";
 import { MediaViewer } from "@/components/editor/media-viewer";
 import { MermaidViewer } from "@/components/editor/mermaid-viewer";
+import { PresentationViewer } from "@/components/editor/presentation-viewer";
 import { FileFallbackViewer } from "@/components/editor/file-fallback-viewer";
 import { HomeScreen } from "@/components/home/home-screen";
 import { AgentsWorkspace } from "@/components/agents/agents-workspace";
@@ -22,13 +23,14 @@ import { AIPanel } from "@/components/ai-panel/ai-panel";
 import { TaskDetailPanel } from "@/components/tasks/task-detail-panel";
 import { SearchDialog } from "@/components/search/search-dialog";
 import { KeyboardShortcuts } from "@/components/shortcuts/keyboard-shortcuts";
-import { StatusBar } from "@/components/layout/status-bar";
+import { ServerStatusIndicator } from "@/components/layout/server-status-indicator";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import { UpdateDialog } from "@/components/layout/update-dialog";
 import { NotificationToasts } from "@/components/layout/notification-toasts";
 import { CabinetView } from "@/components/cabinets/cabinet-view";
 import { RegistryBrowser } from "@/components/registry/registry-browser";
 import { findNodeByPath } from "@/lib/cabinets/tree";
+import { classifyFileExtension } from "@/lib/editor/file-types";
 import { useCabinetUpdate } from "@/hooks/use-cabinet-update";
 import { useHashRoute } from "@/hooks/use-hash-route";
 import { useTreeStore } from "@/stores/tree-store";
@@ -130,9 +132,7 @@ export function AppShell() {
   const selectedNode = selectedPath ? findNodeByPath(nodes, selectedPath) : null;
   // For paths not in the tree (e.g. .agents/ workspace files), infer type from extension
   const inferredType = !selectedNode && selectedPath
-    ? selectedPath.endsWith(".csv") ? "csv"
-    : selectedPath.endsWith(".pdf") ? "pdf"
-    : null
+    ? classifyFileExtension(`.${selectedPath.split(".").pop() || ""}`)
     : null;
   const nodeType = selectedNode?.type || inferredType;
   const isWebsite = nodeType === "website";
@@ -144,6 +144,7 @@ export function AppShell() {
   const isVideo = nodeType === "video";
   const isAudio = nodeType === "audio";
   const isMermaid = nodeType === "mermaid";
+  const isPresentation = nodeType === "presentation";
   const isUnknown = nodeType === "unknown";
   const hasPersistentUpdateState =
     update?.updateStatus.state === "restart-required" ||
@@ -283,6 +284,12 @@ export function AppShell() {
       return <MermaidViewer path={mmdPath} title={mmdTitle} />;
     }
 
+    if (isPresentation && (selectedNode || selectedPath)) {
+      const presentationPath = selectedNode?.path || selectedPath!;
+      const presentationTitle = selectedNode?.frontmatter?.title || selectedNode?.name || presentationPath.split("/").pop() || "Presentation";
+      return <PresentationViewer path={presentationPath} title={presentationTitle} />;
+    }
+
     if (isUnknown && (selectedNode || selectedPath)) {
       const unkPath = selectedNode?.path || selectedPath!;
       const unkTitle = selectedNode?.frontmatter?.title || selectedNode?.name || unkPath.split("/").pop() || "File";
@@ -319,7 +326,7 @@ export function AppShell() {
           {renderContent()}
         </main>
         {terminalOpen && <TerminalTabs />}
-        <StatusBar />
+        <ServerStatusIndicator />
       </div>
       {taskPanelConversation && <TaskDetailPanel />}
       {!aiPanelCollapsed && <AIPanel />}
