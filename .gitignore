@@ -41,39 +41,17 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# data: keep only the shipped templates, agent library, and guidance tracked
-data/**
-!data/
-!data/.cabinet
-!data/getting-started/
-!data/getting-started/**
-!data/example-cabinet-carousel-factory/
-!data/example-cabinet-carousel-factory/**
-!data/example-text-your-mom/
-!data/example-text-your-mom/**
-!data/vc-os/
-!data/vc-os/**
-data/vc-os/.cabinet-state/*
-!data/vc-os/.cabinet-state/.gitkeep
-data/vc-os/.agents/.conversations/
-data/vc-os/.agents/.messages/
-data/vc-os/.agents/.memory/
-data/vc-os/.agents/.history/
-data/vc-os/deal-flow/.cabinet-state/*
-!data/vc-os/deal-flow/.cabinet-state/.gitkeep
-data/vc-os/deal-flow/.agents/.conversations/
-data/vc-os/portfolio/.cabinet-state/*
-!data/vc-os/portfolio/.cabinet-state/.gitkeep
-data/vc-os/portfolio/.agents/.conversations/
-data/vc-os/intelligence/.cabinet-state/*
-!data/vc-os/intelligence/.cabinet-state/.gitkeep
-data/vc-os/intelligence/.agents/.conversations/
-data/vc-os/intelligence/.agents/.messages/
-data/vc-os/intelligence/.agents/.memory/
-data/vc-os/intelligence/.agents/.history/
-!data/index.md
-!data/CLAUDE.md
-data/**/.DS_Store
+# Local Cabinet data and backups are machine-specific.
+/data/
+/data-bak/
+
+# Agent and skill runtime/config directories are local-only.
+/.agents/
+/.codex/
+/.factory/
+/.forge/
+/.opencode/
+/AGENTS.md
 
 # old data backup
 /old-data/
@@ -87,4 +65,3 @@ data/.agents/.library/.next/
 
 # tmp/
 /tmp/
-
