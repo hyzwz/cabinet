@@ -19,6 +19,7 @@ export const editorExtensions = [
   StarterKit.configure({
     heading: { levels: [1, 2, 3, 4] },
     codeBlock: false, // replaced by CodeBlockLowlight
+    link: false, // replaced by the customized Link mark below
   }),
   CodeBlockLowlight.configure({
     lowlight,

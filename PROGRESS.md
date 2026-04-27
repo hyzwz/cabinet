@@ -1,4 +1,24 @@
-[2026-04-21] Security fix — deleteComment() now uses recursive CTE to delete the full descendant subtree (same pattern as deleteCommentsByUser). Previously only direct children were removed, leaving grandchild replies as orphaned rows with dangling parent_ids.
+[2026-04-27] 为 `data/会计事务所AI工作台/01-数据跟踪/每日摘要/2026-04-27.md` 生成新一期 AI + 财税服务情报日报，优先整合中注协、IFAC、COSO 与国家税务总局可访问线索，并在联网受限场景下明确标注为演示样例 / 待专业复核。同时更新 `data/会计事务所AI工作台/01-数据跟踪/每日摘要/index.md`，将最新日报置顶。
+[2026-04-26] Updated the accounting-firm demo cabinet’s daily intelligence brief under `data/会计事务所AI工作台/01-数据跟踪/每日摘要/2026-04-26.md` with refreshed authority-backed AI, audit, internal-control, tax, and professional-services signals from CICPA, COSO, Thomson Reuters, PwC, MOF, and Jiangsu Tax. Also updated the daily index entry to mark the brief as refreshed and pending professional review.
+[2026-04-26] Reintroduced a compact server status indicator after hiding the full StatusBar, preserving online/degraded/offline visibility without showing git sync, chat, contribution, or star controls.
+[2026-04-26] Hid the global bottom StatusBar from AppShell so the demo UI no longer shows online/git sync/chat/contribution/star controls along the bottom edge.
+[2026-04-26] Cleared stale local provider errors when the host daemon reports a CLI provider as available, so Settings shows the daemon-backed provider status without leftover container-only "not found" messages.
+[2026-04-26] Fixed CLI provider detection so host-run adapters prefer the user's Bun and nvm paths before Homebrew, allowing Cabinet to detect the locally installed Codex CLI correctly from the daemon.
+[2026-04-26] Made the login page render the multi-user form by default instead of a blank loading state, preventing the Docker demo from getting stuck on the pre-rendered ellipsis while auth mode is checked.
+[2026-04-26] Rebuilt data/会计事务所AI工作台 as a customer-demo Cabinet with five AI agent personas, five runnable jobs, and sample deliverables for data tracking, WeChat article creation, HTML reporting, and PPT briefing. Added source lists, demo scripts, CSV data, an embedded HTML dashboard, SVG article artwork, and an 8-slide PPTX artifact while leaving data-bak untouched.
+[2026-04-24] Fixed cabinet reporting root-cabinet routing in the app and Docker build by separating canonical `cabinetId` from display `cabinetPath` in reporting requests. Also added runtime manifest-backed reporting ownership fallback so reporting-links POST can resolve and canonicalize cabinet ids from `.cabinet` files without relying on test-only providers, with focused regression coverage across hooks, containers, routes, and auth services.
+[2026-04-24] Restored reporting for legacy workspaces that only store `company.name` by deriving a stable company id during company-context resolution and by returning a stable `missing_company_context` error code instead of raw English API text. Localized the reporting surface chrome and reporting-specific company-context error mapping, added locale-stable provider/test coverage, and kept the root-cabinet reporting contract intact.
+[2026-04-24] Restored live Docker reporting for single-workspace admin accounts with no explicit membership providers by letting app admins inherit the workspace default company and requested cabinet context. Rebuilt the container and verified authenticated requests to the root-cabinet reporting and reporting-links endpoints now return 200 with `scope.companyId = "jyutech.cn"` instead of company/cabinet context errors.
+[2026-04-24] Improved the reporting zero state so empty root-cabinet reporting explains what links and snapshots do instead of looking broken. Added localized empty-state guidance for both panels plus an “Add first reporting link” CTA that focuses the existing child-cabinet input, keeping the reporting surface visible while making the next step obvious.
+[2026-04-21] 审查 18 个指定文件及额外发现的 mintlayer/greenpulse 文件，确认所有文件正文均已为中文，无需进一步翻译。frontmatter 中保留的英文均为品牌名（TikTok、Reddit、NeuralFlow 等）或行业通用缩写（CEO、CTO、LP、B2B、AI、ML），符合翻译规范。
+[2026-04-20] 将 data/ 目录下所有 md 文档、agent persona 和 job YAML 全面翻译成中文，包括目录名重命名（共 60+ 个目录/文件重命名、100+ 文件内容翻译）。
+[2026-04-21] 将任务A知识库的6个文件从英文翻译为中文：index.md、入门指南/index.md、入门指南/应用与代码库/index.md、入门指南/符号链接与知识加载/index.md、.agents/ceo/persona.md、.agents/editor/persona.md。所有 frontmatter 键保持英文，标签值、正文、HTML 表格内容及智能体人设全部翻译为中文。
+[2026-04-21] 将视频创作团队知识库的5个文件从英文翻译为中文：入门指南/index.md、入门指南/应用与代码库/index.md、入门指南/符号链接与知识加载/index.md、.agents/ceo/persona.md、.agents/editor/persona.md。frontmatter 键保持英文，所有正文、标签值及 HTML 表格内容均已翻译为中文。
+[2026-04-21] 将风投操作系统/.jobs/下的9个YAML作业文件从英文翻译为中文，包括name、description和prompt字段，所有其他字段保持不变。
+[2026-04-21] 将"给妈妈发短信"知识库的39个内容文件从英文翻译为中文，涵盖公司战略、财务、运营、头脑风暴、应用开发、发布检查单、PRD、营销（TikTok + Reddit）等全部模块。所有已为中文的文件保持不变，纯中文文件（如上海游记）未做修改。
+
+[2026-04-21] 将"给妈妈发短信"知识库的29个文件（16个智能体 persona.md + 13个 YAML 作业文件）从英文翻译为中文。name/role 字段按规范映射（CEO→首席执行官等），正文与 prompt 全部翻译，所有 YAML 结构键保持不变。
+
  — 在 src/lib/db.ts 和 server/db.ts 的 WAL pragma 后补加 `busy_timeout = 5000`，使 Next.js 进程与 cabinet-daemon 进程同时写入时，后者等待最多 5 秒而非立即抛 SQLITE_BUSY 错误。WAL 模式已确认启用，适用于目标用户规模（5-50 人自托管团队），无需迁移 PostgreSQL。
  from second audit. (1) Replaced `deleteCommentsByUser()` two-pass deletion with a SQLite recursive CTE (`WITH RECURSIVE subtree`) that collects the full descendant reply chain before deleting — no orphaned rows survive regardless of nesting depth. (2) Added `loadPageMetaWalkUp()` to access-control.ts that walks ancestor path segments until frontmatter is found; upload route and assets GET/PUT now use it instead of `loadPageMeta()`, closing the bypass where uploads to a subdirectory of a private page returned undefined meta and were incorrectly allowed.
  (1) Comments API now loads page frontmatter before access checks, preventing unauthorized read/write on private pages. (2) Locks GET now requires read auth with frontmatter check; POST loads frontmatter for write check — prevents non-owners from observing/locking private pages. (3) Upload API now loads page frontmatter for write access check. (4) Assets GET now checks read access with frontmatter (private attachments no longer publicly readable); PUT also loads frontmatter. (5) Fixed reply-to-reply orphaning: `getComments()` now flattens nested replies into root thread via single-pass id→thread mapping. (6) User deletion now also cleans up comments via `deleteCommentsByUser()`. Added `loadPageMeta()` and `getPagePathFromAssetPath()` helpers to access-control.ts.
@@ -217,6 +237,8 @@
 [2026-04-13] Unified composer component: Created shared `useComposer` hook and `ComposerInput` component that replaces 4 duplicate input implementations (home screen, agent workspace panel + quick-send popup, AI panel editor chat, task board). All surfaces now support `@` mentions for both pages and agents in a single unified dropdown with grouped sections. The "Add Inbox Task" dialog was redesigned from a rigid form (title/description/priority fields) into a conversational composer. Extracted shared `flattenTree` and `makePageContextLabel` into `src/lib/tree-utils.ts`. Submit behavior is Enter to send, Shift+Enter for newline across all surfaces.
 
 [2026-04-13] CEO operating review: surveyed all cabinets, confirmed Option A (activate marketing this week), answered CFO data questions (pricing $4.99/mo, burn ~$12K/mo, 60/40 organic/paid split), set April 26 check-in criteria, flagged COO/DevOps overlap and CEO brief/review overlap, introduced decision-deadline process fix for blockers. Updated company/operations and company/goals.
+
+[2026-04-23] 完成 x-每日资讯 今日 X.com 跟踪：基于近 24 小时与 Claude、Anthropic、OpenAI、Cursor、MCP、Claude Code 相关关键词筛选高价值动态，新增 `data/x-每日资讯/每日摘要/2026-04-23.md`。同时更新 `data/x-每日资讯/每日摘要/index.md` 归档入口，将最新摘要置顶并刷新“最近一次更新”指向。
 
 [2026-04-13] CEO weekly operating review (scheduled job): Full cross-cabinet review covering root + app-development + marketing/tiktok + marketing/reddit. Wins: DevOps sprint plan, CTO RT-4 ownership, CFO unit economics, COO financial risk tracking. Made Option A decision official for marketing activation with specific deadlines. Introduced Tuesday proof-of-life process fix. Saved to company/operations/index.md.
 
@@ -516,3 +538,75 @@
 [2026-04-23] Tightened the strict TreeNode rename test harness by moving Base UI jsdom polyfills under `withDomContainer()` lifecycle management and adding `test/reporting-dom-test-utils.test.ts` to lock in restore semantics for previously-absent globals. This removes hidden global leakage from the interaction test setup while keeping the real ContextMenu → Rename → Dialog coverage green.
 [2026-04-23] Tightened the DOM test utils restore contract further by removing unreachable polyfill restore branches and adding a falsy-value regression case that proves original property descriptors are restored instead of deleting pre-existing keys. The strict TreeNode rename interaction coverage remains green after the cleanup.
 [2026-04-23] Fixed the follow-up DOM test utils typecheck regression by reading `MouseEvent` from a `Window & typeof globalThis` view before assigning the `PointerEvent` polyfill. This keeps the strict TreeNode rename jsdom harness build-clean without changing runtime behavior.
+[2026-04-23] After merging `feature/tree-node-rename-interaction` into `main`, reconciled the four stash-colliding rename files. Kept the merged `tree-node.tsx`, `reporting-helpers.ts`, and `tree-node-rename-ui.test.ts` because they were already equivalent or strictly more complete, and selectively restored the sidebar i18n terminology updates in `src/lib/i18n/messages/sidebar.ts` without reverting the rename strings required by the new interaction coverage.
+[2026-04-20] 新增 X.com 每日资讯采集项目空间。在 data/x-每日资讯/ 创建中文 KB 空间（主页、追踪话题配置、每日摘要目录），并在 src/lib/jobs/job-library.ts 添加「X.com 每日资讯摘要」Job 模板（每天早 8 点，通过 xreach-cli 搜索 X.com 热门话题，AI 整理中文摘要存入知识库）。
+
+[2026-04-20] 为 x-每日资讯 项目空间添加 .cabinet 文件，使其在侧边栏显示为工作空间（橙色图标）而非普通目录。
+
+[2026-04-20] 为 x-每日资讯 工作空间添加「资讯分析师」Agent（.agents/analyst/persona.md）和对应的每日 Job（.jobs/x-daily-intel-digest.yaml），使 Jobs 和 Agent 正确关联到该 Cabinet 空间。
+
+[2026-04-20] 升级 X.com 每日资讯 Job 为双语采集模式：英文关键词为主（自动翻译）、中文补充，每个关键词抓取量从 15 增至 20 条，timeout 从 900s 增至 1800s，追踪话题配置页拆分为英文/中文两组。
+
+[2026-04-20] 将知识库 11 个文件翻译为中文，包含入门指南（含 HTML 表格）、应用与代码库、符号链接与知识加载、产品路线图、自然灾害简报（标签）、以及各 Agent persona（CEO/CTO/编辑/研究员/内容营销），所有正文、frontmatter title 与 tags 均已完成中文化。
+\n[2026-04-20] Fixed remaining English wikilinks in 任务A: translated [[Apps and Repos]]→[[应用与代码库]], [[Symlinks and Load Knowledge]]→[[符号链接与知识加载]], [[Getting Started]]→[[入门指南]]. All 12 markdown files across 视频创作团队 and 任务A confirmed fully in Chinese.
+
+[2026-04-20] 重新翻译入门指南三个文件（入门指南/index.md、应用与代码库/index.md、符号链接与知识加载/index.md），以用户提供的完整中文内容替换全文，保留所有 HTML 表格标签、代码块及文件路径不变。
+
+[2026-04-20] 将 /data/风投操作系统/ 目录下的所有 Markdown 文件从英文翻译为中文，共翻译 31 个 .md 文件（包括各模块 index、被投企业档案、情报简报、X 动态监控列表、合伙人会议材料等）以及 4 个 .agents persona.md 文件；YAML frontmatter 键名保持英文，仅翻译值内容；文件名与目录名未作修改；.jobs YAML 文件的 prompt 字段已预先为中文无需重复处理。
+[2026-04-20] 将风投操作系统知识库中35个文件从英文翻译为中文，涵盖主索引、情报中心（每日简报、X观察列表、专项研究）、交易流、竞争对手分析、财务报告、有限合伙人管理、投资组合（5家被投企业）、投资项目及团队页面，以及4个智能体角色配置文件。翻译标题、标签值及正文，保留代码块、URL、维基链接和YAML键名不变。
+[2026-04-21] 为 x-每日资讯/每日摘要/2026-04-20-再次抓取测试.md 添加“一句话总结”，概括当日资讯主线为 MCP 标准化、latent reasoning、Claude 接入摩擦，以及 AI 编程工具从单点竞争转向多工具协同与安全。
+
+[2026-04-21] 完成 Cabinet 服务重启。机器重启后 Docker UI（localhost:3100）已运行，通过 npm run dev:daemon 启动后端 daemon（localhost:4100）。两项服务均已验证正常，22 个预定任务和心跳已加载。
+
+[2026-04-21] 完成 Cabinet 全面代码分析。扫描 321 个 TypeScript 文件，识别 12 个问题：3 个严重（编辑器跨页面污染、PUT 锁未释放、缺失类型 catch）、4 个中等（并发上传、frontmatter 验证、autoCommit 错误处理、Tree 缓存过期）、5 个轻微。详细报告见分析文档。
+
+[2026-04-22] 将前端 i18n 中所有中文 "AI 代理" 统一改为 "AI 员工"。涵盖 7 个文件（agents/tasks/sidebar/cabinets/home/layout/settings）共 79 处，包括英文对象中意外混入的 5 处中文。保留 key 名和英文翻译不变，lint 通过。
+
+[2026-04-23] 补齐 i18n 中文翻译：新增 home.registry.browseAll、header.productName 两个缺失 ZH 条目；将 21 个 ZH 值仍为英文的 key 翻译为中文（涵盖 Provider/Providers、Jobs/Heartbeats/Starter Library、Daemon、Company OS、Agents、Agent Slack、Scheduled jobs、Job id/sidebar.jobSingular/Plural 等）。保留品牌名/技术缩写/placeholder 示例值等 C 类条目原文不动。
+[2026-04-23] 修复第二轮 i18n 漏网文案：cabinet 首页问候语改为走 `home.greeting.*`，共享 Composer 页脚的 “use @ to mention / new line” 接入通用 locale 文案，cron 人类可读文案与调度快捷选项支持中文输出（如“工作日上午 9:00”）。同时用当前代码重建并重新部署本机 Docker 的 Cabinet Web，确保 3100 上是最新前端。
+
+[2026-04-23] 继续补齐漏网 i18n：为 AI panel 输入框、Mission Control Slack 输入框和 Agent 详情里的 Heartbeat 标签补上 zh/en 文案 key，并新增回归测试覆盖这些 placeholder/label，防止后续再回退成英文硬编码。
+[2026-04-23] 修复删除目录/页面失效：删除接口不再用 `readPage()` 阻止普通目录节点删除，并统一删除目标解析，支持侧边栏虚拟路径删除纯目录与独立 `.md` 页面。新增回归测试覆盖这两种删除路径，构建通过。
+[2026-04-23] 为 Docker 部署拆分 `sanitizeFilename` 纯模块，避免 `path-utils` 经由客户端依赖链把 Node `fs` 拉进浏览器打包。新增回归测试覆盖该纯 helper，并重建本地 docker compose 的 cabinet 服务，3100 健康检查恢复正常。
+[2026-04-23] 修复 agent 产物跳转链路：产物路径现在会规范化为 Cabinet 页面路径，cabinet 内相对产物会自动补上 cabinet 前缀，点击产物会写入浏览器历史，回退可返回原页面。补充了产物回退解析逻辑，当 agent 上报了不存在的路径时，会回落到本次运行期间真实落盘的 KB 文件，并新增回归测试覆盖路径规范化与错误产物兜底。
+[2026-04-23] 修复全局页面历史记录：`useHashRoute` 对用户触发的 section / page 切换改为写入浏览器历史栈，不再用 `replaceState` 覆盖上一页，因此普通 md 文件之间、以及其他系统页面之间的前进/回退都能按顺序工作。新增真实 hook 回归测试覆盖常规页面切换必须 `push` 新历史记录，并将修复重建部署到本机 Docker。
+[2026-04-23] 修复任务看板 i18n 漏洞：cabinet 可见范围选项改为通过共享 locale helper 输出，不再在中文界面显示 “Own/Own agents only”。同时将 tasks board 的复数后缀改为按 locale 处理，避免中文摘要里出现 `草稿s`、`运行s`、`AI 员工s`，并补了对应回归测试。
+[2026-04-24] 修复 cabinet reporting 的根柜子路由问题：reporting 面板和 reporting links 现在使用 canonical cabinet id 命中 `/api/cabinets/[cabinetId]/...`，同时把 `cabinetPath` 保留在 query/body 里，避免根路径 `.` 把动态路由段折叠掉。补充了 request builder、hooks、reporting 容器和 cabinet-view 传参链路的回归测试，并为 root cabinet 的 link 创建请求补齐 parent/child path 上下文。
+[2026-04-24] 将 data/getting-started/apps-and-repos/index.md 翻译为中文，保留原有 markdown 结构、代码块与 `.repo.yaml` 示例不变。同步中文化页面标题、标签、正文说明与表格字段描述，并更新 modified 日期。
+[2026-04-26] 修复 AI 编辑器会话详情在子 Cabinet 中加载失败的问题：实时编辑创建的会话现在会把 `cabinetPath` 保留到 AI panel 的 live/history 状态，并传给详情查询，不再硬编码根目录 `/`。新增回归测试覆盖 AI panel 的会话范围传递，避免再次出现 “Could not load conversation detail.”。
+[2026-04-26] 清理 AI panel 同文件静态检查问题：移除不再使用的图标与类型 import，并把会话选择相关 effect 中的同步 setState 延后到 microtask，以满足当前 ESLint React hooks 规则。
+[2026-04-26] 重建并重启 `cabinet-demo` Docker Web 容器，使 localhost:3100 使用最新 AI panel 会话范围修复。验证容器内 bundle 已不再硬编码 `cabinetPath: "/"`，并确认 `/api/health` 与 `/api/health/daemon` 返回 200。
+[2026-04-26] 为 Codex CLI 供应商补充 `gpt-5.5` 和 `gpt-5.4` 主力模型选项，并放在模型选择列表最前面；两个模型都支持 low/medium/high/xhigh 推理强度。新增 provider runtime 回归测试，确保 Settings 默认模型选择能持续显示这两个模型。
+[2026-04-26] 重建并重启 `cabinet-demo` Docker Web 容器，使 localhost:3100 的供应商设置页加载包含 `gpt-5.5` / `gpt-5.4` 的最新 Codex CLI 模型清单；容器内源码和 standalone bundle 均已验证包含这两个模型。
+[2026-04-26] 禁用供应商配置读取缓存：`/api/agents/providers` 现在强制动态并返回 `Cache-Control: no-store`，Settings 页拉取供应商清单也使用 `cache: "no-store"`，避免 Docker Web 更新后浏览器继续展示旧模型列表。
+[2026-04-26] 修复供应商模型清单被 daemon 状态覆盖的问题：Settings 供应商接口现在只从 daemon 合并 available/authenticated/version/error 运行状态，不再让 daemon 返回的旧 models 覆盖 Web 本地模型目录。新增回归测试锁定该合并边界。
+[2026-04-26] 为 AI 编辑器补充 Codex CLI 图片生成入口：新增 `image_generation` 会话意图和 `/image`/`生成图片` 请求识别，专用 prompt 会要求 Codex 使用 GPT Image 2 图片生成能力并把 PNG 保存到当前页面旁的 `generated-images/` 目录，同时在 AI 面板输入区增加“生成图片”二级按钮。
+[2026-04-26] 修复 Markdown 中父级相对图片路径渲染失败：`markdownToHtml` 现在会把 `../图片素材/file.png` 等相对资源统一改写为 `/api/assets/...`，避免浏览器按当前应用 URL 解析导致图片加载失败。新增回归测试覆盖父级相对图片资源、外部图片和 data URL。
+[2026-04-26] 将 AI 编辑器实时会话的 Live Output 改为默认折叠的可展开面板，只保留标题、状态和展开控制常驻显示，避免右侧窄面板被中间输出内容挤满。
+[2026-04-26] 重建并重启 `cabinet-demo` Docker Web 容器，使 localhost:3100 使用最新 AI 编辑器 Live Output 默认折叠改动；验证 `/api/health` 与 `/api/health/daemon` 返回 200，并确认容器内 standalone bundle 包含 `conversation-live-output` 与 `expandedOutputId`。
+[2026-04-26] 扩展 AI 编辑器的非 Markdown 文件支持：AI panel 现在以当前树选中路径作为编辑目标，HTML 嵌入网站、CSV 和图片文件的 editor prompt 会明确给出可编辑目标；HTML/CSV/图片 viewer 会在 AI 会话完成后刷新当前资源。
+[2026-04-26] 整理 AI panel 非 Markdown 目标支持改动的 JSX 缩进，保持打开历史会话目标与 Composer 输入区的结构清晰。
+[2026-04-26] 为会计事务所 AI 工作台的 `wechat-editor` persona 增加 `md2wechat` 公众号 HTML 输出流程：公众号排版请求必须走 `inspect -> preview -> convert`，草稿上传和图片帖发布按用户明确意图分流；若本机缺少 `MD2WECHAT_API_KEY`，agent 需降级生成 preview artifact 并说明最终转换前置条件。同步验证本机 `md2wechat` CLI 可用，并用断言覆盖提示词中的关键命令路由。
+[2026-04-26] Updated the wechat-editor agent persona and its demo-brief job prompt so generated HTML previews use Cabinet-renderable preview directories with `index.html` instead of standalone `.html` files.
+
+[2026-04-26] Adjusted the wechat-editor fallback flow: when `MD2WECHAT_API_KEY` is missing, the agent must generate a Cabinet local display HTML page instead of using the `md2wechat --mode ai` degraded report as the article preview. Updated the 公众号文章 workspace index to point at renderable preview directories.
+
+[2026-04-27] Fixed stale embedded HTML previews by making `WebsiteViewer` start with a fresh cache-buster per mount/path change and by serving `.html` assets with `Cache-Control: no-store`; this prevents regenerated Cabinet website previews from continuing to show cached degraded `md2wechat` output.
+
+[2026-04-27] Tightened `wechat-editor` preview output rules so each article produces only one renderable HTML preview directory: `.preview/index.html` when `MD2WECHAT_API_KEY` is configured, or `.ai-preview/index.html` as the Cabinet local display fallback when it is not. Updated the WeChat article workspace index to list only the active fallback preview.
+[2026-04-27] Updated the 会计事务所 AI 工作台 `deck-strategist` persona so PPT generation now defaults to the local `guizang-ppt-skill` HTML deck workflow. The prompt records the skill/template/reference paths, required theme and layout checks, output directory convention, and when to fall back to traditional PPTX.
+[2026-04-27] Added an internal PowerPoint preview path for Cabinet: `.ppt/.pptx` now route as presentation files, `.pptx` assets are parsed through a new OOXML preview API, and the editor renders slide text with download/open controls. Added a targeted regression test for presentation classification and PPTX text extraction.
+[2026-04-27] Rebuilt and restarted the `cabinet-demo` Docker service so localhost:3100 now includes the PPTX presentation preview route and viewer. Verified the container health endpoint and confirmed the built standalone server contains `/api/previews/presentation/[...path]`.
+[2026-04-27] Added `deck-strategist-2` as a second PPT strategist for the 会计事务所 AI 工作台. This Codex-backed persona uses `gpt-image-2` for full-slide image-based PPT generation, adds a disabled manual image-PPT job, and updates the workspace index and deliverable index to distinguish it from the existing web-PPT strategist.
+[2026-04-27] Added an editable HTML-deck-to-PPTX path for the 会计事务所 AI 工作台. A new `scripts/html_deck_to_editable_pptx.py` converter rebuilds Cabinet HTML decks as editable PPTX text boxes, shapes, and separate media, with regression coverage; `deck-strategist-3` and a disabled manual job now own this workflow.
+[2026-04-27] Generated `04-PPT文档/AI财税服务升级建议-editable.pptx` from the existing HTML web deck and updated `PPT生成说明.md` with the PPT策略师3 conversion command, output path, and known visual differences from the browser deck.
+[2026-04-27] Fixed the misleading PPTX preview surface in Cabinet by changing `PresentationViewer` from a fake slide-canvas layout to an explicit text-outline preview. The viewer now tells users Cabinet extracts PPTX text only and directs visual layout checks to Download/Open in PowerPoint, WPS, or the browser; regression coverage prevents reintroducing the old `aspect-video` pseudo-slide rendering.
+[2026-04-27] Rebuilt and restarted the `cabinet-demo` Docker service so localhost:3100 includes the corrected PPTX text-outline viewer. Verified `/api/health` and `/api/health/daemon` return OK and confirmed the rebuilt standalone bundle contains the new PPTX preview wording.
+[2026-04-27] Fixed the tree builder so frontmatter titles parsed by YAML as non-string values, especially date-like titles such as `2026-04-26`, no longer crash `/api/tree`. Added regression coverage for title normalization and verified the existing 会计事务所 AI 工作台 tree renders from the real data directory.
+[2026-04-27] Upgraded PPTX preview from text-outline-only to visual preview first: the presentation preview API can now convert `.pptx` to PDF with LibreOffice, the viewer embeds that PDF when available, and text outline remains as the fallback. Docker now installs headless LibreOffice plus CJK fonts so the production container can render slide layouts.
+[2026-04-27] Fixed AI editor panel spacing by adding a compact density for embedded conversation views, using it inside the right-side AI panel, restoring input-area padding, and preventing the panel from shrinking in the app shell flex row.
+[2026-04-27] Rebuilt and restarted the `cabinet-demo` Docker Web container so localhost:3100 includes the AI editor compact-spacing fix. Verified `/api/health` and `/api/health/daemon` return OK, and confirmed the standalone/static bundles contain the updated AI panel `shrink-0` class and `conversation-live-output` view marker.
+[2026-04-27] Widened the right-side AI editor panel and restored a stronger horizontal gutter across its header, session lists, expanded run cards, and input area after visual verification showed the first compact pass still looked edge-tight. Rebuilt and restarted `cabinet-demo`; verified localhost:3100 health plus production bundle markers for `w-[520px] min-w-[460px]` and `px-5 py-4`.
+[2026-04-27] Cleaned the visible console errors from the AI editor flow: disabled StarterKit's built-in Link mark before registering Cabinet's customized Link extension, and stopped hash-route page loading from requesting non-Markdown embedded assets such as `index.html` through `/api/pages`.
+[2026-04-27] Rebuilt and restarted the `cabinet-demo` Docker service with the AI editor console-error cleanup. Verified the Next.js production build, localhost:3100 health endpoints, and container source markers for the Link-extension and non-Markdown hash-route fixes.
+[2026-04-27] Removed the embedded website iframe's `allow-same-origin` sandbox permission so Chrome no longer warns about combining it with `allow-scripts`, while keeping scripts, forms, popups, and downloads enabled for local HTML deck previews.

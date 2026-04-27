@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import { ConversationLiveView } from "@/components/agents/conversation-live-view";
 import { ConversationResultView } from "@/components/agents/conversation-result-view";
@@ -11,10 +11,14 @@ type ConversationSessionTarget = Pick<
   "id" | "cabinetPath" | "status"
 >;
 
+type ConversationViewDensity = "default" | "compact";
+
 export function ConversationSessionView({
   conversation,
   onOpenArtifact,
   onDetailChange,
+  onMissingDetail,
+  density = "default",
   loadingLabel = "Loading...",
   waitingLabel = "Waiting for conversation detail...",
   errorLabel = "Could not load conversation detail.",
@@ -22,6 +26,8 @@ export function ConversationSessionView({
   conversation: ConversationSessionTarget | null;
   onOpenArtifact: (path: string) => void;
   onDetailChange?: (detail: ConversationDetail | null) => void;
+  onMissingDetail?: (reason: "not_found" | "error") => void;
+  density?: ConversationViewDensity;
   loadingLabel?: string;
   waitingLabel?: string;
   errorLabel?: string;
@@ -29,11 +35,21 @@ export function ConversationSessionView({
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [failedLoad, setFailedLoad] = useState(false);
+  const missingDetailReasonRef = useRef<"not_found" | "error" | null>(null);
   const previousKeyRef = useRef<string | null>(null);
+  const conversationId = conversation?.id || "";
+  const conversationCabinetPath = conversation?.cabinetPath || "";
+  const conversationStatus = conversation?.status || "";
+  const reportMissingDetail = useCallback((reason: "not_found" | "error") => {
+    if (missingDetailReasonRef.current === reason) return;
+    missingDetailReasonRef.current = reason;
+    onMissingDetail?.(reason);
+  }, [onMissingDetail]);
 
   useEffect(() => {
-    if (!conversation) {
+    if (!conversationId) {
       previousKeyRef.current = null;
+      missingDetailReasonRef.current = null;
       setDetail(null);
       setLoading(false);
       setFailedLoad(false);
@@ -41,12 +57,17 @@ export function ConversationSessionView({
       return;
     }
 
-    const selectedConversation = conversation;
+    const selectedConversation = {
+      id: conversationId,
+      cabinetPath: conversationCabinetPath || undefined,
+      status: conversationStatus,
+    };
     const selectionKey = `${selectedConversation.id}::${selectedConversation.cabinetPath || ""}`;
     const isNewSelection = previousKeyRef.current !== selectionKey;
     previousKeyRef.current = selectionKey;
 
     if (isNewSelection) {
+      missingDetailReasonRef.current = null;
       setDetail(null);
       onDetailChange?.(null);
     }
@@ -71,6 +92,7 @@ export function ConversationSessionView({
         );
         const data = response.ok ? ((await response.json()) as ConversationDetail) : null;
         if (!cancelled && data) {
+          missingDetailReasonRef.current = null;
           setDetail(data);
           setFailedLoad(false);
           onDetailChange?.(data);
@@ -82,10 +104,12 @@ export function ConversationSessionView({
         }
         if (!cancelled && !data) {
           setFailedLoad(true);
+          reportMissingDetail(response.status === 404 ? "not_found" : "error");
         }
       } catch {
         if (!cancelled) {
           setFailedLoad(true);
+          reportMissingDetail("error");
         }
       } finally {
         if (!cancelled && !background) {
@@ -113,7 +137,13 @@ export function ConversationSessionView({
         window.clearInterval(pollHandle);
       }
     };
-  }, [conversation?.cabinetPath, conversation?.id, conversation?.status, onDetailChange]);
+  }, [
+    conversationCabinetPath,
+    conversationId,
+    conversationStatus,
+    onDetailChange,
+    reportMissingDetail,
+  ]);
 
   if (loading && !detail) {
     return (
@@ -130,6 +160,7 @@ export function ConversationSessionView({
         <ConversationLiveView
           detail={detail}
           onOpenArtifact={onOpenArtifact}
+          density={density}
         />
       );
     }
@@ -138,6 +169,7 @@ export function ConversationSessionView({
       <ConversationResultView
         detail={detail}
         onOpenArtifact={onOpenArtifact}
+        density={density}
       />
     );
   }

@@ -5,10 +5,7 @@ import {
   X,
   Sparkles,
   Trash2,
-  ChevronDown,
-  ChevronRight,
   CheckCircle,
-  Clock,
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,7 +15,9 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useAppStore } from "@/stores/app-store";
 import { useTreeStore } from "@/stores/tree-store";
 import { WebTerminal } from "@/components/terminal/web-terminal";
-import type { ConversationDetail, ConversationMeta } from "@/types/conversations";
+import { ConversationSessionView } from "@/components/agents/conversation-session-view";
+import { ConversationRuntimeBadge } from "@/components/agents/conversation-runtime-badge";
+import type { ConversationMeta } from "@/types/conversations";
 import type { AgentListItem } from "@/types/agents";
 import { createConversation } from "@/lib/agents/conversation-client";
 import { flattenTree } from "@/lib/tree-utils";
@@ -29,6 +28,7 @@ import { useLocale } from "@/components/i18n/locale-provider";
 interface PastSession {
   id: string;
   pagePath: string;
+  cabinetPath?: string;
   instruction: string;
   timestamp: string;
   duration?: number;
@@ -61,12 +61,16 @@ type LiveSessionView =
       kind: "running";
       id: string;
       sessionId: string;
+      conversationId?: string;
+      cabinetPath?: string;
       pagePath: string;
       agentSlug: string;
       userMessage: string;
       prompt: string;
       timestamp: number;
       reconnect?: boolean;
+      providerId?: string;
+      adapterType?: string;
     };
 
 function startCase(value: string | undefined, fallback = "Editor"): string {
@@ -88,12 +92,14 @@ export function AIPanel() {
   } = useAIPanelStore();
   const { currentPath, loadPage } = useEditorStore();
   const treeNodes = useTreeStore((s) => s.nodes);
+  const selectedPath = useTreeStore((s) => s.selectedPath);
+  const targetPath = selectedPath || currentPath;
   const [agents, setAgents] = useState<AgentListItem[]>([]);
   const [pastSessions, setPastSessions] = useState<PastSession[]>([]);
-  const [expandedPast, setExpandedPast] = useState<Set<string>>(new Set());
-  const [pastSessionDetails, setPastSessionDetails] = useState<Record<string, string>>({});
+  const [selectedHistoryConversation, setSelectedHistoryConversation] = useState<string | null>(null);
   const [pendingSessions, setPendingSessions] = useState<PendingLiveSession[]>([]);
   const [selectedLiveSessionId, setSelectedLiveSessionId] = useState<string | null>(null);
+  const [imageSubmitting, setImageSubmitting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const previousCurrentPathRef = useRef<string | null>(null);
   const { t, format } = useLocale();
@@ -118,10 +124,10 @@ export function AIPanel() {
   ];
 
   const loadPastSessions = useCallback(async () => {
-    if (!currentPath || !isOpen) return;
+    if (!targetPath || !isOpen) return;
     try {
       const res = await fetch(
-        `/api/agents/conversations?agent=editor&pagePath=${encodeURIComponent(currentPath)}&limit=20`
+        `/api/agents/conversations?agent=editor&pagePath=${encodeURIComponent(targetPath)}&limit=20`
       );
       if (!res.ok) return;
 
@@ -143,7 +149,8 @@ export function AIPanel() {
 
           return {
             id: conversation.id,
-            pagePath: currentPath,
+            pagePath: targetPath,
+            cabinetPath: conversation.cabinetPath,
             instruction: conversation.title,
             timestamp: conversation.startedAt,
             duration,
@@ -159,7 +166,7 @@ export function AIPanel() {
 
       setPastSessions(nextSessions);
     } catch {}
-  }, [currentPath, isOpen]);
+  }, [targetPath, isOpen]);
 
   const runningSessions = useMemo(
     () => editorSessions.filter((session) => session.status === "running"),
@@ -182,25 +189,66 @@ export function AIPanel() {
       kind: "running" as const,
       id: session.sessionId,
       sessionId: session.sessionId,
+      conversationId: session.conversationId,
+      cabinetPath: session.cabinetPath,
       pagePath: session.pagePath,
       agentSlug: session.agentSlug || "editor",
       userMessage: session.userMessage,
       prompt: session.prompt,
       timestamp: session.timestamp,
       reconnect: session.reconnect,
+      providerId: session.providerId,
+      adapterType: session.adapterType,
     }));
 
     return [...pending, ...running].sort((left, right) => {
-      const leftCurrent = left.pagePath === currentPath ? 0 : 1;
-      const rightCurrent = right.pagePath === currentPath ? 0 : 1;
+      const leftCurrent = left.pagePath === targetPath ? 0 : 1;
+      const rightCurrent = right.pagePath === targetPath ? 0 : 1;
       if (leftCurrent !== rightCurrent) return leftCurrent - rightCurrent;
       return right.timestamp - left.timestamp;
     });
-  }, [currentPath, pendingSessions, runningSessions]);
+  }, [targetPath, pendingSessions, runningSessions]);
 
   const selectedLiveSession = useMemo(
     () => liveSessions.find((session) => session.id === selectedLiveSessionId) || null,
     [liveSessions, selectedLiveSessionId]
+  );
+
+  const historyConversations = useMemo<ConversationMeta[]>(() => {
+    return pastSessions.map((session) => ({
+      id: session.id,
+      agentSlug: "editor",
+      cabinetPath: session.cabinetPath,
+      title: session.instruction,
+      trigger: "manual" as const,
+      status: session.status,
+      startedAt: session.timestamp,
+      completedAt:
+        session.duration !== undefined
+          ? new Date(new Date(session.timestamp).getTime() + session.duration * 1000).toISOString()
+          : undefined,
+      exitCode:
+        session.status === "completed"
+          ? 0
+          : session.status === "cancelled"
+            ? null
+            : 1,
+      providerId: undefined,
+      adapterType: undefined,
+      promptPath: "",
+      transcriptPath: "",
+      mentionedPaths: [],
+      artifactPaths: [],
+      summary: session.summary,
+    }));
+  }, [pastSessions]);
+
+  const selectedHistoryMeta = useMemo(
+    () =>
+      selectedHistoryConversation
+        ? historyConversations.find((conversation) => conversation.id === selectedHistoryConversation) || null
+        : null,
+    [historyConversations, selectedHistoryConversation]
   );
 
   // Restore sessions from sessionStorage on mount and validate against terminal server
@@ -267,7 +315,15 @@ export function AIPanel() {
 
   // Load past sessions when page changes
   useEffect(() => {
-    void loadPastSessions();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void loadPastSessions();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [loadPastSessions]);
 
   useEffect(() => {
@@ -276,92 +332,127 @@ export function AIPanel() {
     if (selectedStillExists) return;
 
     const fallbackSession =
-      liveSessions.find((session) => session.pagePath === currentPath) || liveSessions[0] || null;
-    setSelectedLiveSessionId(fallbackSession?.id || null);
-  }, [currentPath, liveSessions, selectedLiveSessionId]);
+      liveSessions.find((session) => session.pagePath === targetPath) || liveSessions[0] || null;
+    queueMicrotask(() => setSelectedLiveSessionId(fallbackSession?.id || null));
+  }, [targetPath, liveSessions, selectedLiveSessionId]);
 
   useEffect(() => {
-    if (previousCurrentPathRef.current === currentPath) return;
-    previousCurrentPathRef.current = currentPath;
-    const currentPageLive = liveSessions.find((session) => session.pagePath === currentPath);
+    if (previousCurrentPathRef.current === targetPath) return;
+    previousCurrentPathRef.current = targetPath;
+    const currentPageLive = liveSessions.find((session) => session.pagePath === targetPath);
     if (currentPageLive) {
-      setSelectedLiveSessionId(currentPageLive.id);
+      queueMicrotask(() => setSelectedLiveSessionId(currentPageLive.id));
     }
-  }, [currentPath, liveSessions]);
+  }, [targetPath, liveSessions]);
+
+  const startEditorConversation = useCallback(async (input: {
+    message: string;
+    mentionedPaths: string[];
+    mentionedAgents?: string[];
+    intent?: "image_generation";
+  }) => {
+    if (!targetPath) return;
+
+    // If user @-mentioned an agent, route to that agent instead of editor.
+    // Image generation always stays with the editor so the asset lands next to the current page.
+    const targetAgent =
+      input.intent === "image_generation"
+        ? null
+        : (input.mentionedAgents || [])[0] || null;
+    const nextAgentSlug = targetAgent || "editor";
+    const pendingId = `pending-${Date.now()}-${crypto.randomUUID()}`;
+
+    setPendingSessions((prev) => [
+      ...prev,
+      {
+        id: pendingId,
+        pagePath: targetPath,
+        userMessage: input.message,
+        agentSlug: nextAgentSlug,
+        timestamp: Date.now(),
+        status: "starting",
+      },
+    ]);
+    setSelectedLiveSessionId(pendingId);
+    requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = 0;
+      }
+    });
+
+    try {
+      const data = await createConversation(
+        targetAgent
+          ? {
+              agentSlug: targetAgent,
+              userMessage: input.message,
+              mentionedPaths: input.mentionedPaths,
+            }
+          : {
+              source: "editor",
+              pagePath: targetPath,
+              userMessage: input.message,
+              mentionedPaths: input.mentionedPaths,
+              intent: input.intent,
+            }
+      );
+      const conversation = data.conversation as ConversationMeta;
+
+      setPendingSessions((prev) => prev.filter((session) => session.id !== pendingId));
+      addEditorSession({
+        id: conversation.id,
+        sessionId: conversation.id,
+        pagePath: targetPath,
+        agentSlug: conversation.agentSlug,
+        userMessage: input.message,
+        prompt: conversation.title,
+        timestamp: Date.now(),
+        status: "running",
+        reconnect: true,
+        conversationId: conversation.id,
+        cabinetPath: conversation.cabinetPath,
+        providerId: conversation.providerId,
+        adapterType: conversation.adapterType,
+      });
+      setSelectedLiveSessionId(conversation.id);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error && error.message ? error.message : t("aiPanel.pendingFailed");
+      setPendingSessions((prev) =>
+        prev.map((session) =>
+          session.id === pendingId
+            ? { ...session, status: "failed", error: errorMessage }
+            : session
+        )
+      );
+      throw error;
+    }
+  }, [addEditorSession, targetPath, t]);
 
   const composer = useComposer({
     items: mentionItems,
-    disabled: !currentPath,
+    disabled: !targetPath,
     onSubmit: async ({ message, mentionedPaths, mentionedAgents }) => {
-      if (!currentPath) return;
-
-      // If user @-mentioned an agent, route to that agent instead of editor
-      const targetAgent = mentionedAgents.length > 0 ? mentionedAgents[0] : null;
-      const nextAgentSlug = targetAgent || "editor";
-      const pendingId = `pending-${Date.now()}-${crypto.randomUUID()}`;
-
-      setPendingSessions((prev) => [
-        ...prev,
-        {
-          id: pendingId,
-          pagePath: currentPath,
-          userMessage: message,
-          agentSlug: nextAgentSlug,
-          timestamp: Date.now(),
-          status: "starting",
-        },
-      ]);
-      setSelectedLiveSessionId(pendingId);
-      requestAnimationFrame(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = 0;
-        }
-      });
-
-      try {
-        const data = await createConversation(
-          targetAgent
-            ? {
-                agentSlug: targetAgent,
-                userMessage: message,
-                mentionedPaths,
-              }
-            : {
-                source: "editor",
-                pagePath: currentPath,
-                userMessage: message,
-                mentionedPaths,
-              }
-        );
-        const conversation = data.conversation as ConversationMeta;
-
-        setPendingSessions((prev) => prev.filter((session) => session.id !== pendingId));
-        addEditorSession({
-          id: conversation.id,
-          sessionId: conversation.id,
-          pagePath: currentPath,
-          agentSlug: conversation.agentSlug,
-          userMessage: message,
-          prompt: conversation.title,
-          timestamp: Date.now(),
-          status: "running",
-          reconnect: true,
-        });
-        setSelectedLiveSessionId(conversation.id);
-      } catch (error) {
-        const message =
-          error instanceof Error && error.message ? error.message : t("aiPanel.pendingFailed");
-        setPendingSessions((prev) =>
-          prev.map((session) =>
-            session.id === pendingId
-              ? { ...session, status: "failed", error: message }
-              : session
-          )
-        );
-        throw error;
-      }
+      await startEditorConversation({ message, mentionedPaths, mentionedAgents });
     },
   });
+
+  const handleImageGeneration = useCallback(async () => {
+    if (!targetPath || !composer.input.trim() || imageSubmitting) return;
+    setImageSubmitting(true);
+    const message = composer.input.trim();
+    const mentionedPaths = [...composer.mentions.paths];
+    try {
+      await startEditorConversation({
+        message,
+        mentionedPaths,
+        intent: "image_generation",
+      });
+      composer.reset();
+    } finally {
+      setImageSubmitting(false);
+    }
+  }, [composer, imageSubmitting, startEditorConversation, targetPath]);
 
   // Keep newest live work visible
   useEffect(() => {
@@ -384,39 +475,23 @@ export function AIPanel() {
         .editorSessions.find((s) => s.sessionId === sessionId);
       markSessionCompleted(sessionId);
       await loadPastSessions();
+      setSelectedHistoryConversation((current) => (current === sessionId ? null : current));
 
       // Reload the current page if we're still on it
       const currentPagePath = useEditorStore.getState().currentPath;
-      if (session && currentPagePath === session.pagePath) {
+      const activeTargetPath =
+        useTreeStore.getState().selectedPath || currentPagePath;
+      window.dispatchEvent(
+        new CustomEvent("cabinet:asset-updated", {
+          detail: { path: session?.pagePath || sessionId },
+        })
+      );
+      if (session && currentPagePath === session.pagePath && activeTargetPath === session.pagePath) {
         setTimeout(() => loadPage(session.pagePath), 500);
       }
     },
     [loadPage, loadPastSessions, markSessionCompleted]
   );
-
-  const togglePastExpanded = async (id: string) => {
-    const wasExpanded = expandedPast.has(id);
-    setExpandedPast((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
-    if (wasExpanded || pastSessionDetails[id]) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/agents/conversations/${id}`);
-      if (!res.ok) return;
-      const detail = (await res.json()) as ConversationDetail;
-      setPastSessionDetails((prev) => ({
-        ...prev,
-        [id]: detail.transcript || detail.meta.summary || "",
-      }));
-    } catch {}
-  };
 
   const formatTime = (ts: string | number) => {
     const d = new Date(ts);
@@ -431,6 +506,12 @@ export function AIPanel() {
     yesterday.setDate(yesterday.getDate() - 1);
     if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
     return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  };
+
+  const toggleHistorySelection = (conversationId: string) => {
+    setSelectedHistoryConversation((current) =>
+      current === conversationId ? null : conversationId
+    );
   };
 
   if (!isOpen) return null;
@@ -452,17 +533,17 @@ export function AIPanel() {
   const [mentionHintBefore, mentionHintAfter] = mentionHint.split("@");
 
   return (
-    <div className="w-[480px] min-w-[420px] border-l border-border bg-background flex flex-col">
+    <div className="w-[520px] min-w-[460px] shrink-0 border-l border-border bg-background flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <span className="text-[13px] font-semibold tracking-[-0.02em]">
             {t("aiPanel.title")}
           </span>
-          {currentPath && (
+          {targetPath && (
             <span className="text-[11px] text-muted-foreground">
-              {currentPath.split("/").pop()}
+              {targetPath.split("/").pop()}
             </span>
           )}
         </div>
@@ -496,7 +577,7 @@ export function AIPanel() {
 
       {/* Sessions */}
       <div className="flex-1 min-h-0 flex flex-col overflow-y-auto" ref={scrollRef}>
-        <div className="p-3 space-y-4">
+        <div className="px-5 py-4 space-y-5">
           {!hasAnySessions && (
             <div className="text-center py-8 space-y-2">
               <Sparkles className="h-8 w-8 mx-auto text-muted-foreground/40" />
@@ -515,8 +596,8 @@ export function AIPanel() {
           )}
 
           {liveSessions.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-1">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
                   {t("aiPanel.liveSessions")}
                 </div>
@@ -525,10 +606,10 @@ export function AIPanel() {
                 </span>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {liveSessions.map((session) => {
                   const isSelected = selectedLiveSessionId === session.id;
-                  const isCurrentPage = session.pagePath === currentPath;
+                  const isCurrentPage = session.pagePath === targetPath;
                   const agentLabel =
                     session.agentSlug === "editor" ? t("aiPanel.agent.editor") : startCase(session.agentSlug);
 
@@ -537,7 +618,7 @@ export function AIPanel() {
                       key={session.id}
                       onClick={() => setSelectedLiveSessionId(session.id)}
                       className={cn(
-                        "w-full rounded-xl border px-3 py-2 text-left transition-colors",
+                        "w-full rounded-xl border px-4 py-3 text-left transition-colors",
                         isSelected
                           ? "border-primary/40 bg-primary/8"
                           : "border-border/60 hover:bg-accent/30"
@@ -600,9 +681,9 @@ export function AIPanel() {
               </div>
 
               {selectedLiveSession && (
-                <div className="space-y-2 rounded-xl border border-border/70 bg-card/50 p-3">
-                  <div className="flex items-start gap-2">
-                    <div className="rounded-lg bg-accent/50 px-3 py-2 text-[13px] leading-relaxed flex-1">
+                <div className="space-y-3 rounded-xl border border-border/70 bg-card/50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-lg bg-accent/50 px-4 py-3 text-[13px] leading-relaxed flex-1">
                       <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                         <Loader2 className="h-3 w-3 animate-spin text-primary" />
                         {selectedLiveSession.kind === "pending"
@@ -623,14 +704,25 @@ export function AIPanel() {
                         </span>
                         <span>{formatDate(selectedLiveSession.timestamp)} {formatTime(selectedLiveSession.timestamp)}</span>
                       </div>
+                      {selectedLiveSession.kind === "running" && (selectedLiveSession.providerId || selectedLiveSession.adapterType) ? (
+                        <ConversationRuntimeBadge
+                          meta={{
+                            providerId: selectedLiveSession.providerId,
+                            adapterType: selectedLiveSession.adapterType,
+                            adapterConfig: undefined,
+                          }}
+                          className="mt-2"
+                        />
+                      ) : null}
                     </div>
-                    {selectedLiveSession.pagePath !== currentPath ? (
+                    {selectedLiveSession.pagePath !== targetPath ? (
                       <Button
                         variant="outline"
                         size="sm"
                         className="h-8 shrink-0 text-[11px]"
                         onClick={() => {
                           useAppStore.getState().setSection({ type: "page" });
+                          useTreeStore.getState().selectPage(selectedLiveSession.pagePath);
                           void loadPage(selectedLiveSession.pagePath);
                         }}
                       >
@@ -640,7 +732,7 @@ export function AIPanel() {
                   </div>
 
                   {selectedLiveSession.kind === "pending" ? (
-                    <div className="min-h-[220px] rounded-lg border border-dashed border-border/70 bg-background/80 p-4">
+                    <div className="min-h-[220px] rounded-lg border border-dashed border-border/70 bg-background/80 p-5">
                       <div className="flex h-full min-h-[188px] flex-col items-center justify-center gap-3 text-center">
                         {selectedLiveSession.status === "failed" ? (
                           <>
@@ -671,14 +763,26 @@ export function AIPanel() {
                     </div>
                   ) : (
                     <div className="min-h-[260px] overflow-hidden rounded-lg border border-border/70 bg-background">
-                      <WebTerminal
-                        sessionId={selectedLiveSession.sessionId}
-                        prompt={selectedLiveSession.prompt}
-                        displayPrompt={selectedLiveSession.userMessage}
-                        reconnect={selectedLiveSession.reconnect}
-                        themeSurface="page"
-                        onClose={() => handleSessionEnd(selectedLiveSession.sessionId)}
-                      />
+                      {selectedLiveSession.conversationId ? (
+                        <ConversationSessionView
+                          conversation={{
+                            id: selectedLiveSession.conversationId,
+                            cabinetPath: selectedLiveSession.cabinetPath,
+                            status: "running",
+                          }}
+                          onOpenArtifact={() => {}}
+                          density="compact"
+                        />
+                      ) : (
+                        <WebTerminal
+                          sessionId={selectedLiveSession.sessionId}
+                          prompt={selectedLiveSession.prompt}
+                          displayPrompt={selectedLiveSession.userMessage}
+                          reconnect={selectedLiveSession.reconnect}
+                          themeSurface="page"
+                          onClose={() => handleSessionEnd(selectedLiveSession.sessionId)}
+                        />
+                      )}
                     </div>
                   )}
                 </div>
@@ -686,62 +790,77 @@ export function AIPanel() {
             </div>
           )}
 
-          {/* Past sessions for current page (collapsed by default) */}
+          {/* Past sessions for current page */}
           {pastSessions.length > 0 && (
-            <div className="space-y-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 px-1">
+            <div className="space-y-3">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
                 Previous Sessions
               </div>
-              {pastSessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="border border-[#ffffff08] rounded-lg overflow-hidden"
-                >
-                  <button
-                    onClick={() => togglePastExpanded(session.id)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/30 transition-colors"
-                  >
-                    {expandedPast.has(session.id) ? (
-                      <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
-                    ) : (
-                      <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                    )}
-                    <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
-                    <span className="text-[12px] truncate flex-1">
-                      {session.instruction}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground/60 shrink-0">
-                      {formatDate(session.timestamp)}{" "}
-                      {formatTime(session.timestamp)}
-                    </span>
-                  </button>
-                  {expandedPast.has(session.id) && (
-                    <div
-                      className="border-t"
-                      style={{
-                        borderColor: "var(--border)",
-                        backgroundColor: "var(--background)",
-                        color: "var(--foreground)",
-                      }}
+              <div className="space-y-2">
+                {historyConversations.map((conversation) => {
+                  const duration = conversation.completedAt
+                    ? Math.max(
+                        0,
+                        Math.round(
+                          (new Date(conversation.completedAt).getTime() -
+                            new Date(conversation.startedAt).getTime()) /
+                            1000
+                        )
+                      )
+                    : null;
+                  const selected = selectedHistoryConversation === conversation.id;
+
+                  return (
+                    <button
+                      key={conversation.id}
+                      onClick={() => toggleHistorySelection(conversation.id)}
+                      className={cn(
+                        "flex w-full items-start gap-3 rounded-lg border border-border/70 bg-background/40 px-4 py-3 text-left transition-colors",
+                        selected
+                          ? "bg-accent/40 text-foreground"
+                          : "hover:bg-accent/30"
+                      )}
                     >
-                      <pre className="max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-relaxed text-foreground/85">
-                        {pastSessionDetails[session.id] || session.summary || "(No output captured)"}
-                      </pre>
-                      <div
-                        className="flex items-center gap-3 border-t px-3 py-1.5 text-[10px] text-muted-foreground/60"
-                        style={{ borderColor: "var(--border)" }}
-                      >
-                        {session.duration !== undefined && (
-                          <span>
-                            <Clock className="h-2.5 w-2.5 inline mr-1" />
-                            {session.duration}s
-                          </span>
+                      <div className="mt-0.5 shrink-0">
+                        {conversation.status === "completed" ? (
+                          <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                        ) : (
+                          <X className="h-3.5 w-3.5 text-destructive" />
                         )}
                       </div>
-                    </div>
-                  )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-[12px] font-medium text-foreground">
+                            {conversation.title}
+                          </span>
+                          {selected ? (
+                            <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-primary">
+                              Open
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <span>
+                            {formatDate(conversation.startedAt)} {formatTime(conversation.startedAt)}
+                          </span>
+                          {duration !== null ? <span>{duration}s</span> : null}
+                          <span className="capitalize">{conversation.status}</span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedHistoryMeta ? (
+                <div className="min-h-[220px] overflow-hidden rounded-lg border border-border/70 bg-background">
+                  <ConversationSessionView
+                    conversation={selectedHistoryMeta}
+                    onOpenArtifact={() => {}}
+                    density="compact"
+                  />
                 </div>
-              ))}
+              ) : null}
             </div>
           )}
         </div>
@@ -756,7 +875,8 @@ export function AIPanel() {
         )
         .map((session) => (
           <div
-            key={`hidden-${session.id}`}
+            key={`hidden-${session.sessionId}`}
+            data-terminal-keepalive="editor-session"
             style={{ width: 0, height: 0, overflow: "hidden", position: "absolute" }}
           >
             <WebTerminal
@@ -764,6 +884,7 @@ export function AIPanel() {
               prompt={session.prompt}
               displayPrompt={session.userMessage}
               reconnect={session.reconnect}
+              preserveConnectionOnly={true}
               themeSurface="page"
               onClose={() => handleSessionEnd(session.sessionId)}
             />
@@ -771,16 +892,22 @@ export function AIPanel() {
         ))}
 
       {/* Input */}
-      <div className="border-t border-border shrink-0">
+      <div className="border-t border-border shrink-0 px-5 py-4">
         <ComposerInput
           composer={composer}
           placeholder={
-            currentPath
-              ? "Ask anything... use @ to mention pages or agents"
-              : "Select a page first..."
+            targetPath
+              ? t("aiPanel.inputPlaceholder")
+              : t("aiPanel.selectPagePlaceholder")
           }
-          disabled={!currentPath}
+          disabled={!targetPath}
           variant="inline"
+          secondaryAction={{
+            label: t("aiPanel.generateImage"),
+            onClick: () => void handleImageGeneration(),
+            loading: imageSubmitting,
+            disabled: !targetPath,
+          }}
           minHeight="56px"
           maxHeight="160px"
           items={mentionItems}

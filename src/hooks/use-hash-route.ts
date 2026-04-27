@@ -2,9 +2,14 @@
 
 import { useEffect, useRef } from "react";
 import { ROOT_CABINET_PATH } from "@/lib/cabinets/paths";
+import {
+  buildRouteHash,
+  pushRouteHash,
+} from "@/lib/navigation/hash-route";
 import { useAppStore } from "@/stores/app-store";
 import { useTreeStore } from "@/stores/tree-store";
 import { useEditorStore } from "@/stores/editor-store";
+import { classifyFileExtension } from "@/lib/editor/file-types";
 
 /**
  * Sync app navigation state with URL hash + localStorage persistence.
@@ -34,10 +39,6 @@ interface RouteState {
   pagePath: string | null;
 }
 
-function encodePathSegment(value: string): string {
-  return encodeURIComponent(value);
-}
-
 function decodePathSegment(value?: string): string {
   if (!value) return ROOT_CABINET_PATH;
   try {
@@ -45,46 +46,6 @@ function decodePathSegment(value?: string): string {
   } catch {
     return value || ROOT_CABINET_PATH;
   }
-}
-
-function buildHash(section: SectionState, pagePath: string | null): string {
-  if (section.type === "page" && section.mode === "cabinet" && section.cabinetPath && pagePath) {
-    return `#/cabinet/${encodePathSegment(section.cabinetPath)}/data/${encodePathSegment(pagePath)}`;
-  }
-  if (section.type === "page" && pagePath) {
-    return `#/page/${encodePathSegment(pagePath)}`;
-  }
-  if (section.type === "cabinet" && section.cabinetPath) {
-    return `#/cabinet/${encodePathSegment(section.cabinetPath)}`;
-  }
-  if (section.type === "agent" && section.mode === "cabinet" && section.cabinetPath && section.slug) {
-    return `#/cabinet/${encodePathSegment(section.cabinetPath)}/agents/${encodePathSegment(section.slug)}`;
-  }
-  if (section.type === "agents" && section.mode === "cabinet" && section.cabinetPath) {
-    return `#/cabinet/${encodePathSegment(section.cabinetPath)}/agents`;
-  }
-  if (section.type === "tasks" && section.mode === "cabinet" && section.cabinetPath) {
-    return `#/cabinet/${encodePathSegment(section.cabinetPath)}/tasks`;
-  }
-  if (section.type === "jobs" && section.mode === "cabinet" && section.cabinetPath) {
-    return `#/cabinet/${encodePathSegment(section.cabinetPath)}/jobs`;
-  }
-  if (section.type === "agent" && section.slug) {
-    return `#/ops/agents/${encodePathSegment(section.slug)}`;
-  }
-  if (section.type === "agents") {
-    return "#/ops/agents";
-  }
-  if (section.type === "tasks") {
-    return "#/ops/tasks";
-  }
-  if (section.type === "settings") {
-    return section.slug
-      ? `#/settings/${encodePathSegment(section.slug)}`
-      : "#/settings";
-  }
-  if (section.type === "home") return "#/home";
-  return "#/home";
 }
 
 function parseHash(hash: string): RouteState {
@@ -221,6 +182,15 @@ function expandParents(pagePath: string) {
   }
 }
 
+function shouldLoadEditorPage(pagePath: string): boolean {
+  const fileName = pagePath.split("/").pop() || "";
+  const dotIndex = fileName.lastIndexOf(".");
+  if (dotIndex <= 0) return true;
+
+  const ext = fileName.slice(dotIndex);
+  return classifyFileExtension(ext) === null || ext.toLowerCase() === ".md";
+}
+
 async function applyRoute(route: RouteState) {
   const { setSection } = useAppStore.getState();
   const { selectPage } = useTreeStore.getState();
@@ -230,7 +200,11 @@ async function applyRoute(route: RouteState) {
 
   if (route.pagePath) {
     selectPage(route.pagePath);
-    await loadPage(route.pagePath);
+    if (shouldLoadEditorPage(route.pagePath)) {
+      await loadPage(route.pagePath);
+    } else {
+      clear();
+    }
     expandParents(route.pagePath);
     return;
   }
@@ -286,10 +260,12 @@ export function useHashRoute() {
         state.section.cabinetPath !== prev.section.cabinetPath
       ) {
         const selectedPath = useTreeStore.getState().selectedPath;
-        const hash = buildHash(state.section, selectedPath);
+        if (state.section.type === "page" && !selectedPath) {
+          return;
+        }
+        const hash = buildRouteHash(state.section, selectedPath);
         if (window.location.hash !== hash) {
-          window.history.replaceState(null, "", hash);
-          saveToLocalStorage(hash);
+          pushRouteHash(state.section, selectedPath);
         }
       }
     });
@@ -297,10 +273,9 @@ export function useHashRoute() {
     const unsubTree = useTreeStore.subscribe((state, prev) => {
       if (suppressHashUpdate.current) return;
       if (state.selectedPath !== prev.selectedPath && state.selectedPath) {
-        const hash = buildHash(useAppStore.getState().section, state.selectedPath);
+        const hash = buildRouteHash(useAppStore.getState().section, state.selectedPath);
         if (window.location.hash !== hash) {
-          window.history.replaceState(null, "", hash);
-          saveToLocalStorage(hash);
+          pushRouteHash(useAppStore.getState().section, state.selectedPath);
         }
       }
     });

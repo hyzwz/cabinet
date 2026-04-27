@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ExternalLink, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeaderActions } from "@/components/layout/header-actions";
@@ -12,7 +13,21 @@ interface WebsiteViewerProps {
 }
 
 export function WebsiteViewer({ path, title, fullscreen, onExit }: WebsiteViewerProps) {
-  const iframeSrc = `/api/assets/${path}/index.html`;
+  const [refreshKey, setRefreshKey] = useState(() => Date.now());
+  const iframeSrc = `/api/assets/${path}/index.html?v=${refreshKey}`;
+
+  useEffect(() => {
+    const handleAssetUpdated = (event: Event) => {
+      const updatedPath = (event as CustomEvent<{ path?: string }>).detail?.path;
+      if (!updatedPath) return;
+      if (updatedPath === path || updatedPath.startsWith(`${path}/`)) {
+        setRefreshKey(Date.now());
+      }
+    };
+
+    window.addEventListener("cabinet:asset-updated", handleAssetUpdated);
+    return () => window.removeEventListener("cabinet:asset-updated", handleAssetUpdated);
+  }, [path]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -57,7 +72,7 @@ export function WebsiteViewer({ path, title, fullscreen, onExit }: WebsiteViewer
         src={iframeSrc}
         className="flex-1 w-full border-0 bg-white"
         title={title}
-        sandbox="allow-scripts allow-same-origin allow-forms"
+        sandbox="allow-scripts allow-forms allow-popups allow-downloads"
       />
     </div>
   );

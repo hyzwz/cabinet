@@ -5,7 +5,9 @@ import { ExternalLink, FileText, Files, PackageOpen, Sparkles, CheckCircle, XCir
 import type { ConversationDetail } from "@/types/conversations";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { getArtifactLabel } from "@/lib/navigation/artifact-path";
 import { appendConversationCabinetPath } from "@/lib/agents/conversation-identity";
 
 function StatusBadge({ status }: { status: string }) {
@@ -34,9 +36,11 @@ function StatusBadge({ status }: { status: string }) {
 export function ConversationResultView({
   detail,
   onOpenArtifact,
+  density = "default",
 }: {
   detail: ConversationDetail;
   onOpenArtifact: (path: string) => void;
+  density?: "default" | "compact";
 }) {
   const transcriptUrl = appendConversationCabinetPath(
     `/agents/conversations/${detail.meta.id}`,
@@ -45,6 +49,7 @@ export function ConversationResultView({
   const promptText = detail.request || detail.meta.title;
   const [promptHtml, setPromptHtml] = useState("");
   const { t } = useLocale();
+  const isCompact = density === "compact";
 
   useEffect(() => {
     if (!promptText) return;
@@ -66,10 +71,20 @@ export function ConversationResultView({
         color: "var(--foreground)",
       }}
     >
-      <div className="mx-auto max-w-3xl space-y-5 p-6">
+      <div
+        className={cn(
+          "mx-auto w-full space-y-5 p-6",
+          isCompact ? "space-y-3 p-3" : "max-w-3xl"
+        )}
+      >
         {/* Prompt */}
-        <section className="rounded-2xl border border-border bg-muted/10 p-5">
-          <div className="mb-2 flex items-center justify-between">
+        <section
+          className={cn(
+            "border border-border bg-muted/10",
+            isCompact ? "rounded-lg p-3" : "rounded-2xl p-5"
+          )}
+        >
+          <div className="mb-2 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
               <h4 className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">{t("conversation.prompt")}</h4>
@@ -77,7 +92,7 @@ export function ConversationResultView({
             <Button
               variant="outline"
               size="sm"
-              className="h-8 gap-1.5 text-xs"
+              className={cn("h-8 gap-1.5 text-xs", isCompact && "shrink-0 px-2")}
               onClick={() => window.open(transcriptUrl, "_blank", "noopener,noreferrer")}
             >
               <Files className="h-3.5 w-3.5" />
@@ -87,18 +102,31 @@ export function ConversationResultView({
           </div>
           {promptHtml ? (
             <div
-              className="max-h-48 overflow-y-auto overflow-x-hidden prose prose-sm prose-invert max-w-none prose-headings:font-semibold prose-headings:text-foreground prose-h1:text-base prose-h2:text-[13px] prose-h3:text-[12px] prose-p:text-[13px] prose-p:text-foreground/85 prose-li:text-[13px] prose-li:text-foreground/85 prose-a:text-foreground prose-code:text-[11px] prose-code:text-foreground prose-code:bg-background prose-code:px-1 prose-code:rounded prose-pre:bg-background prose-pre:border-0 prose-pre:text-foreground prose-strong:text-foreground"
+              className={cn(
+                "max-h-48 overflow-y-auto overflow-x-hidden prose prose-sm prose-invert max-w-none prose-headings:font-semibold prose-headings:text-foreground prose-h1:text-base prose-h2:text-[13px] prose-h3:text-[12px] prose-p:text-[13px] prose-p:text-foreground/85 prose-li:text-[13px] prose-li:text-foreground/85 prose-a:text-foreground prose-code:text-[11px] prose-code:text-foreground prose-code:bg-background prose-code:px-1 prose-code:rounded prose-pre:bg-background prose-pre:border-0 prose-pre:text-foreground prose-strong:text-foreground",
+                isCompact && "max-h-36"
+              )}
               dangerouslySetInnerHTML={{ __html: promptHtml }}
             />
           ) : (
-            <p className="max-h-48 overflow-y-auto overflow-x-hidden break-words text-[13px] leading-relaxed text-foreground/85">
+            <p
+              className={cn(
+                "max-h-48 overflow-y-auto overflow-x-hidden break-words text-[13px] leading-relaxed text-foreground/85",
+                isCompact && "max-h-36"
+              )}
+            >
               {promptText}
             </p>
           )}
         </section>
 
         {/* Result */}
-        <section className="rounded-2xl border border-border bg-background p-5">
+        <section
+          className={cn(
+            "border border-border bg-background",
+            isCompact ? "rounded-lg p-3" : "rounded-2xl p-5"
+          )}
+        >
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
@@ -128,7 +156,12 @@ export function ConversationResultView({
         </section>
 
         {/* Artifacts */}
-        <section className="rounded-2xl border border-border bg-background p-5">
+        <section
+          className={cn(
+            "border border-border bg-background",
+            isCompact ? "rounded-lg p-3" : "rounded-2xl p-5"
+          )}
+        >
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <PackageOpen className="h-4 w-4 text-primary" />
@@ -164,7 +197,7 @@ export function ConversationResultView({
                   <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[13px] font-medium text-foreground">
-                      {artifact.label || artifact.path.split("/").pop()}
+                      {artifact.label || getArtifactLabel(artifact.path)}
                     </div>
                     <div className="truncate text-[11px] text-muted-foreground">{artifact.path}</div>
                   </div>
